@@ -5,3 +5,5 @@ fpdf2>=2.7.0
 Pillow>=10.0.0
 plotly>=5.18.0
 ezdxf
+pandas>=2.0.0
+PuLP>=2.7.0
