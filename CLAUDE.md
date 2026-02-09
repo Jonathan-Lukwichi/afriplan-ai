@@ -234,17 +234,349 @@ pandas>=2.0.0
 
 ---
 
-## NEXT PHASES (Future)
+---
 
-### Phase 5: Cost Optimizer
-- 4 quotation options (Budget, Value, Premium, Competitive)
-- Multi-supplier comparison
+## PLATFORM CONTEXT
 
-### Phase 6: OR Optimization
-- PuLP Integer Linear Programming
-- Mathematically optimal solutions
+**Problem:** South Africa needs a comprehensive electrical quotation platform that covers ALL sectors - from residential to mining, from township electrification to industrial manufacturing. Currently, no such integrated solution exists.
 
-### Phase 7: Multi-Tier
-- Commercial projects
-- Industrial (mining, manufacturing)
-- Infrastructure (electrification)
+**Need:** A platform that serves:
+- Homeowners (new builds, renovations, solar)
+- Electrical contractors (quotes, BOQs, compliance)
+- Developers (township electrification, infrastructure)
+- Industrial clients (mining, manufacturing)
+- Municipalities (street lighting, rural electrification)
+
+**Outcome:** A complete electrical project quotation platform with:
+- Database-driven pricing (not hardcoded)
+- API-based architecture for scalability
+- Multiple project types (residential → industrial)
+- SA regulatory compliance (SANS, MHSA, NERSA)
+- Professional PDF/Excel quotations
+
+---
+
+## FULL SCOPE: South African Electrical Market
+
+### TIER 1: Residential
+- New house construction
+- Renovations & additions
+- Solar & backup power
+- COC compliance
+- Smart home & automation
+- Security systems (CCTV, alarm, fence)
+- EV charging
+- Pool & outdoor
+
+### TIER 2: Commercial
+- Office buildings
+- Retail & shopping centers
+- Restaurants & hospitality
+- Healthcare facilities
+- Schools & educational
+- Hotels & lodges
+
+### TIER 3: Industrial
+- Mining operations (surface & underground)
+- Factories & manufacturing
+- Warehouses & distribution
+- Agricultural (farms, irrigation)
+- Substations & HV infrastructure
+- Motor control & automation
+
+### TIER 4: Infrastructure
+- Township/suburb electrification
+- Rural electrification (grid extension, mini-grid)
+- Street lighting
+- Utility-scale solar
+- Grid connection & substations
+
+---
+
+## COMPLETE DATABASE SCHEMA
+
+```sql
+-- 1. PROJECT TYPES (All sectors)
+CREATE TABLE project_types (
+    id SERIAL PRIMARY KEY,
+    tier VARCHAR(20) NOT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    regulations TEXT[],
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- 2. PRODUCT CATEGORIES (Hierarchical)
+CREATE TABLE product_categories (
+    id SERIAL PRIMARY KEY,
+    parent_id INT REFERENCES product_categories(id),
+    code VARCHAR(50) UNIQUE,
+    name VARCHAR(100),
+    applicable_tiers TEXT[]
+);
+
+-- 3. PRODUCTS
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    category_id INT REFERENCES product_categories(id),
+    sku VARCHAR(50) UNIQUE,
+    brand VARCHAR(100),
+    name VARCHAR(200) NOT NULL,
+    specifications JSONB,
+    unit VARCHAR(20) NOT NULL,
+    voltage_rating VARCHAR(20),
+    certifications TEXT[]
+);
+
+-- 4. SUPPLIERS (SA suppliers)
+CREATE TABLE suppliers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(20) UNIQUE,
+    type VARCHAR(20),
+    tiers_served TEXT[],
+    credit_terms VARCHAR(50)
+);
+
+-- 5. PRICES
+CREATE TABLE prices (
+    id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES products(id),
+    supplier_id INT REFERENCES suppliers(id),
+    price_zar DECIMAL(12,2) NOT NULL,
+    effective_date DATE NOT NULL,
+    price_type VARCHAR(20)
+);
+
+-- 6. ELECTRIFICATION STANDARDS
+CREATE TABLE electrification_standards (
+    id SERIAL PRIMARY KEY,
+    standard_type VARCHAR(50),
+    connection_size VARCHAR(20),
+    per_stand_allowance JSONB,
+    applicable_standards TEXT[]
+);
+
+-- 7. INDUSTRIAL STANDARDS (Mining, Manufacturing)
+CREATE TABLE industrial_standards (
+    id SERIAL PRIMARY KEY,
+    industry_type VARCHAR(50),
+    equipment_class VARCHAR(50),
+    requirements JSONB,
+    safety_standards TEXT[]
+);
+
+-- 8. LABOUR RATES
+CREATE TABLE labour_rates (
+    id SERIAL PRIMARY KEY,
+    project_type_id INT,
+    task_code VARCHAR(50),
+    description VARCHAR(200),
+    unit VARCHAR(20),
+    rate_zar DECIMAL(10,2),
+    skill_level VARCHAR(20)
+);
+```
+
+---
+
+## DATA SOURCES BY SECTOR
+
+### Residential & Commercial
+| Data Type | Source |
+|-----------|--------|
+| LV Materials | Builders Warehouse, Cashbuild |
+| Pricing | ACDC Dynamics, Eurolux |
+| Solar | Sustainable.co.za, SolarAdvice |
+| Standards | SANS 10142 |
+
+### Industrial
+| Data Type | Source |
+|-----------|--------|
+| MV/HV Equipment | ABB, Siemens, Schneider |
+| Mining Equipment | Zest WEG |
+| Cables | Aberdare, South Ocean |
+| Standards | MHSA, SANS 10108 |
+
+### Infrastructure
+| Data Type | Source |
+|-----------|--------|
+| Poles | Rocla |
+| Transformers | ABB, Actom, WEG |
+| Street Lights | Beka Schreder |
+| Metering | Conlog, Landis+Gyr |
+| Standards | NRS 034, Eskom DSD |
+
+---
+
+## IMPLEMENTATION ROADMAP
+
+### Phase 1: Foundation (Weeks 1-4)
+- Database Setup (Supabase/PostgreSQL)
+- FastAPI Backend
+- Data Collection Sprint
+
+### Phase 2: Core Calculators (Weeks 5-8)
+| Sector | Calculator |
+|--------|------------|
+| Residential | Room-based electrical |
+| Commercial | Area-based electrical |
+| Industrial | Equipment-based |
+| Infrastructure | Per-stand costing |
+
+### Phase 3: User Interface (Weeks 9-12)
+- Project Type Selector
+- Dynamic Forms
+- Quote Generation
+
+### Phase 4: Data Enrichment (Weeks 13-16)
+- Price Update Automation
+- Standards Library
+- Regional Expansion
+
+### Phase 5: Advanced Features (Weeks 17-24)
+- Admin panel
+- User accounts
+- Contractor marketplace
+- API integration
+- Mobile app
+
+---
+
+## MVP DELIVERABLES
+
+| Feature | Residential | Commercial | Industrial | Infrastructure |
+|---------|-------------|------------|------------|----------------|
+| Project creation | ✅ | ✅ | ✅ | ✅ |
+| Material BQ | ✅ | ✅ | ✅ | ✅ |
+| Labour costing | ✅ | ✅ | ✅ | ✅ |
+| PDF export | ✅ | ✅ | ✅ | ✅ |
+| Price database | ✅ Basic | ✅ Basic | ⚠️ Limited | ⚠️ Limited |
+
+---
+
+## REVENUE MODEL
+
+| Tier | Target User | Pricing Model | Price Point |
+|------|-------------|---------------|-------------|
+| Residential | Homeowners | Once-off | R99-R299 |
+| Residential Pro | Contractors | Monthly | R499/month |
+| Commercial | Contractors | Per project | R999-R2,999 |
+| Industrial | Engineering firms | Annual | R29,999/year |
+| Infrastructure | Municipalities | Enterprise | Custom |
+
+---
+
+## PHASE 5: SMART COST OPTIMIZER
+
+### The 4 Quotation Options
+
+| Option | Strategy | Margin |
+|--------|----------|--------|
+| A: Budget | Cheapest supplier per item | 12-15% |
+| B: Best Value | Balanced cost/quality | 15-20% |
+| C: Premium | Quality brands | 20-25% |
+| D: Competitive | Lowest total | 10-12% |
+
+### Algorithm
+
+```python
+def generate_quotation_options(requirements: dict, region: str) -> list:
+    options = []
+
+    # Option A: Budget
+    budget_items = select_by_strategy(all_prices, "cheapest")
+    options.append(calculate_option("Budget", budget_items, 0.12))
+
+    # Option B: Best Value
+    value_items = select_by_strategy(all_prices, "balanced")
+    options.append(calculate_option("Best Value", value_items, 0.18))
+
+    # Option C: Premium
+    premium_items = select_by_strategy(all_prices, "premium")
+    options.append(calculate_option("Premium", premium_items, 0.22))
+
+    # Option D: Competitive
+    competitive_items = optimize_total_cost(all_prices)
+    options.append(calculate_option("Competitive", competitive_items, 0.10))
+
+    return options
+```
+
+---
+
+## PHASE 6: OPERATIONS RESEARCH OPTIMIZATION
+
+### Mathematical Formulation
+
+```
+OBJECTIVE FUNCTIONS:
+f1: Minimize Total Cost     = Σ price[i,j] × qty[i] × x[i,j]
+f2: Maximize Quality Score  = Σ quality[i,j] × qty[i] × x[i,j]
+
+DECISION VARIABLES:
+x[i,j] ∈ {0, 1}  : Select supplier j for item i (binary)
+
+CONSTRAINTS:
+1. Σ x[i,j] = 1 for all i    (one supplier per item)
+2. Circuit points ≤ 10      (SANS 10142)
+3. Quality score ≥ threshold
+4. Total cost ≤ budget
+```
+
+### PuLP Implementation
+
+```python
+from pulp import *
+
+class QuotationOptimizer:
+    def optimize(self, requirements: dict, region: str) -> list:
+        prob = LpProblem("Quotation", LpMinimize)
+
+        # Decision variables
+        x = LpVariable.dicts("select",
+            ((i, j) for i in items for j in suppliers),
+            cat='Binary')
+
+        # Objective: minimize cost
+        prob += lpSum(
+            prices.loc[i, j] * requirements[i] * x[i, j]
+            for i in items for j in suppliers
+        )
+
+        # Constraint: one supplier per item
+        for i in items:
+            prob += lpSum(x[i, j] for j in suppliers) == 1
+
+        prob.solve(PULP_CBC_CMD(msg=0))
+        return self._extract_solution(prob, x)
+```
+
+### Value of OR Optimization
+
+| Benefit | Description |
+|---------|-------------|
+| Proven optimality | Mathematically guaranteed best |
+| Constraint handling | Complex constraints handled |
+| Multi-objective | Balance cost, quality, time |
+| Credibility | Industrial Engineering optimization |
+| Differentiation | No SA competitor has this |
+
+---
+
+## PHASE 7: MULTI-TIER EXPANSION
+
+### Commercial Projects
+- Office load calculations
+- Emergency power sizing
+- Fire alarm integration
+
+### Industrial Projects
+- Mining (MHSA compliant)
+- Factory MCCs/VSDs
+- Substation design
+
+### Infrastructure Projects
+- Township electrification costing
+- Rural grid extension
+- Street lighting design
