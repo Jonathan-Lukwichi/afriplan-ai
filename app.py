@@ -1185,6 +1185,286 @@ def generate_electrical_pdf(elec_req: dict, circuit_info: dict, bq_items: list):
 
 
 # ─────────────────────────────────────────────
+# PHASE 5: SMART COST OPTIMIZER
+# ─────────────────────────────────────────────
+
+# Supplier price variations (simulated multi-supplier database)
+SUPPLIER_PRICES = {
+    "budget": {
+        "name": "Budget Electrical",
+        "markup": 0.0,  # Base price
+        "quality": 3,
+        "lead_time": 7,
+    },
+    "standard": {
+        "name": "ACDC Dynamics",
+        "markup": 0.10,  # 10% higher
+        "quality": 4,
+        "lead_time": 3,
+    },
+    "premium": {
+        "name": "Schneider Electric",
+        "markup": 0.25,  # 25% higher
+        "quality": 5,
+        "lead_time": 5,
+    }
+}
+
+def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dict) -> list:
+    """
+    Generate 4 quotation options with different cost/quality strategies.
+    Phase 5: Smart Cost Optimizer
+    """
+    base_material_cost = sum(item["total"] for item in bq_items if item["category"] != "Labour")
+    base_labour_cost = sum(item["total"] for item in bq_items if item["category"] == "Labour")
+    base_total = base_material_cost + base_labour_cost
+
+    options = []
+
+    # Option A: Budget - Cheapest suppliers, minimum markup
+    budget_material = base_material_cost * 0.90  # 10% cheaper materials
+    budget_labour = base_labour_cost * 0.95  # Slightly cheaper labour
+    budget_cost = budget_material + budget_labour
+    budget_markup = 0.12
+    budget_selling = budget_cost * (1 + budget_markup)
+    options.append({
+        "name": "A: Budget Friendly",
+        "strategy": "Cheapest suppliers, basic quality",
+        "material_cost": budget_material,
+        "labour_cost": budget_labour,
+        "base_cost": budget_cost,
+        "markup_percent": budget_markup * 100,
+        "selling_price": budget_selling,
+        "profit": budget_selling - budget_cost,
+        "quality_score": 3,
+        "lead_time": 7,
+        "recommended": False,
+        "color": "#3B82F6",  # Blue
+    })
+
+    # Option B: Best Value - Balanced cost/quality (RECOMMENDED)
+    value_material = base_material_cost * 1.0  # Standard price
+    value_labour = base_labour_cost * 1.0
+    value_cost = value_material + value_labour
+    value_markup = 0.18
+    value_selling = value_cost * (1 + value_markup)
+    options.append({
+        "name": "B: Best Value",
+        "strategy": "Balanced cost and quality",
+        "material_cost": value_material,
+        "labour_cost": value_labour,
+        "base_cost": value_cost,
+        "markup_percent": value_markup * 100,
+        "selling_price": value_selling,
+        "profit": value_selling - value_cost,
+        "quality_score": 4,
+        "lead_time": 3,
+        "recommended": True,
+        "color": "#22C55E",  # Green
+    })
+
+    # Option C: Premium - Top quality brands
+    premium_material = base_material_cost * 1.25  # 25% premium materials
+    premium_labour = base_labour_cost * 1.15  # Experienced contractors
+    premium_cost = premium_material + premium_labour
+    premium_markup = 0.22
+    premium_selling = premium_cost * (1 + premium_markup)
+    options.append({
+        "name": "C: Premium Quality",
+        "strategy": "Top-tier brands, master electricians",
+        "material_cost": premium_material,
+        "labour_cost": premium_labour,
+        "base_cost": premium_cost,
+        "markup_percent": premium_markup * 100,
+        "selling_price": premium_selling,
+        "profit": premium_selling - premium_cost,
+        "quality_score": 5,
+        "lead_time": 5,
+        "recommended": False,
+        "color": "#A855F7",  # Purple
+    })
+
+    # Option D: Competitive - Lowest total to win job
+    competitive_material = base_material_cost * 0.92
+    competitive_labour = base_labour_cost * 0.90
+    competitive_cost = competitive_material + competitive_labour
+    competitive_markup = 0.10  # Lower margin
+    competitive_selling = competitive_cost * (1 + competitive_markup)
+    options.append({
+        "name": "D: Competitive Bid",
+        "strategy": "Win the job, volume pricing",
+        "material_cost": competitive_material,
+        "labour_cost": competitive_labour,
+        "base_cost": competitive_cost,
+        "markup_percent": competitive_markup * 100,
+        "selling_price": competitive_selling,
+        "profit": competitive_selling - competitive_cost,
+        "quality_score": 3.5,
+        "lead_time": 5,
+        "recommended": False,
+        "color": "#F59E0B",  # Amber
+    })
+
+    return options
+
+
+# ─────────────────────────────────────────────
+# PHASE 6: OPERATIONS RESEARCH OPTIMIZATION
+# ─────────────────────────────────────────────
+
+def optimize_quotation_or(bq_items: list, constraints: dict = None) -> dict:
+    """
+    Operations Research optimization using PuLP Integer Linear Programming.
+    Finds mathematically optimal supplier selection.
+    """
+    from pulp import LpProblem, LpMinimize, LpMaximize, LpVariable, lpSum, LpStatus, value, PULP_CBC_CMD
+
+    constraints = constraints or {}
+    min_quality = constraints.get("min_quality", 3)
+    max_budget = constraints.get("max_budget", float('inf'))
+
+    # Simulated supplier data for each item category
+    suppliers = ["budget", "standard", "premium"]
+    categories = list(set(item["category"] for item in bq_items))
+
+    # Price multipliers per supplier
+    price_mult = {"budget": 0.90, "standard": 1.0, "premium": 1.25}
+    quality_scores = {"budget": 3, "standard": 4, "premium": 5}
+
+    # Create optimization problem
+    prob = LpProblem("Quotation_Optimizer", LpMinimize)
+
+    # Decision variables: select supplier j for category i
+    x = LpVariable.dicts("select",
+                         ((cat, sup) for cat in categories for sup in suppliers),
+                         cat='Binary')
+
+    # Calculate base costs per category
+    category_costs = {}
+    for item in bq_items:
+        cat = item["category"]
+        if cat not in category_costs:
+            category_costs[cat] = 0
+        category_costs[cat] += item["total"]
+
+    # Objective: Minimize total cost
+    prob += lpSum(
+        category_costs.get(cat, 0) * price_mult[sup] * x[cat, sup]
+        for cat in categories for sup in suppliers
+    ), "Total_Cost"
+
+    # Constraint 1: One supplier per category
+    for cat in categories:
+        prob += lpSum(x[cat, sup] for sup in suppliers) == 1, f"One_Supplier_{cat}"
+
+    # Constraint 2: Minimum quality score
+    total_items = len(categories)
+    prob += lpSum(
+        quality_scores[sup] * x[cat, sup]
+        for cat in categories for sup in suppliers
+    ) >= min_quality * total_items, "Min_Quality"
+
+    # Constraint 3: Budget limit (if specified)
+    if max_budget < float('inf'):
+        prob += lpSum(
+            category_costs.get(cat, 0) * price_mult[sup] * x[cat, sup]
+            for cat in categories for sup in suppliers
+        ) <= max_budget, "Budget_Limit"
+
+    # Solve
+    prob.solve(PULP_CBC_CMD(msg=0))
+
+    # Extract solution
+    if LpStatus[prob.status] == "Optimal":
+        selection = {}
+        total_cost = 0
+        total_quality = 0
+
+        for cat in categories:
+            for sup in suppliers:
+                if value(x[cat, sup]) == 1:
+                    selection[cat] = {
+                        "supplier": sup,
+                        "supplier_name": SUPPLIER_PRICES[sup]["name"],
+                        "cost": category_costs.get(cat, 0) * price_mult[sup],
+                        "quality": quality_scores[sup]
+                    }
+                    total_cost += selection[cat]["cost"]
+                    total_quality += quality_scores[sup]
+
+        return {
+            "status": "optimal",
+            "selection": selection,
+            "total_cost": total_cost,
+            "average_quality": total_quality / len(categories) if categories else 0,
+            "solver_status": LpStatus[prob.status],
+            "variables": len(x),
+            "constraints": len(prob.constraints)
+        }
+    else:
+        return {
+            "status": "infeasible",
+            "message": "No optimal solution found with given constraints",
+            "solver_status": LpStatus[prob.status]
+        }
+
+
+# ─────────────────────────────────────────────
+# PROJECT TYPE DEFINITIONS (Multi-Tier)
+# ─────────────────────────────────────────────
+
+PROJECT_TYPES = {
+    "residential": {
+        "name": "Residential",
+        "icon": "🏠",
+        "subtypes": [
+            {"code": "new_house", "name": "New House Construction", "icon": "🏗️"},
+            {"code": "renovation", "name": "Renovation & Additions", "icon": "🔧"},
+            {"code": "solar_backup", "name": "Solar & Backup Power", "icon": "☀️"},
+            {"code": "coc_compliance", "name": "COC Compliance", "icon": "📋"},
+            {"code": "smart_home", "name": "Smart Home", "icon": "🏠"},
+            {"code": "security", "name": "Security Systems", "icon": "🔒"},
+            {"code": "ev_charging", "name": "EV Charging", "icon": "🚗"},
+        ]
+    },
+    "commercial": {
+        "name": "Commercial",
+        "icon": "🏢",
+        "subtypes": [
+            {"code": "office", "name": "Office Buildings", "icon": "🏢"},
+            {"code": "retail", "name": "Retail & Shopping", "icon": "🏪"},
+            {"code": "hospitality", "name": "Hotels & Restaurants", "icon": "🏨"},
+            {"code": "healthcare", "name": "Healthcare Facilities", "icon": "🏥"},
+            {"code": "education", "name": "Schools & Educational", "icon": "🏫"},
+        ]
+    },
+    "industrial": {
+        "name": "Industrial",
+        "icon": "🏭",
+        "subtypes": [
+            {"code": "mining_surface", "name": "Mining - Surface", "icon": "⛏️"},
+            {"code": "mining_underground", "name": "Mining - Underground", "icon": "⛏️"},
+            {"code": "manufacturing", "name": "Factory & Manufacturing", "icon": "🏭"},
+            {"code": "warehouse", "name": "Warehouse & Distribution", "icon": "📦"},
+            {"code": "agricultural", "name": "Agricultural & Farms", "icon": "🌾"},
+            {"code": "substation", "name": "Substations & HV", "icon": "⚡"},
+        ]
+    },
+    "infrastructure": {
+        "name": "Infrastructure",
+        "icon": "🌍",
+        "subtypes": [
+            {"code": "township", "name": "Township Electrification", "icon": "🏘️"},
+            {"code": "rural", "name": "Rural Electrification", "icon": "🌍"},
+            {"code": "street_lighting", "name": "Street Lighting", "icon": "🛣️"},
+            {"code": "minigrid", "name": "Mini-Grid & Microgrid", "icon": "📡"},
+            {"code": "utility_solar", "name": "Utility-Scale Solar", "icon": "🔋"},
+        ]
+    }
+}
+
+
+# ─────────────────────────────────────────────
 # MAIN APP
 # ─────────────────────────────────────────────
 def main():
@@ -1200,7 +1480,51 @@ def main():
     with st.sidebar:
         st.markdown("### ⚙️ Project Configuration")
         st.markdown("---")
-        
+
+        # ============================================
+        # PROJECT TYPE SELECTOR (Multi-Tier)
+        # ============================================
+        st.markdown("**🏗️ Project Type**")
+
+        # Tier selection
+        tier_options = {
+            "🏠 Residential": "residential",
+            "🏢 Commercial": "commercial",
+            "🏭 Industrial": "industrial",
+            "🌍 Infrastructure": "infrastructure"
+        }
+        selected_tier_label = st.selectbox(
+            "Select Tier",
+            list(tier_options.keys()),
+            index=0,
+            help="Choose the type of electrical project"
+        )
+        selected_tier = tier_options[selected_tier_label]
+
+        # Subtype selection based on tier
+        if selected_tier in PROJECT_TYPES:
+            subtypes = PROJECT_TYPES[selected_tier]["subtypes"]
+            subtype_options = {f"{s['icon']} {s['name']}": s['code'] for s in subtypes}
+            selected_subtype_label = st.selectbox(
+                "Project Subtype",
+                list(subtype_options.keys()),
+                help="Select specific project type"
+            )
+            selected_subtype = subtype_options[selected_subtype_label]
+
+            # Store in session state
+            st.session_state["project_tier"] = selected_tier
+            st.session_state["project_subtype"] = selected_subtype
+
+            # Show applicable standards
+            for s in subtypes:
+                if s["code"] == selected_subtype:
+                    if "standards" in s:
+                        st.caption(f"Standards: {', '.join(s['standards'])}")
+                    break
+
+        st.markdown("---")
+
         # Plot dimensions
         st.markdown("**📐 Plot Dimensions**")
         col1, col2 = st.columns(2)
@@ -1563,8 +1887,119 @@ def main():
             with col3:
                 st.metric("TOTAL (incl VAT)", f"R {total:,.0f}")
 
+            # ============================================
+            # SMART COST OPTIMIZER - 4 QUOTATION OPTIONS
+            # ============================================
+            st.markdown("---")
+            st.subheader("💡 Smart Cost Optimizer")
+            st.markdown("Compare 4 quotation strategies to maximize profit or win more jobs.")
+
+            # Generate the 4 options
+            quotation_options = generate_quotation_options(elec_bq_items, elec_req, circuit_info)
+
+            # Display options in columns
+            opt_cols = st.columns(4)
+            option_labels = ["A: Budget", "B: Best Value", "C: Premium", "D: Competitive"]
+            option_icons = ["💰", "⭐", "👑", "🎯"]
+
+            for idx, (col, opt) in enumerate(zip(opt_cols, quotation_options)):
+                with col:
+                    is_recommended = opt.get("recommended", False)
+                    border_color = "#F59E0B" if is_recommended else "#334155"
+
+                    st.markdown(f"""
+                    <div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px;
+                                background: {'rgba(245, 158, 11, 0.1)' if is_recommended else '#1E293B'};">
+                        <div style="text-align: center; font-size: 24px;">{option_icons[idx]}</div>
+                        <div style="text-align: center; font-weight: bold; color: {'#F59E0B' if is_recommended else '#E2E8F0'};
+                                    margin: 8px 0;">{option_labels[idx]}</div>
+                        {'<div style="text-align: center; font-size: 11px; color: #F59E0B;">⭐ RECOMMENDED</div>' if is_recommended else ''}
+                        <hr style="border-color: #334155; margin: 10px 0;">
+                        <div style="font-size: 12px; color: #94A3B8;">Base Cost</div>
+                        <div style="font-size: 16px; color: #E2E8F0; font-weight: bold;">R {opt['base_cost']:,.0f}</div>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Markup</div>
+                        <div style="font-size: 14px; color: #E2E8F0;">{opt['markup_percent']:.0f}%</div>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Selling Price</div>
+                        <div style="font-size: 18px; color: #22C55E; font-weight: bold;">R {opt['selling_price']:,.0f}</div>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Your Profit</div>
+                        <div style="font-size: 16px; color: #F59E0B; font-weight: bold;">R {opt['profit']:,.0f}</div>
+                        <div style="font-size: 11px; color: #64748B;">({opt['profit_margin']:.1f}% margin)</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # Summary comparison
+            st.markdown("---")
+            with st.expander("📊 Detailed Comparison Table"):
+                comparison_data = []
+                for idx, opt in enumerate(quotation_options):
+                    comparison_data.append({
+                        "Option": option_labels[idx],
+                        "Strategy": opt["name"],
+                        "Base Cost (R)": f"{opt['base_cost']:,.0f}",
+                        "Markup %": f"{opt['markup_percent']:.0f}%",
+                        "Selling Price (R)": f"{opt['selling_price']:,.0f}",
+                        "Profit (R)": f"{opt['profit']:,.0f}",
+                        "Margin %": f"{opt['profit_margin']:.1f}%",
+                        "Recommended": "⭐" if opt.get("recommended") else ""
+                    })
+                st.dataframe(comparison_data, use_container_width=True)
+
+            # ============================================
+            # OR OPTIMIZATION (Advanced)
+            # ============================================
+            st.markdown("---")
+            with st.expander("🔬 Advanced OR Optimization (Operations Research)"):
+                st.markdown("""
+                Use **Integer Linear Programming (ILP)** to find the mathematically optimal
+                supplier selection. This uses industrial engineering optimization methods.
+                """)
+
+                or_col1, or_col2 = st.columns(2)
+                with or_col1:
+                    min_quality = st.slider("Minimum Quality Score", 1, 5, 3,
+                                           help="Minimum acceptable quality level (1-5)")
+                with or_col2:
+                    budget_limit = st.number_input("Budget Limit (R)", min_value=0, value=0,
+                                                   help="Leave 0 for no limit")
+
+                if st.button("🚀 Run OR Optimization", type="primary"):
+                    with st.spinner("Solving optimization problem..."):
+                        constraints = {
+                            "min_quality": min_quality,
+                            "budget": budget_limit if budget_limit > 0 else None
+                        }
+                        or_result = optimize_quotation_or(elec_bq_items, constraints)
+
+                        if or_result["status"] == "optimal":
+                            st.success(f"""
+                            ✅ **Optimal Solution Found!**
+                            - Solver Status: {or_result['solver_status']}
+                            - Computation Time: {or_result.get('solve_time', 'N/A')}
+                            """)
+
+                            or_metrics = st.columns(4)
+                            with or_metrics[0]:
+                                st.metric("Optimal Cost", f"R {or_result['total_cost']:,.0f}")
+                            with or_metrics[1]:
+                                st.metric("Avg Quality", f"{or_result['average_quality']:.1f}/5")
+                            with or_metrics[2]:
+                                st.metric("Suppliers Used", or_result['suppliers_used'])
+                            with or_metrics[3]:
+                                savings = subtotal - or_result['total_cost']
+                                st.metric("Savings", f"R {savings:,.0f}",
+                                         delta=f"{(savings/subtotal)*100:.1f}%" if subtotal > 0 else "0%")
+
+                            st.markdown("**Optimal Supplier Selection:**")
+                            for sel in or_result['selection']:
+                                st.write(f"- {sel['category']}: **{sel['supplier']}** @ R{sel['total']:,.0f}")
+                        else:
+                            st.warning(f"⚠️ Optimization Status: {or_result['status']}")
+                            if "message" in or_result:
+                                st.info(or_result["message"])
+
             # Export buttons
             st.markdown("---")
+            st.subheader("📄 Export Electrical Quotation")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("📄 Generate Electrical Quote PDF", type="primary", use_container_width=True):
@@ -1577,7 +2012,7 @@ def main():
                         use_container_width=True
                     )
             with col2:
-                st.info("💡 Tip: This quote is auto-calculated from your floor plan rooms")
+                st.info("💡 Tip: Use the Cost Optimizer above to present multiple options to clients")
 
         # TAB 4: EXPORT
         with tab4:
