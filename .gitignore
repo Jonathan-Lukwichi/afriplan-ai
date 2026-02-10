@@ -52,3 +52,4 @@ secrets.json
 credentials.json
 *.pem
 *.key
+nul
