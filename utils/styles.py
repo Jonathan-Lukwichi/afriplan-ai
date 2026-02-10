@@ -517,15 +517,15 @@ CUSTOM_CSS = """
     }
 
     /* ========================================
-       TABS - NEON GREEN FLUORESCENT CARDS
+       TABS - NEON BLUE FLUORESCENT CARDS
     ======================================== */
     .stTabs [data-baseweb="tab-list"] {
         background: rgba(10, 14, 26, 0.8) !important;
         border-radius: 16px !important;
         padding: 8px !important;
-        border: 1px solid rgba(57, 255, 20, 0.2) !important;
+        border: 1px solid rgba(0, 212, 255, 0.2) !important;
         gap: 8px !important;
-        box-shadow: 0 0 20px rgba(57, 255, 20, 0.1) !important;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1) !important;
     }
 
     .stTabs [data-baseweb="tab"] {
@@ -535,14 +535,14 @@ CUSTOM_CSS = """
         letter-spacing: 2px !important;
         font-size: 13px !important;
         border-radius: 12px !important;
-        color: #39FF14 !important;
+        color: #00D4FF !important;
         padding: 12px 24px !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         background: linear-gradient(135deg,
-            rgba(57, 255, 20, 0.05),
-            rgba(0, 255, 0, 0.02)) !important;
-        border: 1px solid rgba(57, 255, 20, 0.3) !important;
-        text-shadow: 0 0 8px rgba(57, 255, 20, 0.4) !important;
+            rgba(0, 212, 255, 0.05),
+            rgba(0, 150, 255, 0.02)) !important;
+        border: 1px solid rgba(0, 212, 255, 0.3) !important;
+        text-shadow: 0 0 8px rgba(0, 212, 255, 0.4) !important;
         position: relative;
         overflow: hidden;
     }
@@ -550,31 +550,31 @@ CUSTOM_CSS = """
     /* Tab hover state */
     .stTabs [data-baseweb="tab"]:hover {
         background: linear-gradient(135deg,
-            rgba(57, 255, 20, 0.12),
-            rgba(0, 255, 0, 0.06)) !important;
-        border-color: rgba(57, 255, 20, 0.6) !important;
+            rgba(0, 212, 255, 0.12),
+            rgba(0, 150, 255, 0.06)) !important;
+        border-color: rgba(0, 212, 255, 0.6) !important;
         box-shadow:
-            0 0 20px rgba(57, 255, 20, 0.25),
-            0 0 40px rgba(57, 255, 20, 0.1) !important;
-        color: #7FFF00 !important;
-        text-shadow: 0 0 12px rgba(127, 255, 0, 0.6) !important;
+            0 0 20px rgba(0, 212, 255, 0.25),
+            0 0 40px rgba(0, 212, 255, 0.1) !important;
+        color: #00FFFF !important;
+        text-shadow: 0 0 12px rgba(0, 255, 255, 0.6) !important;
         transform: translateY(-2px) !important;
     }
 
     /* Active/Selected tab */
     .stTabs [aria-selected="true"] {
         background: linear-gradient(135deg,
-            rgba(57, 255, 20, 0.2),
-            rgba(0, 255, 0, 0.1)) !important;
-        border-color: rgba(57, 255, 20, 0.8) !important;
-        color: #7FFF00 !important;
+            rgba(0, 212, 255, 0.2),
+            rgba(0, 150, 255, 0.1)) !important;
+        border-color: rgba(0, 212, 255, 0.8) !important;
+        color: #00FFFF !important;
         box-shadow:
-            0 0 30px rgba(57, 255, 20, 0.4),
-            0 0 60px rgba(57, 255, 20, 0.15),
-            inset 0 0 20px rgba(57, 255, 20, 0.1) !important;
+            0 0 30px rgba(0, 212, 255, 0.4),
+            0 0 60px rgba(0, 212, 255, 0.15),
+            inset 0 0 20px rgba(0, 212, 255, 0.1) !important;
         text-shadow:
-            0 0 10px rgba(127, 255, 0, 0.7),
-            0 0 20px rgba(127, 255, 0, 0.4) !important;
+            0 0 10px rgba(0, 255, 255, 0.7),
+            0 0 20px rgba(0, 255, 255, 0.4) !important;
     }
 
     /* Top accent line on active tab */
@@ -587,7 +587,7 @@ CUSTOM_CSS = """
         height: 2px;
         background: linear-gradient(90deg,
             transparent,
-            rgba(127, 255, 0, 0.9),
+            rgba(0, 255, 255, 0.9),
             transparent);
         border-radius: 2px;
     }
@@ -700,7 +700,7 @@ CUSTOM_CSS = """
     }
 
     /* ========================================
-       SIDEBAR NAVIGATION - NEON GREEN CARDS
+       SIDEBAR NAVIGATION - NEON BLUE CARDS
     ======================================== */
 
     /* Navigation container */
@@ -711,16 +711,16 @@ CUSTOM_CSS = """
     /* Each navigation link card */
     [data-testid="stSidebarNavLink"] {
         background: linear-gradient(135deg,
-            rgba(57, 255, 20, 0.08),
-            rgba(0, 255, 0, 0.03)) !important;
-        border: 1px solid rgba(57, 255, 20, 0.4) !important;
+            rgba(0, 212, 255, 0.08),
+            rgba(0, 150, 255, 0.03)) !important;
+        border: 1px solid rgba(0, 212, 255, 0.4) !important;
         border-radius: 12px !important;
         margin: 8px 0 !important;
         padding: 4px !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         box-shadow:
-            0 0 15px rgba(57, 255, 20, 0.15),
-            inset 0 1px 0 rgba(57, 255, 20, 0.1) !important;
+            0 0 15px rgba(0, 212, 255, 0.15),
+            inset 0 1px 0 rgba(0, 212, 255, 0.1) !important;
         position: relative;
         overflow: hidden;
     }
@@ -735,7 +735,7 @@ CUSTOM_CSS = """
         height: 2px;
         background: linear-gradient(90deg,
             transparent,
-            rgba(57, 255, 20, 0.8),
+            rgba(0, 212, 255, 0.8),
             transparent);
         border-radius: 2px;
     }
@@ -743,26 +743,26 @@ CUSTOM_CSS = """
     /* Hover state - enhanced glow */
     [data-testid="stSidebarNavLink"]:hover {
         background: linear-gradient(135deg,
-            rgba(57, 255, 20, 0.15),
-            rgba(0, 255, 0, 0.08)) !important;
-        border-color: rgba(57, 255, 20, 0.7) !important;
+            rgba(0, 212, 255, 0.15),
+            rgba(0, 150, 255, 0.08)) !important;
+        border-color: rgba(0, 212, 255, 0.7) !important;
         box-shadow:
-            0 0 25px rgba(57, 255, 20, 0.3),
-            0 0 50px rgba(57, 255, 20, 0.15),
-            inset 0 0 20px rgba(57, 255, 20, 0.05) !important;
+            0 0 25px rgba(0, 212, 255, 0.3),
+            0 0 50px rgba(0, 212, 255, 0.15),
+            inset 0 0 20px rgba(0, 212, 255, 0.05) !important;
         transform: translateX(4px) !important;
     }
 
     /* Active/Current page state */
     [data-testid="stSidebarNavLink"][aria-current="page"] {
         background: linear-gradient(135deg,
-            rgba(57, 255, 20, 0.2),
-            rgba(0, 255, 0, 0.12)) !important;
-        border-color: rgba(57, 255, 20, 0.8) !important;
+            rgba(0, 212, 255, 0.2),
+            rgba(0, 150, 255, 0.12)) !important;
+        border-color: rgba(0, 212, 255, 0.8) !important;
         box-shadow:
-            0 0 30px rgba(57, 255, 20, 0.4),
-            0 0 60px rgba(57, 255, 20, 0.2),
-            inset 0 0 25px rgba(57, 255, 20, 0.08) !important;
+            0 0 30px rgba(0, 212, 255, 0.4),
+            0 0 60px rgba(0, 212, 255, 0.2),
+            inset 0 0 25px rgba(0, 212, 255, 0.08) !important;
     }
 
     /* Navigation link text */
@@ -772,26 +772,26 @@ CUSTOM_CSS = """
         font-size: 14px !important;
         text-transform: uppercase !important;
         letter-spacing: 2px !important;
-        color: #39FF14 !important;
-        text-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
+        color: #00D4FF !important;
+        text-shadow: 0 0 10px rgba(0, 212, 255, 0.5) !important;
         padding: 12px 16px !important;
         display: block !important;
     }
 
     /* Active page text - brighter */
     [data-testid="stSidebarNavLink"][aria-current="page"] span {
-        color: #7FFF00 !important;
+        color: #00FFFF !important;
         text-shadow:
-            0 0 10px rgba(127, 255, 0, 0.6),
-            0 0 20px rgba(127, 255, 0, 0.4) !important;
+            0 0 10px rgba(0, 255, 255, 0.6),
+            0 0 20px rgba(0, 255, 255, 0.4) !important;
     }
 
     /* Hover text effect */
     [data-testid="stSidebarNavLink"]:hover span {
-        color: #7FFF00 !important;
+        color: #00FFFF !important;
         text-shadow:
-            0 0 12px rgba(127, 255, 0, 0.7),
-            0 0 25px rgba(127, 255, 0, 0.4) !important;
+            0 0 12px rgba(0, 255, 255, 0.7),
+            0 0 25px rgba(0, 255, 255, 0.4) !important;
     }
 
     /* ========================================
