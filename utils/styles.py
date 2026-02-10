@@ -653,6 +653,101 @@ CUSTOM_CSS = """
     }
 
     /* ========================================
+       SIDEBAR NAVIGATION - NEON GREEN CARDS
+    ======================================== */
+
+    /* Navigation container */
+    [data-testid="stSidebarNav"] {
+        padding: 1rem 0.5rem !important;
+    }
+
+    /* Each navigation link card */
+    [data-testid="stSidebarNavLink"] {
+        background: linear-gradient(135deg,
+            rgba(57, 255, 20, 0.08),
+            rgba(0, 255, 0, 0.03)) !important;
+        border: 1px solid rgba(57, 255, 20, 0.4) !important;
+        border-radius: 12px !important;
+        margin: 8px 0 !important;
+        padding: 4px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow:
+            0 0 15px rgba(57, 255, 20, 0.15),
+            inset 0 1px 0 rgba(57, 255, 20, 0.1) !important;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Top accent line on cards */
+    [data-testid="stSidebarNavLink"]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 2px;
+        background: linear-gradient(90deg,
+            transparent,
+            rgba(57, 255, 20, 0.8),
+            transparent);
+        border-radius: 2px;
+    }
+
+    /* Hover state - enhanced glow */
+    [data-testid="stSidebarNavLink"]:hover {
+        background: linear-gradient(135deg,
+            rgba(57, 255, 20, 0.15),
+            rgba(0, 255, 0, 0.08)) !important;
+        border-color: rgba(57, 255, 20, 0.7) !important;
+        box-shadow:
+            0 0 25px rgba(57, 255, 20, 0.3),
+            0 0 50px rgba(57, 255, 20, 0.15),
+            inset 0 0 20px rgba(57, 255, 20, 0.05) !important;
+        transform: translateX(4px) !important;
+    }
+
+    /* Active/Current page state */
+    [data-testid="stSidebarNavLink"][aria-current="page"] {
+        background: linear-gradient(135deg,
+            rgba(57, 255, 20, 0.2),
+            rgba(0, 255, 0, 0.12)) !important;
+        border-color: rgba(57, 255, 20, 0.8) !important;
+        box-shadow:
+            0 0 30px rgba(57, 255, 20, 0.4),
+            0 0 60px rgba(57, 255, 20, 0.2),
+            inset 0 0 25px rgba(57, 255, 20, 0.08) !important;
+    }
+
+    /* Navigation link text */
+    [data-testid="stSidebarNavLink"] span {
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+        color: #39FF14 !important;
+        text-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
+        padding: 12px 16px !important;
+        display: block !important;
+    }
+
+    /* Active page text - brighter */
+    [data-testid="stSidebarNavLink"][aria-current="page"] span {
+        color: #7FFF00 !important;
+        text-shadow:
+            0 0 10px rgba(127, 255, 0, 0.6),
+            0 0 20px rgba(127, 255, 0, 0.4) !important;
+    }
+
+    /* Hover text effect */
+    [data-testid="stSidebarNavLink"]:hover span {
+        color: #7FFF00 !important;
+        text-shadow:
+            0 0 12px rgba(127, 255, 0, 0.7),
+            0 0 25px rgba(127, 255, 0, 0.4) !important;
+    }
+
+    /* ========================================
        ALERTS & TOASTS
     ======================================== */
     .success-toast {
