@@ -140,7 +140,6 @@ with tier1:
     tier_card(
         title="Residential",
         description="New house construction, renovations, solar & backup power, COC compliance, smart home automation, security systems, EV charging",
-        icon="&#127968;",
         tags=["SANS 10142", "COC Ready", "Solar"]
     )
 
@@ -148,7 +147,6 @@ with tier2:
     tier_card(
         title="Commercial",
         description="Office buildings, retail & shopping centres, hotels & restaurants, healthcare facilities, schools & educational institutions",
-        icon="&#127970;",
         tags=["Load Studies", "Emergency Power", "Fire Detection"]
     )
 
@@ -158,7 +156,6 @@ with tier3:
     tier_card(
         title="Industrial",
         description="Mining (surface & underground), factories & manufacturing, warehouses & distribution, agricultural, substations & HV",
-        icon="&#127981;",
         tags=["MHSA", "MCC Design", "MV/HV"]
     )
 
@@ -166,7 +163,6 @@ with tier4:
     tier_card(
         title="Infrastructure",
         description="Township electrification, rural electrification, street lighting, mini-grids & microgrids, utility-scale solar",
-        icon="&#127758;",
         tags=["NRS 034", "SANS 10098", "Eskom DSD"]
     )
 

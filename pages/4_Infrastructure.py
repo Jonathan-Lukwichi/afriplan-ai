@@ -27,8 +27,7 @@ inject_custom_css()
 # Header
 page_header(
     title="Infrastructure Electrical",
-    subtitle="Township electrification, rural, street lighting, mini-grids, utility solar",
-    icon="&#127758;"
+    subtitle="Township electrification, rural, street lighting, mini-grids, utility solar"
 )
 
 # Sidebar

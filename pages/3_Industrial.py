@@ -26,8 +26,7 @@ inject_custom_css()
 # Header
 page_header(
     title="Industrial Electrical",
-    subtitle="Mining, manufacturing, warehouses, substations & HV",
-    icon="&#127981;"
+    subtitle="Mining, manufacturing, warehouses, substations & HV"
 )
 
 # Sidebar

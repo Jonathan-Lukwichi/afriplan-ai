@@ -27,8 +27,7 @@ inject_custom_css()
 # Header
 page_header(
     title="Commercial Electrical",
-    subtitle="Offices, retail, hospitality, healthcare, education",
-    icon="&#127970;"
+    subtitle="Offices, retail, hospitality, healthcare, education"
 )
 
 # Sidebar

@@ -34,8 +34,7 @@ inject_custom_css()
 # Header
 page_header(
     title="Residential Electrical",
-    subtitle="New builds, renovations, solar & backup, COC compliance, smart home, security, EV charging",
-    icon="&#127968;"
+    subtitle="New builds, renovations, solar & backup, COC compliance, smart home, security, EV charging"
 )
 
 # Sidebar - Project Type Selection
