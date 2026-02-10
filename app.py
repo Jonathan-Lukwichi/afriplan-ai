@@ -3834,26 +3834,26 @@ def main():
                     with col:
                         is_recommended = opt.get("recommended", False)
                         border_color = "#F59E0B" if is_recommended else "#334155"
+                        bg_color = "rgba(245, 158, 11, 0.1)" if is_recommended else "#1E293B"
+                        title_color = "#F59E0B" if is_recommended else "#E2E8F0"
+                        rec_badge = '<div style="text-align: center; font-size: 11px; color: #F59E0B;">⭐ RECOMMENDED</div>' if is_recommended else ''
 
-                        st.markdown(f"""
-                        <div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px;
-                                    background: {'rgba(245, 158, 11, 0.1)' if is_recommended else '#1E293B'};">
-                            <div style="text-align: center; font-size: 24px;">{option_icons[idx]}</div>
-                            <div style="text-align: center; font-weight: bold; color: {'#F59E0B' if is_recommended else '#E2E8F0'};
-                                        margin: 8px 0;">{option_labels[idx]}</div>
-                            {'<div style="text-align: center; font-size: 11px; color: #F59E0B;">⭐ RECOMMENDED</div>' if is_recommended else ''}
-                            <hr style="border-color: #334155; margin: 10px 0;">
-                            <div style="font-size: 12px; color: #94A3B8;">Base Cost</div>
-                            <div style="font-size: 16px; color: #E2E8F0; font-weight: bold;">R {opt['base_cost']:,.0f}</div>
-                            <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Markup</div>
-                            <div style="font-size: 14px; color: #E2E8F0;">{opt['markup_percent']:.0f}%</div>
-                            <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Selling Price</div>
-                            <div style="font-size: 18px; color: #22C55E; font-weight: bold;">R {opt['selling_price']:,.0f}</div>
-                            <div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Your Profit</div>
-                            <div style="font-size: 16px; color: #F59E0B; font-weight: bold;">R {opt['profit']:,.0f}</div>
-                            <div style="font-size: 11px; color: #64748B;">({opt['profit_margin']:.1f}% margin)</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        html_content = f"""<div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px; background: {bg_color};">
+<div style="text-align: center; font-size: 24px;">{option_icons[idx]}</div>
+<div style="text-align: center; font-weight: bold; color: {title_color}; margin: 8px 0;">{option_labels[idx]}</div>
+{rec_badge}
+<hr style="border-color: #334155; margin: 10px 0;">
+<div style="font-size: 12px; color: #94A3B8;">Base Cost</div>
+<div style="font-size: 16px; color: #E2E8F0; font-weight: bold;">R {opt['base_cost']:,.0f}</div>
+<div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Markup</div>
+<div style="font-size: 14px; color: #E2E8F0;">{opt['markup_percent']:.0f}%</div>
+<div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Selling Price</div>
+<div style="font-size: 18px; color: #22C55E; font-weight: bold;">R {opt['selling_price']:,.0f}</div>
+<div style="font-size: 12px; color: #94A3B8; margin-top: 8px;">Your Profit</div>
+<div style="font-size: 16px; color: #F59E0B; font-weight: bold;">R {opt['profit']:,.0f}</div>
+<div style="font-size: 11px; color: #64748B;">({opt['profit_margin']:.1f}% margin)</div>
+</div>"""
+                        st.markdown(html_content, unsafe_allow_html=True)
 
                 # Summary comparison
                 st.markdown("---")
