@@ -21,12 +21,6 @@ from utils.calculations import calculate_commercial_electrical
 from utils.optimizer import generate_quotation_options
 from utils.pdf_generator import generate_generic_electrical_pdf
 
-st.set_page_config(
-    page_title="Commercial - AfriPlan Electrical",
-    page_icon="🏢",
-    layout="wide",
-)
-
 inject_custom_css()
 
 # Header

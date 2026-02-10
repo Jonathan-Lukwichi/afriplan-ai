@@ -20,12 +20,6 @@ from utils.constants import (
 )
 from utils.pdf_generator import generate_generic_electrical_pdf
 
-st.set_page_config(
-    page_title="Industrial - AfriPlan Electrical",
-    page_icon="🏭",
-    layout="wide",
-)
-
 inject_custom_css()
 
 # Header

@@ -21,12 +21,6 @@ from utils.constants import (
 from utils.calculations import calculate_township_electrification, calculate_street_lighting
 from utils.pdf_generator import generate_generic_electrical_pdf
 
-st.set_page_config(
-    page_title="Infrastructure - AfriPlan Electrical",
-    page_icon="🌍",
-    layout="wide",
-)
-
 inject_custom_css()
 
 # Header

@@ -28,12 +28,6 @@ from utils.calculations import (
 from utils.optimizer import generate_quotation_options
 from utils.pdf_generator import generate_electrical_pdf
 
-st.set_page_config(
-    page_title="Residential - AfriPlan Electrical",
-    page_icon="🏠",
-    layout="wide",
-)
-
 inject_custom_css()
 
 # Header
