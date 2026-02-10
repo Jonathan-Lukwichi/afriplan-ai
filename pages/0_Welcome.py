@@ -1,6 +1,6 @@
 """
 AfriPlan Electrical - Welcome Page
-Platform overview and navigation hub
+Premium futuristic landing page with animated hero
 """
 
 import streamlit as st
@@ -10,231 +10,202 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.styles import inject_custom_css
+from utils.components import (
+    hero_section,
+    section_header,
+    tier_card,
+    metric_card,
+    timeline_steps,
+    premium_footer,
+)
 
 inject_custom_css()
 
-# Hero Header
-st.markdown("""
-<div class="main-header">
-    <h1>AfriPlan Electrical</h1>
-    <p>South Africa's Complete Electrical Quotation Platform</p>
-</div>
-""", unsafe_allow_html=True)
-
-# About Section
-st.markdown("---")
-
-col_about1, col_about2 = st.columns([2, 1])
-
-with col_about1:
-    st.markdown("""
-    ## About AfriPlan Electrical
-
-    AfriPlan Electrical is a comprehensive quotation platform designed specifically for the
-    **South African electrical industry**. Whether you're an electrical contractor, consulting
-    engineer, or project estimator, our platform helps you generate accurate, professional
-    quotations in minutes.
-
-    **Built for South Africa** with local pricing, SANS compliance, and industry standards.
-    """)
-
-with col_about2:
-    st.markdown("""
-    ### Who It's For
-
-    - Electrical Contractors
-    - Consulting Engineers
-    - Project Estimators
-    - Quantity Surveyors
-    - Municipal Planners
-    """)
+# ============================================
+# HERO SECTION
+# ============================================
+hero_section(
+    title="AFRIPLAN ELECTRICAL",
+    subtitle="Complete Electrical Quotation Platform",
+    badge_text="Built for South Africa",
+    stats=[
+        {"value": "4", "label": "Project Tiers"},
+        {"value": "5+", "label": "SANS Standards"},
+        {"value": "PDF", "label": "Export Ready"},
+        {"value": "2025", "label": "SA Pricing"},
+    ]
+)
 
 st.markdown("---")
 
-# Key Features
-st.markdown("## Platform Features")
+# ============================================
+# ABOUT SECTION
+# ============================================
+section_header("About the Platform", "Professional quotations in minutes")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.markdown("""
+    <div class="glass-card">
+        <p style="font-size: 16px; line-height: 1.8;">
+            <strong style="color: #f59e0b;">AfriPlan Electrical</strong> is a comprehensive quotation platform
+            designed specifically for the <strong style="color: #06b6d4;">South African electrical industry</strong>.
+        </p>
+        <p style="margin-top: 1rem;">
+            Whether you're an electrical contractor, consulting engineer, or project estimator,
+            our platform helps you generate accurate, professional quotations in minutes with
+            local pricing, SANS compliance, and industry standards built-in.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+    <div class="glass-card">
+        <h4 style="color: #f59e0b; font-family: 'Rajdhani', sans-serif; margin-bottom: 1rem;">WHO IT'S FOR</h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Electrical Contractors</li>
+            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Consulting Engineers</li>
+            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Project Estimators</li>
+            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Quantity Surveyors</li>
+            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Municipal Planners</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ============================================
+# FEATURES SECTION
+# ============================================
+section_header("Platform Features", "Everything you need for electrical quotations")
 
 feat1, feat2, feat3, feat4 = st.columns(4)
 
 with feat1:
+    metric_card("4", "Quote Strategies", "amber")
     st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">4</div>
-        <div class="metric-label">Quote Strategies</div>
+    <div style="text-align: center; margin-top: 0.8rem;">
+        <p style="color: #94a3b8; font-size: 13px;">
+            <strong style="color: #f59e0b;">Smart Optimizer</strong><br>
+            Budget / Best Value / Premium / Competitive
+        </p>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("""
-    **Smart Cost Optimizer**
-    - Budget Friendly
-    - Best Value
-    - Premium Quality
-    - Competitive Bid
-    """)
 
 with feat2:
+    metric_card("5+", "SA Standards", "cyan")
     st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">5+</div>
-        <div class="metric-label">SA Standards</div>
+    <div style="text-align: center; margin-top: 0.8rem;">
+        <p style="color: #94a3b8; font-size: 13px;">
+            <strong style="color: #06b6d4;">SANS Compliant</strong><br>
+            10142 / NRS 034 / MHSA / Eskom DSD
+        </p>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("""
-    **SANS Compliance**
-    - SANS 10142
-    - NRS 034
-    - MHSA
-    - Eskom DSD
-    - SANS 10098
-    """)
 
 with feat3:
+    metric_card("PDF", "Export", "amber")
     st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">PDF</div>
-        <div class="metric-label">Professional Export</div>
+    <div style="text-align: center; margin-top: 0.8rem;">
+        <p style="color: #94a3b8; font-size: 13px;">
+            <strong style="color: #f59e0b;">Professional PDFs</strong><br>
+            BQ / VAT / Terms / Branding
+        </p>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("""
-    **PDF Quotations**
-    - Detailed Bill of Quantities
-    - VAT Calculations
-    - Terms & Conditions
-    - Company Branding
-    """)
 
 with feat4:
+    metric_card("2025", "Pricing", "cyan")
     st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">2025</div>
-        <div class="metric-label">Updated Pricing</div>
+    <div style="text-align: center; margin-top: 0.8rem;">
+        <p style="color: #94a3b8; font-size: 13px;">
+            <strong style="color: #06b6d4;">SA Market Rates</strong><br>
+            Materials / Labour / Municipal
+        </p>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("""
-    **SA Market Rates**
-    - Material Prices
-    - Labour Rates
-    - Municipal Fees
-    - COC Costs
-    """)
 
 st.markdown("---")
 
-# Project Tiers
-st.markdown("## Select Your Project Tier")
-st.markdown("Choose the sector that matches your project:")
+# ============================================
+# PROJECT TIERS SECTION
+# ============================================
+section_header("Select Your Project Tier", "Choose the sector that matches your project")
 
 tier1, tier2 = st.columns(2)
 
 with tier1:
-    st.markdown("""
-    <div class="tier-card">
-        <h3>Residential</h3>
-        <p>New house construction, renovations, solar & backup power, COC compliance,
-        smart home automation, security systems, EV charging installations</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.info("SANS 10142 compliant | COC ready | Solar & battery sizing")
+    tier_card(
+        title="Residential",
+        description="New house construction, renovations, solar & backup power, COC compliance, smart home automation, security systems, EV charging",
+        icon="&#127968;",
+        tags=["SANS 10142", "COC Ready", "Solar"]
+    )
 
 with tier2:
-    st.markdown("""
-    <div class="tier-card">
-        <h3>Commercial</h3>
-        <p>Office buildings, retail & shopping centres, hotels & restaurants,
-        healthcare facilities, schools & educational institutions</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.info("Load studies | Emergency power | Fire detection | Access control")
+    tier_card(
+        title="Commercial",
+        description="Office buildings, retail & shopping centres, hotels & restaurants, healthcare facilities, schools & educational institutions",
+        icon="&#127970;",
+        tags=["Load Studies", "Emergency Power", "Fire Detection"]
+    )
 
 tier3, tier4 = st.columns(2)
 
 with tier3:
-    st.markdown("""
-    <div class="tier-card">
-        <h3>Industrial</h3>
-        <p>Mining (surface & underground), factories & manufacturing plants,
-        warehouses & distribution, agricultural, substations & HV installations</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.info("MHSA compliant | MCC design | MV/HV equipment | Motor loads")
+    tier_card(
+        title="Industrial",
+        description="Mining (surface & underground), factories & manufacturing, warehouses & distribution, agricultural, substations & HV",
+        icon="&#127981;",
+        tags=["MHSA", "MCC Design", "MV/HV"]
+    )
 
 with tier4:
-    st.markdown("""
-    <div class="tier-card">
-        <h3>Infrastructure</h3>
-        <p>Township electrification, rural electrification, street lighting,
-        mini-grids & microgrids, utility-scale solar installations</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.info("NRS 034 | SANS 10098 | Eskom DSD | Grid connection")
+    tier_card(
+        title="Infrastructure",
+        description="Township electrification, rural electrification, street lighting, mini-grids & microgrids, utility-scale solar",
+        icon="&#127758;",
+        tags=["NRS 034", "SANS 10098", "Eskom DSD"]
+    )
 
 st.markdown("---")
 
-# How It Works
-st.markdown("## How It Works")
+# ============================================
+# HOW IT WORKS - TIMELINE
+# ============================================
+section_header("How It Works", "5 simple steps to your professional quotation")
 
-step1, step2, step3, step4, step5 = st.columns(5)
-
-with step1:
-    st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">1</div>
-        <div class="metric-label">Select Tier</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.caption("Choose Residential, Commercial, Industrial, or Infrastructure")
-
-with step2:
-    st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">2</div>
-        <div class="metric-label">Configure</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.caption("Enter project parameters and specifications")
-
-with step3:
-    st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">3</div>
-        <div class="metric-label">Calculate</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.caption("View electrical requirements and load analysis")
-
-with step4:
-    st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">4</div>
-        <div class="metric-label">Optimize</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.caption("Compare 4 quotation strategies")
-
-with step5:
-    st.markdown("""
-    <div class="metric-card">
-        <div class="metric-value">5</div>
-        <div class="metric-label">Export</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.caption("Download professional PDF quotation")
+timeline_steps([
+    {"number": "1", "title": "Select Tier", "description": "Choose your project sector"},
+    {"number": "2", "title": "Configure", "description": "Enter specifications"},
+    {"number": "3", "title": "Calculate", "description": "View requirements"},
+    {"number": "4", "title": "Optimize", "description": "Compare strategies"},
+    {"number": "5", "title": "Export", "description": "Download PDF"},
+])
 
 st.markdown("---")
 
-# Get Started CTA
-st.markdown("## Ready to Start?")
-st.markdown("Use the **sidebar navigation** to select your project tier and begin creating your quotation.")
+# ============================================
+# CTA SECTION
+# ============================================
+section_header("Ready to Start?", "Use the sidebar to select your project tier")
 
-st.success("Select a page from the sidebar to get started!")
-
-st.markdown("---")
-
-# Footer
 st.markdown("""
-<div style="text-align: center; color: #64748B; font-size: 12px; padding: 20px;">
-    <strong>AfriPlan Electrical</strong> | Built for South Africa<br>
-    Accurate Quotations | SANS Compliant | Professional PDFs<br>
-    <br>
-    2025 | Powered by Streamlit
+<div class="glass-card" style="text-align: center; padding: 2rem;">
+    <p style="font-size: 18px; color: #f1f5f9; margin-bottom: 1rem;">
+        Navigate using the <strong style="color: #f59e0b;">sidebar menu</strong> to begin creating your quotation.
+    </p>
+    <p style="color: #64748b;">
+        Select Residential, Commercial, Industrial, or Infrastructure to get started.
+    </p>
 </div>
 """, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ============================================
+# FOOTER
+# ============================================
+premium_footer()

@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.styles import inject_custom_css
+from utils.components import page_header, section_header
 from utils.constants import (
     ROOM_ELECTRICAL_REQUIREMENTS,
     ROOM_PRESETS,
@@ -31,12 +32,11 @@ from utils.pdf_generator import generate_electrical_pdf
 inject_custom_css()
 
 # Header
-st.markdown("""
-<div class="main-header">
-    <h1>🏠 Residential Electrical</h1>
-    <p>New builds, renovations, solar & backup, COC compliance, smart home, security, EV charging</p>
-</div>
-""", unsafe_allow_html=True)
+page_header(
+    title="Residential Electrical",
+    subtitle="New builds, renovations, solar & backup, COC compliance, smart home, security, EV charging",
+    icon="&#127968;"
+)
 
 # Sidebar - Project Type Selection
 with st.sidebar:

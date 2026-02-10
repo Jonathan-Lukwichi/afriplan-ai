@@ -11,6 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.styles import inject_custom_css
+from utils.components import page_header
 from utils.constants import (
     PROJECT_TYPES,
     COMMERCIAL_LOAD_FACTORS,
@@ -24,12 +25,11 @@ from utils.pdf_generator import generate_generic_electrical_pdf
 inject_custom_css()
 
 # Header
-st.markdown("""
-<div class="main-header">
-    <h1>🏢 Commercial Electrical</h1>
-    <p>Offices, retail, hospitality, healthcare, education</p>
-</div>
-""", unsafe_allow_html=True)
+page_header(
+    title="Commercial Electrical",
+    subtitle="Offices, retail, hospitality, healthcare, education",
+    icon="&#127970;"
+)
 
 # Sidebar
 with st.sidebar:
