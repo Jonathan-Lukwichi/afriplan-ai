@@ -1,160 +1,212 @@
 """
 AfriPlan Electrical - Premium UI Component Helpers
-Reusable functions for creating futuristic styled components
+Reusable functions using Streamlit native components for reliability
 """
 
 import streamlit as st
 
 
 def hero_section(title: str, subtitle: str = "", badge_text: str = "", stats: list = None):
-    """
-    Create an animated hero section with title, subtitle, badge, and stats.
+    """Create an animated hero section with title, subtitle, badge, and stats."""
 
-    Args:
-        title: Main title (will have shimmer effect)
-        subtitle: Subtitle text
-        badge_text: Text for the floating badge
-        stats: List of dicts with 'value' and 'label' keys
-    """
-    stats_html = ""
-    if stats:
-        stats_items = "".join([
-            f'''<div class="stat-item">
-                <span class="stat-number">{s['value']}</span>
-                <span class="stat-label">{s['label']}</span>
-            </div>'''
-            for s in stats
-        ])
-        stats_html = f'<div class="hero-stats">{stats_items}</div>'
-
-    badge_html = f'<div class="hero-badge">{badge_text}</div>' if badge_text else ""
-    subtitle_html = f'<p class="hero-subtitle">{subtitle}</p>' if subtitle else ""
-
+    # Use container for structure
     st.markdown(f"""
-    <div class="hero-section">
-        <div class="hero-content">
-            {badge_html}
-            <h1 class="hero-title">{title}</h1>
-            {subtitle_html}
-            {stats_html}
+    <div style="text-align: center; padding: 2rem 0 3rem;">
+        <div style="display: inline-block; padding: 8px 20px; border: 1px solid rgba(245,158,11,0.3);
+                    border-radius: 50px; font-family: 'Rajdhani', sans-serif; font-size: 14px;
+                    text-transform: uppercase; letter-spacing: 2px; color: #f59e0b;
+                    background: rgba(245,158,11,0.05); margin-bottom: 1.5rem;">
+            {badge_text}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-
-def section_header(title: str, subtitle: str = "", icon: str = ""):
-    """
-    Create a styled section header with decorative lines.
-
-    Args:
-        title: Section title
-        subtitle: Optional subtitle
-        icon: Optional emoji/icon
-    """
-    icon_html = f'<div class="section-icon">{icon}</div>' if icon else ""
-    subtitle_html = f'<p class="section-subtitle">{subtitle}</p>' if subtitle else ""
-
+    # Title using native st.markdown with styling
     st.markdown(f"""
-    <div class="section-header">
-        <div class="section-line"></div>
-        {icon_html}
-        <h2 class="section-title">{title}</h2>
-        {subtitle_html}
-    </div>
+    <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3rem; font-weight: 900;
+               text-align: center; line-height: 1.1; margin-bottom: 1rem;
+               background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+               -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+               background-clip: text;">{title}</h1>
     """, unsafe_allow_html=True)
 
+    if subtitle:
+        st.markdown(f"""
+        <p style="font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; color: #94a3b8;
+                  text-transform: uppercase; letter-spacing: 3px; text-align: center;
+                  margin-bottom: 2rem;">{subtitle}</p>
+        """, unsafe_allow_html=True)
 
-def glass_card(content: str, extra_class: str = ""):
-    """
-    Wrap content in a glassmorphism card.
+    # Stats row
+    if stats:
+        cols = st.columns(len(stats))
+        for i, stat in enumerate(stats):
+            with cols[i]:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 800;
+                                color: #06b6d4; text-shadow: 0 0 20px rgba(6,182,212,0.3);">
+                        {stat['value']}
+                    </div>
+                    <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                                text-transform: uppercase; letter-spacing: 2px; color: #64748b;">
+                        {stat['label']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-    Args:
-        content: HTML content for the card
-        extra_class: Additional CSS classes
-    """
+
+def section_header(title: str, subtitle: str = ""):
+    """Create a styled section header using native components."""
+
+    # Decorative line
+    st.markdown("""
+    <div style="width: 60px; height: 2px; margin: 2rem auto 1rem;
+                background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+    """, unsafe_allow_html=True)
+
+    # Title
     st.markdown(f"""
-    <div class="glass-card {extra_class}">
+    <h2 style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 800;
+               text-transform: uppercase; letter-spacing: 4px; text-align: center;
+               color: #f1f5f9; margin-bottom: 0.5rem;">{title}</h2>
+    """, unsafe_allow_html=True)
+
+    if subtitle:
+        st.markdown(f"""
+        <p style="font-family: 'Rajdhani', sans-serif; font-size: 14px; color: #64748b;
+                  text-transform: uppercase; letter-spacing: 2px; text-align: center;">
+            {subtitle}
+        </p>
+        """, unsafe_allow_html=True)
+
+
+def glass_card(content: str):
+    """Wrap content in a glassmorphism card."""
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
+                backdrop-filter: blur(12px); border: 1px solid rgba(245,158,11,0.1);
+                border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
+                    background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
         {content}
     </div>
     """, unsafe_allow_html=True)
 
 
-def tier_card(title: str, description: str, icon: str = "", tags: list = None):
-    """
-    Create a project tier selection card.
-
-    Args:
-        title: Tier name (e.g., "Residential")
-        description: Tier description
-        icon: Emoji or icon
-        tags: List of tag strings
-    """
-    icon_html = f'<div class="tier-icon">{icon}</div>' if icon else ""
+def tier_card(title: str, description: str, tags: list = None):
+    """Create a project tier selection card."""
 
     tags_html = ""
     if tags:
-        tags_items = "".join([f'<span class="tag">{tag}</span>' for tag in tags])
-        tags_html = f'<div class="tier-tags">{tags_items}</div>'
+        tags_html = '<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1rem;">'
+        for tag in tags:
+            tags_html += f'''<span style="padding: 4px 10px; font-family: 'Rajdhani', sans-serif;
+                            font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+                            border: 1px solid rgba(6,182,212,0.3); border-radius: 4px;
+                            color: #06b6d4; background: rgba(6,182,212,0.05);">{tag}</span>'''
+        tags_html += '</div>'
 
     st.markdown(f"""
-    <div class="tier-card">
-        {icon_html}
-        <h3>{title}</h3>
-        <p>{description}</p>
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                backdrop-filter: blur(12px); border: 1px solid rgba(30,41,59,0.8);
+                border-radius: 16px; padding: 1.5rem; min-height: 180px; position: relative;
+                transition: all 0.3s ease;">
+        <div style="position: absolute; top: 0; left: 20%; right: 20%; height: 2px;
+                    background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+        <h3 style="font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 700;
+                   color: #f59e0b; margin-bottom: 0.8rem;">{title}</h3>
+        <p style="font-family: 'Inter', sans-serif; color: #94a3b8; font-size: 14px;
+                  line-height: 1.6;">{description}</p>
         {tags_html}
     </div>
     """, unsafe_allow_html=True)
 
 
 def metric_card(value: str, label: str, color: str = "amber"):
-    """
-    Create a styled metric/KPI card.
+    """Create a styled metric/KPI card."""
 
-    Args:
-        value: The metric value
-        label: The metric label
-        color: Color theme ('amber' or 'cyan')
-    """
-    color_style = "color: #f59e0b;" if color == "amber" else "color: #06b6d4;"
+    value_color = "#f59e0b" if color == "amber" else "#06b6d4"
 
     st.markdown(f"""
-    <div class="metric-card">
-        <div class="metric-value" style="{color_style}">{value}</div>
-        <div class="metric-label">{label}</div>
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
+                border: 1px solid rgba(245,158,11,0.15); border-radius: 12px;
+                padding: 1.2rem; text-align: center; position: relative;">
+        <div style="position: absolute; top: 0; left: 30%; right: 30%; height: 2px;
+                    background: linear-gradient(90deg, transparent, #06b6d4, transparent);"></div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 800;
+                    color: {value_color}; text-shadow: 0 0 20px rgba(245,158,11,0.3);">
+            {value}
+        </div>
+        <div style="font-family: 'Rajdhani', sans-serif; font-size: 12px; text-transform: uppercase;
+                    letter-spacing: 2px; color: #64748b; margin-top: 0.3rem;">
+            {label}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 def timeline_steps(steps: list):
-    """
-    Create an animated horizontal timeline.
+    """Create a horizontal timeline with steps."""
 
-    Args:
-        steps: List of dicts with 'number', 'title', and 'description' keys
-    """
-    steps_html = "".join([
-        f'''<div class="timeline-step">
-            <div class="step-number">{s['number']}</div>
-            <div class="step-title">{s['title']}</div>
-            <div class="step-desc">{s['description']}</div>
-        </div>'''
-        for s in steps
-    ])
+    cols = st.columns(len(steps))
 
-    st.markdown(f"""
-    <div class="timeline">
-        {steps_html}
-    </div>
-    """, unsafe_allow_html=True)
+    for i, step in enumerate(steps):
+        with cols[i]:
+            st.markdown(f"""
+            <div style="text-align: center; position: relative;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 0.8rem;
+                            background: linear-gradient(135deg, #f59e0b, #d97706);
+                            display: flex; align-items: center; justify-content: center;
+                            box-shadow: 0 0 20px rgba(245,158,11,0.3);">
+                    <span style="font-family: 'Orbitron', sans-serif; font-weight: 800;
+                                 font-size: 1rem; color: #0a0e1a;">{step['number']}</span>
+                </div>
+                <div style="font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 13px;
+                            text-transform: uppercase; letter-spacing: 1px; color: #f1f5f9;">
+                    {step['title']}
+                </div>
+                <div style="font-family: 'Inter', sans-serif; font-size: 11px; color: #64748b;
+                            margin-top: 4px;">
+                    {step['description']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 def premium_footer():
     """Create the premium styled footer."""
     st.markdown("""
-    <div class="premium-footer">
-        <p><span class="brand">AFRIPLAN ELECTRICAL</span></p>
-        <p>Built for South Africa | SANS Compliant | Professional Quotations</p>
-        <p>2025 | Powered by Streamlit</p>
+    <div style="text-align: center; padding: 2rem; margin-top: 2rem;
+                border-top: 1px solid rgba(30,41,59,0.5);">
+        <p style="font-family: 'Orbitron', sans-serif; font-weight: 700; color: #f59e0b;
+                  margin-bottom: 0.5rem;">AFRIPLAN ELECTRICAL</p>
+        <p style="font-family: 'Rajdhani', sans-serif; font-size: 12px; color: #475569;
+                  letter-spacing: 1px;">
+            Built for South Africa | SANS Compliant | Professional Quotations
+        </p>
+        <p style="font-family: 'Rajdhani', sans-serif; font-size: 12px; color: #475569;
+                  margin-top: 0.5rem;">
+            2025 | Powered by Streamlit
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def page_header(title: str, subtitle: str = ""):
+    """Create a page header for inner pages."""
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                backdrop-filter: blur(12px); padding: 2rem; border-radius: 16px;
+                border: 1px solid rgba(245,158,11,0.1); margin-bottom: 1.5rem;
+                position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
+                    background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+        <h1 style="font-family: 'Orbitron', sans-serif; font-size: 1.8rem; font-weight: 800;
+                   color: #f59e0b; margin: 0 0 0.5rem 0;">{title}</h1>
+        <p style="font-family: 'Rajdhani', sans-serif; color: #64748b; font-size: 14px;
+                  text-transform: uppercase; letter-spacing: 2px; margin: 0;">{subtitle}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -162,40 +214,17 @@ def premium_footer():
 def loading_animation():
     """Show a loading animation."""
     st.markdown("""
-    <div class="loading-pulse">
-        <span></span>
-        <span></span>
-        <span></span>
+    <div style="display: flex; gap: 8px; justify-content: center; padding: 2rem;">
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;
+                     animation: pulse 1.4s ease-in-out infinite;"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;
+                     animation: pulse 1.4s ease-in-out infinite 0.2s;"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;
+                     animation: pulse 1.4s ease-in-out infinite 0.4s;"></span>
     </div>
     """, unsafe_allow_html=True)
 
 
 def success_toast(message: str):
     """Show a styled success message."""
-    st.markdown(f"""
-    <div class="success-toast">
-        <span style="font-size: 20px;">&#10003;</span>
-        <span style="font-family: 'Rajdhani', sans-serif; font-weight: 600; color: #10b981;">
-            {message}
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def page_header(title: str, subtitle: str = "", icon: str = ""):
-    """
-    Create a page header (simplified hero for inner pages).
-
-    Args:
-        title: Page title
-        subtitle: Page subtitle
-        icon: Optional emoji
-    """
-    icon_html = f"{icon} " if icon else ""
-
-    st.markdown(f"""
-    <div class="main-header">
-        <h1>{icon_html}{title}</h1>
-        <p>{subtitle}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.success(message)

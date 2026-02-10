@@ -1,6 +1,6 @@
 """
 AfriPlan Electrical - Welcome Page
-Premium futuristic landing page with animated hero
+Premium futuristic landing page
 """
 
 import streamlit as st
@@ -47,12 +47,13 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.markdown("""
-    <div class="glass-card">
-        <p style="font-size: 16px; line-height: 1.8;">
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
+                border: 1px solid rgba(245,158,11,0.1); border-radius: 16px; padding: 1.5rem;">
+        <p style="font-size: 16px; line-height: 1.8; color: #cbd5e1;">
             <strong style="color: #f59e0b;">AfriPlan Electrical</strong> is a comprehensive quotation platform
             designed specifically for the <strong style="color: #06b6d4;">South African electrical industry</strong>.
         </p>
-        <p style="margin-top: 1rem;">
+        <p style="margin-top: 1rem; color: #94a3b8;">
             Whether you're an electrical contractor, consulting engineer, or project estimator,
             our platform helps you generate accurate, professional quotations in minutes with
             local pricing, SANS compliance, and industry standards built-in.
@@ -62,14 +63,16 @@ with col1:
 
 with col2:
     st.markdown("""
-    <div class="glass-card">
-        <h4 style="color: #f59e0b; font-family: 'Rajdhani', sans-serif; margin-bottom: 1rem;">WHO IT'S FOR</h4>
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
+                border: 1px solid rgba(245,158,11,0.1); border-radius: 16px; padding: 1.5rem;">
+        <h4 style="color: #f59e0b; font-family: 'Rajdhani', sans-serif; margin-bottom: 1rem;
+                   text-transform: uppercase; letter-spacing: 1px;">Who It's For</h4>
         <ul style="list-style: none; padding: 0; margin: 0;">
-            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Electrical Contractors</li>
-            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Consulting Engineers</li>
-            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Project Estimators</li>
-            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Quantity Surveyors</li>
-            <li style="padding: 0.3rem 0; color: #94a3b8;">&#9889; Municipal Planners</li>
+            <li style="padding: 0.4rem 0; color: #94a3b8;">&#9889; Electrical Contractors</li>
+            <li style="padding: 0.4rem 0; color: #94a3b8;">&#9889; Consulting Engineers</li>
+            <li style="padding: 0.4rem 0; color: #94a3b8;">&#9889; Project Estimators</li>
+            <li style="padding: 0.4rem 0; color: #94a3b8;">&#9889; Quantity Surveyors</li>
+            <li style="padding: 0.4rem 0; color: #94a3b8;">&#9889; Municipal Planners</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -87,10 +90,8 @@ with feat1:
     metric_card("4", "Quote Strategies", "amber")
     st.markdown("""
     <div style="text-align: center; margin-top: 0.8rem;">
-        <p style="color: #94a3b8; font-size: 13px;">
-            <strong style="color: #f59e0b;">Smart Optimizer</strong><br>
-            Budget / Best Value / Premium / Competitive
-        </p>
+        <p style="color: #f59e0b; font-weight: 600; font-size: 13px;">Smart Optimizer</p>
+        <p style="color: #64748b; font-size: 12px;">Budget / Best Value / Premium / Competitive</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -98,10 +99,8 @@ with feat2:
     metric_card("5+", "SA Standards", "cyan")
     st.markdown("""
     <div style="text-align: center; margin-top: 0.8rem;">
-        <p style="color: #94a3b8; font-size: 13px;">
-            <strong style="color: #06b6d4;">SANS Compliant</strong><br>
-            10142 / NRS 034 / MHSA / Eskom DSD
-        </p>
+        <p style="color: #06b6d4; font-weight: 600; font-size: 13px;">SANS Compliant</p>
+        <p style="color: #64748b; font-size: 12px;">10142 / NRS 034 / MHSA / Eskom DSD</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -109,10 +108,8 @@ with feat3:
     metric_card("PDF", "Export", "amber")
     st.markdown("""
     <div style="text-align: center; margin-top: 0.8rem;">
-        <p style="color: #94a3b8; font-size: 13px;">
-            <strong style="color: #f59e0b;">Professional PDFs</strong><br>
-            BQ / VAT / Terms / Branding
-        </p>
+        <p style="color: #f59e0b; font-weight: 600; font-size: 13px;">Professional PDFs</p>
+        <p style="color: #64748b; font-size: 12px;">BQ / VAT / Terms / Branding</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -120,10 +117,8 @@ with feat4:
     metric_card("2025", "Pricing", "cyan")
     st.markdown("""
     <div style="text-align: center; margin-top: 0.8rem;">
-        <p style="color: #94a3b8; font-size: 13px;">
-            <strong style="color: #06b6d4;">SA Market Rates</strong><br>
-            Materials / Labour / Municipal
-        </p>
+        <p style="color: #06b6d4; font-weight: 600; font-size: 13px;">SA Market Rates</p>
+        <p style="color: #64748b; font-size: 12px;">Materials / Labour / Municipal</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -149,6 +144,8 @@ with tier2:
         description="Office buildings, retail & shopping centres, hotels & restaurants, healthcare facilities, schools & educational institutions",
         tags=["Load Studies", "Emergency Power", "Fire Detection"]
     )
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 tier3, tier4 = st.columns(2)
 
@@ -189,7 +186,9 @@ st.markdown("---")
 section_header("Ready to Start?", "Use the sidebar to select your project tier")
 
 st.markdown("""
-<div class="glass-card" style="text-align: center; padding: 2rem;">
+<div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
+            border: 1px solid rgba(245,158,11,0.1); border-radius: 16px;
+            padding: 2rem; text-align: center;">
     <p style="font-size: 18px; color: #f1f5f9; margin-bottom: 1rem;">
         Navigate using the <strong style="color: #f59e0b;">sidebar menu</strong> to begin creating your quotation.
     </p>
