@@ -311,7 +311,7 @@ if selected_subtype in ["new_house", "renovation", "coc_compliance"]:
 <div>Markup: {option['markup_percent']:.0f}%</div>
 <div>Profit: R {option['profit']:,.0f}</div>
 <div>Margin: {option['profit_margin']:.1f}%</div>
-<div>Quality: {'⭐' * option['quality_score']}</div>
+<div>Quality: {'*' * int(option['quality_score'])}</div>
 </div>
 </div>"""
                         st.markdown(html_content, unsafe_allow_html=True)
