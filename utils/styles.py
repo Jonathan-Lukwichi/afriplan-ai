@@ -594,6 +594,31 @@ CUSTOM_CSS = """
         background-clip: text;
     }
 
+    /* Hide broken Material Icons text in sidebar collapse button */
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="collapsedControl"] {
+        font-size: 0 !important;
+    }
+
+    [data-testid="stSidebarCollapseButton"] svg,
+    [data-testid="collapsedControl"] svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    /* Fix for sidebar collapse button showing icon text */
+    button[kind="headerNoPadding"] span,
+    [data-testid="stSidebarCollapseButton"] span {
+        font-size: 0 !important;
+        visibility: hidden !important;
+    }
+
+    button[kind="headerNoPadding"] svg,
+    [data-testid="stSidebarCollapseButton"] svg {
+        visibility: visible !important;
+        font-size: initial !important;
+    }
+
     /* ========================================
        BQ TABLE
     ======================================== */
