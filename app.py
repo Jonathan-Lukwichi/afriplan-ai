@@ -53,7 +53,7 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
     if st.button("Go to Residential →", key="res", use_container_width=True):
-        st.switch_page("pages/1_🏠_Residential.py")
+        st.switch_page("pages/1_Residential.py")
 
 with col2:
     st.markdown("""
@@ -63,7 +63,7 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
     if st.button("Go to Commercial →", key="com", use_container_width=True):
-        st.switch_page("pages/2_🏢_Commercial.py")
+        st.switch_page("pages/2_Commercial.py")
 
 col3, col4 = st.columns(2)
 
@@ -75,7 +75,7 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
     if st.button("Go to Industrial →", key="ind", use_container_width=True):
-        st.switch_page("pages/3_🏭_Industrial.py")
+        st.switch_page("pages/3_Industrial.py")
 
 with col4:
     st.markdown("""
@@ -85,7 +85,7 @@ with col4:
     </div>
     """, unsafe_allow_html=True)
     if st.button("Go to Infrastructure →", key="inf", use_container_width=True):
-        st.switch_page("pages/4_🌍_Infrastructure.py")
+        st.switch_page("pages/4_Infrastructure.py")
 
 st.markdown("---")
 
