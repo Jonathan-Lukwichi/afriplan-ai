@@ -517,32 +517,79 @@ CUSTOM_CSS = """
     }
 
     /* ========================================
-       TABS
+       TABS - NEON GREEN FLUORESCENT CARDS
     ======================================== */
     .stTabs [data-baseweb="tab-list"] {
-        background: rgba(17, 24, 39, 0.6) !important;
-        border-radius: 12px !important;
-        padding: 4px !important;
-        border: 1px solid rgba(30, 41, 59, 0.5) !important;
-        gap: 4px !important;
+        background: rgba(10, 14, 26, 0.8) !important;
+        border-radius: 16px !important;
+        padding: 8px !important;
+        border: 1px solid rgba(57, 255, 20, 0.2) !important;
+        gap: 8px !important;
+        box-shadow: 0 0 20px rgba(57, 255, 20, 0.1) !important;
     }
 
     .stTabs [data-baseweb="tab"] {
         font-family: 'Rajdhani', sans-serif !important;
         font-weight: 600 !important;
         text-transform: uppercase !important;
-        letter-spacing: 1.5px !important;
+        letter-spacing: 2px !important;
         font-size: 13px !important;
-        border-radius: 8px !important;
-        color: #64748b !important;
-        padding: 10px 20px !important;
-        transition: all 0.3s ease !important;
+        border-radius: 12px !important;
+        color: #39FF14 !important;
+        padding: 12px 24px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        background: linear-gradient(135deg,
+            rgba(57, 255, 20, 0.05),
+            rgba(0, 255, 0, 0.02)) !important;
+        border: 1px solid rgba(57, 255, 20, 0.3) !important;
+        text-shadow: 0 0 8px rgba(57, 255, 20, 0.4) !important;
+        position: relative;
+        overflow: hidden;
     }
 
+    /* Tab hover state */
+    .stTabs [data-baseweb="tab"]:hover {
+        background: linear-gradient(135deg,
+            rgba(57, 255, 20, 0.12),
+            rgba(0, 255, 0, 0.06)) !important;
+        border-color: rgba(57, 255, 20, 0.6) !important;
+        box-shadow:
+            0 0 20px rgba(57, 255, 20, 0.25),
+            0 0 40px rgba(57, 255, 20, 0.1) !important;
+        color: #7FFF00 !important;
+        text-shadow: 0 0 12px rgba(127, 255, 0, 0.6) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    /* Active/Selected tab */
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
-        color: #0a0e1a !important;
-        box-shadow: 0 2px 12px rgba(245, 158, 11, 0.3) !important;
+        background: linear-gradient(135deg,
+            rgba(57, 255, 20, 0.2),
+            rgba(0, 255, 0, 0.1)) !important;
+        border-color: rgba(57, 255, 20, 0.8) !important;
+        color: #7FFF00 !important;
+        box-shadow:
+            0 0 30px rgba(57, 255, 20, 0.4),
+            0 0 60px rgba(57, 255, 20, 0.15),
+            inset 0 0 20px rgba(57, 255, 20, 0.1) !important;
+        text-shadow:
+            0 0 10px rgba(127, 255, 0, 0.7),
+            0 0 20px rgba(127, 255, 0, 0.4) !important;
+    }
+
+    /* Top accent line on active tab */
+    .stTabs [aria-selected="true"]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 2px;
+        background: linear-gradient(90deg,
+            transparent,
+            rgba(127, 255, 0, 0.9),
+            transparent);
+        border-radius: 2px;
     }
 
     /* ========================================
