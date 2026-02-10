@@ -48,9 +48,9 @@ col1, col2 = st.columns([2, 1])
 with col1:
     st.markdown("""
     <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
-                border: 1px solid rgba(245,158,11,0.1); border-radius: 16px; padding: 1.5rem;">
+                border: 1px solid rgba(0,212,255,0.1); border-radius: 16px; padding: 1.5rem;">
         <p style="font-size: 16px; line-height: 1.8; color: #cbd5e1;">
-            <strong style="color: #f59e0b;">AfriPlan Electrical</strong> is a comprehensive quotation platform
+            <strong style="color: #00D4FF;">AfriPlan Electrical</strong> is a comprehensive quotation platform
             designed specifically for the <strong style="color: #06b6d4;">South African electrical industry</strong>.
         </p>
         <p style="margin-top: 1rem; color: #94a3b8;">
@@ -64,8 +64,8 @@ with col1:
 with col2:
     st.markdown("""
     <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
-                border: 1px solid rgba(245,158,11,0.1); border-radius: 16px; padding: 1.5rem;">
-        <h4 style="color: #f59e0b; font-family: 'Rajdhani', sans-serif; margin-bottom: 1rem;
+                border: 1px solid rgba(0,212,255,0.1); border-radius: 16px; padding: 1.5rem;">
+        <h4 style="color: #00D4FF; font-family: 'Rajdhani', sans-serif; margin-bottom: 1rem;
                    text-transform: uppercase; letter-spacing: 1px;">Who It's For</h4>
         <ul style="list-style: none; padding: 0; margin: 0;">
             <li style="padding: 0.4rem 0; color: #94a3b8;">&#9889; Electrical Contractors</li>
@@ -87,10 +87,10 @@ section_header("Platform Features", "Everything you need for electrical quotatio
 feat1, feat2, feat3, feat4 = st.columns(4)
 
 with feat1:
-    metric_card("4", "Quote Strategies", "amber")
+    metric_card("4", "Quote Strategies", "cyan")
     st.markdown("""
     <div style="text-align: center; margin-top: 0.8rem;">
-        <p style="color: #f59e0b; font-weight: 600; font-size: 13px;">Smart Optimizer</p>
+        <p style="color: #00D4FF; font-weight: 600; font-size: 13px;">Smart Optimizer</p>
         <p style="color: #64748b; font-size: 12px;">Budget / Best Value / Premium / Competitive</p>
     </div>
     """, unsafe_allow_html=True)
@@ -105,10 +105,10 @@ with feat2:
     """, unsafe_allow_html=True)
 
 with feat3:
-    metric_card("PDF", "Export", "amber")
+    metric_card("PDF", "Export", "cyan")
     st.markdown("""
     <div style="text-align: center; margin-top: 0.8rem;">
-        <p style="color: #f59e0b; font-weight: 600; font-size: 13px;">Professional PDFs</p>
+        <p style="color: #00D4FF; font-weight: 600; font-size: 13px;">Professional PDFs</p>
         <p style="color: #64748b; font-size: 12px;">BQ / VAT / Terms / Branding</p>
     </div>
     """, unsafe_allow_html=True)
@@ -187,10 +187,10 @@ section_header("Ready to Start?", "Use the sidebar to select your project tier")
 
 st.markdown("""
 <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
-            border: 1px solid rgba(245,158,11,0.1); border-radius: 16px;
+            border: 1px solid rgba(0,212,255,0.1); border-radius: 16px;
             padding: 2rem; text-align: center;">
     <p style="font-size: 18px; color: #f1f5f9; margin-bottom: 1rem;">
-        Navigate using the <strong style="color: #f59e0b;">sidebar menu</strong> to begin creating your quotation.
+        Navigate using the <strong style="color: #00D4FF;">sidebar menu</strong> to begin creating your quotation.
     </p>
     <p style="color: #64748b;">
         Select Residential, Commercial, Industrial, or Infrastructure to get started.

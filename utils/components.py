@@ -12,10 +12,10 @@ def hero_section(title: str, subtitle: str = "", badge_text: str = "", stats: li
     # Use container for structure
     st.markdown(f"""
     <div style="text-align: center; padding: 2rem 0 3rem;">
-        <div style="display: inline-block; padding: 8px 20px; border: 1px solid rgba(245,158,11,0.3);
+        <div style="display: inline-block; padding: 8px 20px; border: 1px solid rgba(0,212,255,0.3);
                     border-radius: 50px; font-family: 'Rajdhani', sans-serif; font-size: 14px;
-                    text-transform: uppercase; letter-spacing: 2px; color: #f59e0b;
-                    background: rgba(245,158,11,0.05); margin-bottom: 1.5rem;">
+                    text-transform: uppercase; letter-spacing: 2px; color: #00D4FF;
+                    background: rgba(0,212,255,0.05); margin-bottom: 1.5rem;">
             {badge_text}
         </div>
     </div>
@@ -25,7 +25,7 @@ def hero_section(title: str, subtitle: str = "", badge_text: str = "", stats: li
     st.markdown(f"""
     <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3rem; font-weight: 900;
                text-align: center; line-height: 1.1; margin-bottom: 1rem;
-               background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+               background: linear-gradient(135deg, #00D4FF 0%, #00FFFF 50%, #00D4FF 100%);
                -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                background-clip: text;">{title}</h1>
     """, unsafe_allow_html=True)
@@ -62,7 +62,7 @@ def section_header(title: str, subtitle: str = ""):
     # Decorative line
     st.markdown("""
     <div style="width: 60px; height: 2px; margin: 2rem auto 1rem;
-                background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                background: linear-gradient(90deg, transparent, #00D4FF, transparent);"></div>
     """, unsafe_allow_html=True)
 
     # Title
@@ -85,10 +85,10 @@ def glass_card(content: str):
     """Wrap content in a glassmorphism card."""
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
-                backdrop-filter: blur(12px); border: 1px solid rgba(245,158,11,0.1);
+                backdrop-filter: blur(12px); border: 1px solid rgba(0,212,255,0.1);
                 border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
         <div style="position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
-                    background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                    background: linear-gradient(90deg, transparent, #00D4FF, transparent);"></div>
         {content}
     </div>
     """, unsafe_allow_html=True)
@@ -113,9 +113,9 @@ def tier_card(title: str, description: str, tags: list = None):
                 border-radius: 16px; padding: 1.5rem; min-height: 180px; position: relative;
                 transition: all 0.3s ease;">
         <div style="position: absolute; top: 0; left: 20%; right: 20%; height: 2px;
-                    background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                    background: linear-gradient(90deg, transparent, #00D4FF, transparent);"></div>
         <h3 style="font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 700;
-                   color: #f59e0b; margin-bottom: 0.8rem;">{title}</h3>
+                   color: #00D4FF; margin-bottom: 0.8rem;">{title}</h3>
         <p style="font-family: 'Inter', sans-serif; color: #94a3b8; font-size: 14px;
                   line-height: 1.6;">{description}</p>
         {tags_html}
@@ -123,19 +123,19 @@ def tier_card(title: str, description: str, tags: list = None):
     """, unsafe_allow_html=True)
 
 
-def metric_card(value: str, label: str, color: str = "amber"):
+def metric_card(value: str, label: str, color: str = "cyan"):
     """Create a styled metric/KPI card."""
 
-    value_color = "#f59e0b" if color == "amber" else "#06b6d4"
+    value_color = "#00D4FF" if color == "cyan" else "#00FFFF"
 
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
-                border: 1px solid rgba(245,158,11,0.15); border-radius: 12px;
+                border: 1px solid rgba(0,212,255,0.15); border-radius: 12px;
                 padding: 1.2rem; text-align: center; position: relative;">
         <div style="position: absolute; top: 0; left: 30%; right: 30%; height: 2px;
                     background: linear-gradient(90deg, transparent, #06b6d4, transparent);"></div>
         <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 800;
-                    color: {value_color}; text-shadow: 0 0 20px rgba(245,158,11,0.3);">
+                    color: {value_color}; text-shadow: 0 0 20px rgba(0,212,255,0.3);">
             {value}
         </div>
         <div style="font-family: 'Rajdhani', sans-serif; font-size: 12px; text-transform: uppercase;
@@ -156,9 +156,9 @@ def timeline_steps(steps: list):
             st.markdown(f"""
             <div style="text-align: center; position: relative;">
                 <div style="width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 0.8rem;
-                            background: linear-gradient(135deg, #f59e0b, #d97706);
+                            background: linear-gradient(135deg, #00D4FF, #0099FF);
                             display: flex; align-items: center; justify-content: center;
-                            box-shadow: 0 0 20px rgba(245,158,11,0.3);">
+                            box-shadow: 0 0 20px rgba(0,212,255,0.3);">
                     <span style="font-family: 'Orbitron', sans-serif; font-weight: 800;
                                  font-size: 1rem; color: #0a0e1a;">{step['number']}</span>
                 </div>
@@ -179,7 +179,7 @@ def premium_footer():
     st.markdown("""
     <div style="text-align: center; padding: 2rem; margin-top: 2rem;
                 border-top: 1px solid rgba(30,41,59,0.5);">
-        <p style="font-family: 'Orbitron', sans-serif; font-weight: 700; color: #f59e0b;
+        <p style="font-family: 'Orbitron', sans-serif; font-weight: 700; color: #00D4FF;
                   margin-bottom: 0.5rem;">AFRIPLAN ELECTRICAL</p>
         <p style="font-family: 'Rajdhani', sans-serif; font-size: 12px; color: #475569;
                   letter-spacing: 1px;">
@@ -199,12 +199,12 @@ def page_header(title: str, subtitle: str = ""):
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
                 backdrop-filter: blur(12px); padding: 2rem; border-radius: 16px;
-                border: 1px solid rgba(245,158,11,0.1); margin-bottom: 1.5rem;
+                border: 1px solid rgba(0,212,255,0.1); margin-bottom: 1.5rem;
                 position: relative; overflow: hidden;">
         <div style="position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
-                    background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                    background: linear-gradient(90deg, transparent, #00D4FF, transparent);"></div>
         <h1 style="font-family: 'Orbitron', sans-serif; font-size: 1.8rem; font-weight: 800;
-                   color: #f59e0b; margin: 0 0 0.5rem 0;">{title}</h1>
+                   color: #00D4FF; margin: 0 0 0.5rem 0;">{title}</h1>
         <p style="font-family: 'Rajdhani', sans-serif; color: #64748b; font-size: 14px;
                   text-transform: uppercase; letter-spacing: 2px; margin: 0;">{subtitle}</p>
     </div>
@@ -215,11 +215,11 @@ def loading_animation():
     """Show a loading animation."""
     st.markdown("""
     <div style="display: flex; gap: 8px; justify-content: center; padding: 2rem;">
-        <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #00D4FF;
                      animation: pulse 1.4s ease-in-out infinite;"></span>
-        <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #00D4FF;
                      animation: pulse 1.4s ease-in-out infinite 0.2s;"></span>
-        <span style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #00D4FF;
                      animation: pulse 1.4s ease-in-out infinite 0.4s;"></span>
     </div>
     """, unsafe_allow_html=True)

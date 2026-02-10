@@ -18,7 +18,7 @@ CUSTOM_CSS = """
     .stApp {
         background:
             radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 20%, rgba(245, 158, 11, 0.04) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 20%, rgba(0, 212, 255, 0.04) 0%, transparent 50%),
             linear-gradient(180deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%) !important;
         background-attachment: fixed !important;
     }
@@ -63,7 +63,7 @@ CUSTOM_CSS = """
 
     .glow-orb-2 {
         width: 300px; height: 300px;
-        background: radial-gradient(circle, rgba(245,158,11,0.1), transparent);
+        background: radial-gradient(circle, rgba(0,212,255,0.1), transparent);
         bottom: 20%; right: 10%;
         animation-delay: -7s;
     }
@@ -115,14 +115,14 @@ CUSTOM_CSS = """
     .hero-badge {
         display: inline-block;
         padding: 8px 20px;
-        border: 1px solid rgba(245, 158, 11, 0.3);
+        border: 1px solid rgba(0, 212, 255, 0.3);
         border-radius: 50px;
         font-family: 'Rajdhani', sans-serif;
         font-size: 14px;
         text-transform: uppercase;
         letter-spacing: 2px;
-        color: #f59e0b;
-        background: rgba(245, 158, 11, 0.05);
+        color: #00D4FF;
+        background: rgba(0, 212, 255, 0.05);
         margin-bottom: 1.5rem;
         animation: fadeInDown 0.8s ease-out;
     }
@@ -133,7 +133,7 @@ CUSTOM_CSS = """
         font-weight: 900 !important;
         line-height: 1.1 !important;
         margin-bottom: 1rem !important;
-        background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+        background: linear-gradient(135deg, #00D4FF 0%, #00FFFF 50%, #00D4FF 100%);
         background-size: 200% auto;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -212,7 +212,7 @@ CUSTOM_CSS = """
             rgba(15, 23, 42, 0.6)) !important;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(245, 158, 11, 0.1) !important;
+        border: 1px solid rgba(0, 212, 255, 0.1) !important;
         border-radius: 16px !important;
         padding: 1.5rem !important;
         position: relative;
@@ -225,14 +225,14 @@ CUSTOM_CSS = """
         position: absolute;
         top: 0; left: 10%; right: 10%;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+        background: linear-gradient(90deg, transparent, #00D4FF, transparent);
         border-radius: 2px;
     }
 
     .glass-card:hover {
-        border-color: rgba(245, 158, 11, 0.3) !important;
+        border-color: rgba(0, 212, 255, 0.3) !important;
         box-shadow:
-            0 0 30px rgba(245, 158, 11, 0.08),
+            0 0 30px rgba(0, 212, 255, 0.08),
             0 20px 60px rgba(0, 0, 0, 0.3) !important;
         transform: translateY(-4px);
     }
@@ -270,13 +270,13 @@ CUSTOM_CSS = """
         position: absolute;
         top: 0; left: 20%; right: 20%;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+        background: linear-gradient(90deg, transparent, #00D4FF, transparent);
     }
 
     .tier-card:hover {
-        border-color: rgba(245, 158, 11, 0.5) !important;
+        border-color: rgba(0, 212, 255, 0.5) !important;
         box-shadow:
-            0 0 40px rgba(245, 158, 11, 0.15),
+            0 0 40px rgba(0, 212, 255, 0.15),
             0 20px 60px rgba(0, 0, 0, 0.4) !important;
         transform: translateY(-6px) !important;
     }
@@ -285,7 +285,7 @@ CUSTOM_CSS = """
         font-family: 'Orbitron', sans-serif !important;
         font-size: 1.3rem !important;
         font-weight: 700 !important;
-        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        background: linear-gradient(135deg, #00D4FF, #00FFFF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -301,8 +301,8 @@ CUSTOM_CSS = """
 
     .tier-icon {
         width: 56px; height: 56px;
-        background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(6,182,212,0.15));
-        border: 1px solid rgba(245, 158, 11, 0.2);
+        background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(6,182,212,0.15));
+        border: 1px solid rgba(0, 212, 255, 0.2);
         border-radius: 12px;
         display: flex;
         align-items: center;
@@ -335,7 +335,7 @@ CUSTOM_CSS = """
     ======================================== */
     .metric-card {
         background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6)) !important;
-        border: 1px solid rgba(245, 158, 11, 0.15) !important;
+        border: 1px solid rgba(0, 212, 255, 0.15) !important;
         border-radius: 12px !important;
         padding: 1.2rem !important;
         text-align: center;
@@ -355,8 +355,8 @@ CUSTOM_CSS = """
         font-family: 'Orbitron', sans-serif !important;
         font-size: 2rem !important;
         font-weight: 800 !important;
-        color: #f59e0b !important;
-        text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        color: #00D4FF !important;
+        text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
     }
 
     .metric-label {
@@ -371,7 +371,7 @@ CUSTOM_CSS = """
     /* Streamlit Metrics Override */
     [data-testid="stMetric"] {
         background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6)) !important;
-        border: 1px solid rgba(245, 158, 11, 0.1) !important;
+        border: 1px solid rgba(0, 212, 255, 0.1) !important;
         border-radius: 12px !important;
         padding: 1rem !important;
     }
@@ -379,7 +379,7 @@ CUSTOM_CSS = """
     [data-testid="stMetric"] [data-testid="stMetricValue"] {
         font-family: 'Orbitron', sans-serif !important;
         font-size: 1.8rem !important;
-        color: #f59e0b !important;
+        color: #00D4FF !important;
     }
 
     [data-testid="stMetric"] [data-testid="stMetricLabel"] {
@@ -400,7 +400,7 @@ CUSTOM_CSS = """
     .section-line {
         width: 60px;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+        background: linear-gradient(90deg, transparent, #00D4FF, transparent);
         margin: 0 auto 1rem;
     }
 
@@ -443,7 +443,7 @@ CUSTOM_CSS = """
         left: 10%; right: 10%;
         height: 2px;
         background: linear-gradient(90deg,
-            #f59e0b, #06b6d4, #f59e0b, #06b6d4, #f59e0b);
+            #00D4FF, #06b6d4, #00D4FF, #06b6d4, #00D4FF);
         background-size: 200% 100%;
         animation: lineFlow 4s linear infinite;
     }
@@ -463,7 +463,7 @@ CUSTOM_CSS = """
     .step-number {
         width: 48px; height: 48px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #f59e0b, #d97706);
+        background: linear-gradient(135deg, #00D4FF, #0099FF);
         color: #0a0e1a;
         font-family: 'Orbitron', sans-serif;
         font-weight: 800;
@@ -472,7 +472,7 @@ CUSTOM_CSS = """
         align-items: center;
         justify-content: center;
         margin: 0 auto 0.8rem;
-        box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
     }
 
     .step-title {
@@ -495,7 +495,7 @@ CUSTOM_CSS = """
        BUTTONS
     ======================================== */
     .stButton > button {
-        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        background: linear-gradient(135deg, #00D4FF, #0099FF) !important;
         color: #0a0e1a !important;
         font-family: 'Rajdhani', sans-serif !important;
         font-weight: 700 !important;
@@ -506,13 +506,13 @@ CUSTOM_CSS = """
         border-radius: 8px !important;
         padding: 12px 28px !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3) !important;
+        box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3) !important;
         position: relative;
         overflow: hidden;
     }
 
     .stButton > button:hover {
-        box-shadow: 0 6px 30px rgba(245, 158, 11, 0.5) !important;
+        box-shadow: 0 6px 30px rgba(0, 212, 255, 0.5) !important;
         transform: translateY(-2px) !important;
     }
 
@@ -609,8 +609,8 @@ CUSTOM_CSS = """
     .stSelectbox > div > div:focus-within,
     .stNumberInput > div > div > input:focus,
     .stTextInput > div > div > input:focus {
-        border-color: #f59e0b !important;
-        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15) !important;
+        border-color: #00D4FF !important;
+        box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.15) !important;
     }
 
     .stSelectbox label,
@@ -635,7 +635,7 @@ CUSTOM_CSS = """
     [data-testid="stSidebar"] .stMarkdown h2,
     [data-testid="stSidebar"] .stMarkdown h3 {
         font-family: 'Orbitron', sans-serif !important;
-        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        background: linear-gradient(135deg, #00D4FF, #00FFFF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -678,7 +678,7 @@ CUSTOM_CSS = """
 
     .bq-table th {
         background: rgba(17, 24, 39, 0.9);
-        color: #f59e0b;
+        color: #00D4FF;
         padding: 12px;
         text-align: left;
         font-family: 'Rajdhani', sans-serif;
@@ -686,7 +686,7 @@ CUSTOM_CSS = """
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 1px;
-        border-bottom: 2px solid rgba(245, 158, 11, 0.2);
+        border-bottom: 2px solid rgba(0, 212, 255, 0.2);
     }
 
     .bq-table td {
@@ -696,7 +696,7 @@ CUSTOM_CSS = """
     }
 
     .bq-table tr:hover td {
-        background: rgba(245, 158, 11, 0.05);
+        background: rgba(0, 212, 255, 0.05);
     }
 
     /* ========================================
@@ -830,7 +830,7 @@ CUSTOM_CSS = """
     .loading-pulse span {
         width: 12px; height: 12px;
         border-radius: 50%;
-        background: #f59e0b;
+        background: #00D4FF;
         animation: pulse 1.4s ease-in-out infinite;
     }
 
@@ -862,7 +862,7 @@ CUSTOM_CSS = """
     .premium-footer .brand {
         font-family: 'Orbitron', sans-serif !important;
         font-weight: 700 !important;
-        color: #f59e0b !important;
+        color: #00D4FF !important;
     }
 
     /* ========================================
@@ -877,8 +877,8 @@ CUSTOM_CSS = """
     }
 
     .quote-option:hover {
-        border-color: rgba(245, 158, 11, 0.4) !important;
-        box-shadow: 0 0 20px rgba(245, 158, 11, 0.1) !important;
+        border-color: rgba(0, 212, 255, 0.4) !important;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1) !important;
     }
 
     .quote-option.recommended {
@@ -894,7 +894,7 @@ CUSTOM_CSS = """
         backdrop-filter: blur(12px);
         padding: 2rem;
         border-radius: 16px;
-        border: 1px solid rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(0, 212, 255, 0.1);
         margin-bottom: 1.5rem;
         position: relative;
         overflow: hidden;
@@ -905,14 +905,14 @@ CUSTOM_CSS = """
         position: absolute;
         top: 0; left: 10%; right: 10%;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+        background: linear-gradient(90deg, transparent, #00D4FF, transparent);
     }
 
     .main-header h1 {
         font-family: 'Orbitron', sans-serif !important;
         font-size: 1.8rem !important;
         font-weight: 800 !important;
-        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        background: linear-gradient(135deg, #00D4FF, #00FFFF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -946,7 +946,7 @@ CUSTOM_CSS = """
     hr {
         border: none !important;
         height: 1px !important;
-        background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), transparent) !important;
+        background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent) !important;
         margin: 1.5rem 0 !important;
     }
 
