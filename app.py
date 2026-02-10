@@ -9,41 +9,41 @@ import streamlit as st
 # Page configuration - must be first Streamlit command
 st.set_page_config(
     page_title="AfriPlan Electrical",
-    page_icon="",
+    page_icon=":material/bolt:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Define all pages using st.Page
+# Define all pages using st.Page with Material Icons
 welcome = st.Page(
     "pages/0_Welcome.py",
     title="Welcome",
-    icon="",
+    icon=":material/home:",
     default=True
 )
 
 residential = st.Page(
     "pages/1_Residential.py",
     title="Residential",
-    icon=""
+    icon=":material/house:"
 )
 
 commercial = st.Page(
     "pages/2_Commercial.py",
     title="Commercial",
-    icon=""
+    icon=":material/business:"
 )
 
 industrial = st.Page(
     "pages/3_Industrial.py",
     title="Industrial",
-    icon=""
+    icon=":material/factory:"
 )
 
 infrastructure = st.Page(
     "pages/4_Infrastructure.py",
     title="Infrastructure",
-    icon=""
+    icon=":material/public:"
 )
 
 # Create navigation with all pages
