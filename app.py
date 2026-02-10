@@ -1339,6 +1339,7 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
     budget_cost = budget_material + budget_labour
     budget_markup = 0.12
     budget_selling = budget_cost * (1 + budget_markup)
+    budget_profit = budget_selling - budget_cost
     options.append({
         "name": "A: Budget Friendly",
         "strategy": "Cheapest suppliers, basic quality",
@@ -1347,7 +1348,8 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
         "base_cost": budget_cost,
         "markup_percent": budget_markup * 100,
         "selling_price": budget_selling,
-        "profit": budget_selling - budget_cost,
+        "profit": budget_profit,
+        "profit_margin": (budget_profit / budget_selling * 100) if budget_selling > 0 else 0,
         "quality_score": 3,
         "lead_time": 7,
         "recommended": False,
@@ -1360,6 +1362,7 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
     value_cost = value_material + value_labour
     value_markup = 0.18
     value_selling = value_cost * (1 + value_markup)
+    value_profit = value_selling - value_cost
     options.append({
         "name": "B: Best Value",
         "strategy": "Balanced cost and quality",
@@ -1368,7 +1371,8 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
         "base_cost": value_cost,
         "markup_percent": value_markup * 100,
         "selling_price": value_selling,
-        "profit": value_selling - value_cost,
+        "profit": value_profit,
+        "profit_margin": (value_profit / value_selling * 100) if value_selling > 0 else 0,
         "quality_score": 4,
         "lead_time": 3,
         "recommended": True,
@@ -1381,6 +1385,7 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
     premium_cost = premium_material + premium_labour
     premium_markup = 0.22
     premium_selling = premium_cost * (1 + premium_markup)
+    premium_profit = premium_selling - premium_cost
     options.append({
         "name": "C: Premium Quality",
         "strategy": "Top-tier brands, master electricians",
@@ -1389,7 +1394,8 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
         "base_cost": premium_cost,
         "markup_percent": premium_markup * 100,
         "selling_price": premium_selling,
-        "profit": premium_selling - premium_cost,
+        "profit": premium_profit,
+        "profit_margin": (premium_profit / premium_selling * 100) if premium_selling > 0 else 0,
         "quality_score": 5,
         "lead_time": 5,
         "recommended": False,
@@ -1402,6 +1408,7 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
     competitive_cost = competitive_material + competitive_labour
     competitive_markup = 0.10  # Lower margin
     competitive_selling = competitive_cost * (1 + competitive_markup)
+    competitive_profit = competitive_selling - competitive_cost
     options.append({
         "name": "D: Competitive Bid",
         "strategy": "Win the job, volume pricing",
@@ -1410,7 +1417,8 @@ def generate_quotation_options(bq_items: list, elec_req: dict, circuit_info: dic
         "base_cost": competitive_cost,
         "markup_percent": competitive_markup * 100,
         "selling_price": competitive_selling,
-        "profit": competitive_selling - competitive_cost,
+        "profit": competitive_profit,
+        "profit_margin": (competitive_profit / competitive_selling * 100) if competitive_selling > 0 else 0,
         "quality_score": 3.5,
         "lead_time": 5,
         "recommended": False,
