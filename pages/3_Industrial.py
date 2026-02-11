@@ -19,7 +19,13 @@ from utils.constants import (
     INDUSTRIAL_MV_EQUIPMENT,
     MINING_SPECIFIC,
 )
-from utils.calculations import calculate_industrial_electrical
+from utils.calculations import (
+    calculate_industrial_electrical,
+    calculate_pfc,
+    estimate_harmonics,
+    calculate_cable_size,
+    check_discrimination,
+)
 from utils.optimizer import generate_quotation_options
 from utils.pdf_generator import generate_generic_electrical_pdf
 
@@ -147,6 +153,158 @@ with tab3:
 
         for key, item in equipment.items():
             st.write(f"- {item['item']}: R{item['price']:,}")
+
+    st.markdown("---")
+
+    # Harmonic Analysis Section
+    st.subheader("📊 Harmonic Analysis (VSD/VFD Loads)")
+    st.markdown("*Estimate harmonic distortion from variable speed drives*")
+
+    config = st.session_state.get("industrial_config", {})
+    total_motor_load = config.get("total_motor_load", 100)
+
+    harm_col1, harm_col2 = st.columns(2)
+
+    with harm_col1:
+        vsd_percentage = st.slider(
+            "Percentage of Motors with VSD",
+            0, 100, 50, 5,
+            key="harm_vsd_pct"
+        )
+        vsd_load = total_motor_load * (vsd_percentage / 100)
+        st.info(f"VSD Load: {vsd_load:.1f} kW of {total_motor_load} kW total")
+
+    with harm_col2:
+        vsd_type = st.selectbox(
+            "VSD Type",
+            ["6_pulse", "12_pulse", "active_front_end"],
+            format_func=lambda x: {"6_pulse": "6-Pulse (Standard)", "12_pulse": "12-Pulse (Low Harmonic)", "active_front_end": "AFE (Ultra-Low Harmonic)"}[x],
+            key="harm_vsd_type"
+        )
+
+    if st.button("Analyze Harmonics", key="calc_harmonics"):
+        harm_result = estimate_harmonics(vsd_load, total_motor_load, vsd_type)
+        st.session_state.harm_result = harm_result
+
+    if "harm_result" in st.session_state:
+        harm = st.session_state.harm_result
+
+        harm_cols = st.columns(4)
+        with harm_cols[0]:
+            st.metric("VSD %", f"{harm['vsd_percentage']}%")
+        with harm_cols[1]:
+            st.metric("Est. THDv", f"{harm['estimated_thdv_percent']}%")
+        with harm_cols[2]:
+            st.metric("TX Derating", f"{harm['transformer_derating'] * 100:.0f}%")
+        with harm_cols[3]:
+            st.metric("Compliant", "✅ Yes" if harm['compliant'] else "❌ No")
+
+        if harm['recommendations']:
+            st.warning("**Recommendations:** " + " | ".join(harm['recommendations']))
+
+        if harm['filter_recommended']:
+            st.error("⚠️ Harmonic filter recommended - THDv exceeds IEEE 519 limit")
+
+    st.markdown("---")
+
+    # Power Factor Correction for Industrial
+    st.subheader("⚡ Power Factor Correction (Industrial)")
+    st.markdown("*Size capacitor banks for industrial loads*")
+
+    pfc_col1, pfc_col2 = st.columns(2)
+
+    with pfc_col1:
+        ind_active_kw = st.number_input(
+            "Total Active Power (kW)",
+            10.0, 10000.0,
+            float(total_motor_load),
+            10.0,
+            key="ind_pfc_kw"
+        )
+        ind_current_pf = st.slider("Current Power Factor", 0.50, 0.95, 0.70, 0.01, key="ind_pfc_current")
+
+    with pfc_col2:
+        ind_target_pf = st.slider("Target Power Factor", 0.90, 0.98, 0.95, 0.01, key="ind_pfc_target")
+
+        if st.button("Calculate Industrial PFC", key="calc_ind_pfc", type="primary"):
+            ind_pfc_result = calculate_pfc(ind_active_kw, ind_current_pf, ind_target_pf)
+            st.session_state.ind_pfc_result = ind_pfc_result
+
+    if "ind_pfc_result" in st.session_state:
+        pfc = st.session_state.ind_pfc_result
+        if pfc.get("kvar_required", 0) > 0:
+            pfc_cols = st.columns(4)
+            with pfc_cols[0]:
+                st.metric("kVAr Required", f"{pfc['kvar_required']} kVAr")
+            with pfc_cols[1]:
+                st.metric("Bank Size", f"{pfc['recommended_bank_size']} kVAr")
+            with pfc_cols[2]:
+                st.metric("Est. Cost", f"R {pfc['estimated_cost']:,}")
+            with pfc_cols[3]:
+                st.metric("kVA Saved", f"{pfc['kva_reduction']} kVA")
+
+            st.success(f"**Annual Savings:** R{pfc['annual_savings']:,} | **Payback:** {pfc['payback_months']} months")
+        else:
+            st.success("✅ Power factor already meets target")
+
+    st.markdown("---")
+
+    # Cable Sizing for Motors
+    st.subheader("🔌 Motor Cable Sizing (SANS 10142)")
+    st.markdown("*Select cables for motor circuits*")
+
+    cable_col1, cable_col2 = st.columns(2)
+
+    with cable_col1:
+        motor_current = st.number_input(
+            "Motor Full Load Current (A)",
+            1.0, 500.0, 50.0, 1.0,
+            key="motor_fla"
+        )
+        cable_length = st.number_input(
+            "Cable Length (m)",
+            5.0, 500.0, 50.0, 5.0,
+            key="motor_cable_length"
+        )
+
+    with cable_col2:
+        cable_phase = st.selectbox("Phase", ["three", "single"], index=0, key="motor_phase")
+
+        if st.button("Size Cable", key="calc_motor_cable", type="primary"):
+            cable_result = calculate_cable_size(
+                motor_current,
+                cable_length,
+                max_vd_percent=4.0,  # Stricter for motors
+                phase=cable_phase
+            )
+            st.session_state.motor_cable_result = cable_result
+
+    if "motor_cable_result" in st.session_state:
+        cable = st.session_state.motor_cable_result
+
+        if cable.get("recommended"):
+            rec = cable["recommended"]
+            cable_cols = st.columns(4)
+            with cable_cols[0]:
+                st.metric("Recommended", f"{rec['size']} mm²")
+            with cable_cols[1]:
+                st.metric("Current Rating", f"{rec['current_rating']} A")
+            with cable_cols[2]:
+                st.metric("Voltage Drop", f"{rec['voltage_drop_percent']:.2f}%")
+            with cable_cols[3]:
+                st.metric("Max Breaker", f"{rec['max_breaker']} A")
+
+            if rec['compliant']:
+                st.success(f"✅ Cable compliant - {rec['typical_use']}")
+            else:
+                st.warning(f"⚠️ {cable['status']}")
+
+            with st.expander("Alternative Cable Options"):
+                for opt in cable.get("all_options", []):
+                    status = "✅" if opt['compliant'] else "⚠️"
+                    st.write(f"{status} {opt['size']}mm²: {opt['current_rating']}A rating, {opt['voltage_drop_percent']:.2f}% VD")
+        else:
+            st.error(f"❌ {cable.get('status', 'No suitable cable found')}")
 
 with tab4:
     st.markdown('<p class="section-title">Industrial Quotation & Smart Cost Optimizer</p>', unsafe_allow_html=True)

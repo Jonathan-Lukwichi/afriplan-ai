@@ -26,9 +26,17 @@ from utils.calculations import (
     calculate_electrical_requirements,
     calculate_load_and_circuits,
     calculate_electrical_bq,
+    calculate_admd,
+    calculate_voltage_drop,
+    calculate_cable_size,
+    calculate_essential_load,
+    generate_coc_checklist,
 )
+from utils.constants import ADMD_VALUES, ESSENTIAL_LOADS
 from utils.optimizer import generate_quotation_options
 from utils.pdf_generator import generate_electrical_pdf, generate_generic_electrical_pdf
+from utils.excel_exporter import export_bq_to_excel
+from utils.eskom_forms import generate_eskom_application, generate_application_summary_text
 
 inject_custom_css()
 
@@ -236,6 +244,162 @@ if selected_subtype in ["new_house", "renovation", "coc_compliance"]:
                 - Power: {circuit_info['power_circuits']} circuits
                 - Dedicated: {circuit_info['dedicated_circuits']} circuits
                 """)
+
+            st.markdown("---")
+
+            # ADMD Calculator Section
+            st.subheader("📋 ADMD Calculator (Eskom Supply Application)")
+            st.markdown("*After Diversity Maximum Demand per NRS 034*")
+
+            admd_col1, admd_col2 = st.columns(2)
+
+            with admd_col1:
+                dwelling_options = {v["name"]: k for k, v in ADMD_VALUES.items()}
+                selected_dwelling = st.selectbox(
+                    "Dwelling Type",
+                    list(dwelling_options.keys()),
+                    index=1,  # Default to Standard House
+                    key="admd_dwelling_type"
+                )
+                dwelling_code = dwelling_options[selected_dwelling]
+
+                geyser_options = ["electric", "solar", "gas"]
+                geyser_type = st.selectbox("Geyser Type", geyser_options, key="admd_geyser")
+
+            with admd_col2:
+                has_pool = st.checkbox("Has Pool", key="admd_pool")
+                has_aircon = st.checkbox("Has Air Conditioning", key="admd_aircon")
+                num_dwellings = st.number_input("Number of Dwellings (for bulk)", 1, 100, 1, key="admd_num")
+
+            if st.button("Calculate ADMD", key="calc_admd"):
+                admd_result = calculate_admd(
+                    dwelling_code, num_dwellings,
+                    geyser_type, has_pool, has_aircon
+                )
+                st.session_state.admd_result = admd_result
+
+            if "admd_result" in st.session_state:
+                admd = st.session_state.admd_result
+                admd_cols = st.columns(4)
+                with admd_cols[0]:
+                    st.metric("Base ADMD", f"{admd['base_admd_kva']} kVA")
+                with admd_cols[1]:
+                    st.metric("Adjusted ADMD", f"{admd['adjusted_admd_kva']} kVA")
+                with admd_cols[2]:
+                    st.metric("Recommended Supply", admd['recommended_supply'])
+                with admd_cols[3]:
+                    st.metric("Supply Type", admd['supply_type'])
+
+                if admd['adjustment_notes']:
+                    st.info("**Adjustments:** " + ", ".join(admd['adjustment_notes']))
+
+                st.success(f"**Eskom Application:** {admd['eskom_application_size']}")
+
+            st.markdown("---")
+
+            # Voltage Drop Calculator Section
+            st.subheader("⚡ Voltage Drop Calculator (SANS 10142)")
+            st.markdown("*Maximum allowed: 5% total (2.5% sub-mains + 2.5% final circuits)*")
+
+            vd_col1, vd_col2, vd_col3 = st.columns(3)
+
+            with vd_col1:
+                cable_sizes = ["1.5", "2.5", "4.0", "6.0", "10", "16", "25", "35"]
+                selected_cable = st.selectbox("Cable Size (mm²)", cable_sizes, index=1, key="vd_cable")
+                vd_length = st.number_input("Cable Length (m)", 1.0, 200.0, 25.0, 1.0, key="vd_length")
+
+            with vd_col2:
+                vd_current = st.number_input("Load Current (A)", 1.0, 200.0, 16.0, 1.0, key="vd_current")
+                vd_phase = st.selectbox("Phase", ["single", "three"], key="vd_phase")
+
+            with vd_col3:
+                if st.button("Calculate Voltage Drop", key="calc_vd", type="primary"):
+                    vd_result = calculate_voltage_drop(
+                        selected_cable, vd_length, vd_current,
+                        voltage=230 if vd_phase == "single" else 400,
+                        phase=vd_phase
+                    )
+                    st.session_state.vd_result = vd_result
+
+            if "vd_result" in st.session_state:
+                vd = st.session_state.vd_result
+                if "error" not in vd:
+                    status_colors = {"green": "🟢", "amber": "🟡", "red": "🔴"}
+                    status_icon = status_colors.get(vd['status_color'], "⚪")
+
+                    vd_cols = st.columns(4)
+                    with vd_cols[0]:
+                        st.metric("Voltage Drop", f"{vd['voltage_drop_v']} V")
+                    with vd_cols[1]:
+                        st.metric("Drop %", f"{vd['voltage_drop_percent']}%")
+                    with vd_cols[2]:
+                        st.metric("Voltage at Load", f"{vd['voltage_at_load']} V")
+                    with vd_cols[3]:
+                        st.metric("Status", f"{status_icon} {vd['status']}")
+
+                    if vd['compliant']:
+                        st.success(f"✅ Compliant - Within {vd['max_allowed_percent']}% limit")
+                    else:
+                        st.error(f"❌ Non-compliant - Exceeds {vd['max_allowed_percent']}% limit. Use larger cable or shorter run.")
+
+            st.markdown("---")
+
+            # Essential Load Calculator for Backup Power
+            st.subheader("🔋 Essential Load Calculator (Load Shedding Backup)")
+            st.markdown("*Size your inverter and battery for load shedding*")
+
+            with st.expander("Select Essential Loads", expanded=True):
+                essential_loads_col1, essential_loads_col2 = st.columns(2)
+
+                # Define load groups
+                basic_loads = ["lighting_basic", "fridge", "tv", "wifi_router", "phone_charger", "alarm"]
+                comfort_loads = ["lighting_full", "aircon_small", "microwave", "computer", "gate_motor"]
+
+                selected_loads = []
+
+                with essential_loads_col1:
+                    st.markdown("**Basic Essentials:**")
+                    for load_key in basic_loads:
+                        load_data = ESSENTIAL_LOADS.get(load_key, {})
+                        if st.checkbox(
+                            f"{load_data.get('description', load_key)} ({load_data.get('watts', 0)}W)",
+                            key=f"ess_{load_key}"
+                        ):
+                            selected_loads.append(load_key)
+
+                with essential_loads_col2:
+                    st.markdown("**Comfort Loads:**")
+                    for load_key in comfort_loads:
+                        load_data = ESSENTIAL_LOADS.get(load_key, {})
+                        if st.checkbox(
+                            f"{load_data.get('description', load_key)} ({load_data.get('watts', 0)}W)",
+                            key=f"ess_{load_key}"
+                        ):
+                            selected_loads.append(load_key)
+
+            runtime_hours = st.slider("Desired Runtime (hours)", 2.0, 10.0, 4.0, 0.5, key="ess_runtime")
+
+            if st.button("Calculate Backup System", key="calc_essential"):
+                if selected_loads:
+                    essential_result = calculate_essential_load(selected_loads, runtime_hours)
+                    st.session_state.essential_result = essential_result
+                else:
+                    st.warning("Please select at least one load")
+
+            if "essential_result" in st.session_state:
+                ess = st.session_state.essential_result
+                ess_cols = st.columns(4)
+                with ess_cols[0]:
+                    st.metric("Total Load", f"{ess['total_load_w']} W")
+                with ess_cols[1]:
+                    st.metric("Inverter Size", f"{ess['recommended_inverter_va']} VA")
+                with ess_cols[2]:
+                    st.metric("Battery", f"{ess['battery_capacity_kwh']} kWh")
+                with ess_cols[3]:
+                    st.metric("Est. Cost", f"R {ess['total_system_cost']:,}")
+
+                st.info(f"**Covers:** {ess['load_shedding_stages_covered']} load shedding")
+
         else:
             st.info("👆 Configure rooms in the Configure tab first, then calculate electrical requirements.")
 
@@ -342,7 +506,153 @@ if selected_subtype in ["new_house", "renovation", "coc_compliance"]:
                     )
 
             with col2:
-                st.info("More export options coming soon: Excel, DXF, JSON")
+                if st.button("📊 Generate Excel BQ", type="secondary", use_container_width=True):
+                    try:
+                        project_info = {
+                            "Project Type": "Residential Electrical",
+                            "Total Light Points": st.session_state.elec_req["total_lights"],
+                            "Total Plug Points": st.session_state.elec_req["total_plugs"],
+                            "Total Load (kVA)": st.session_state.circuit_info["total_load_kva"],
+                            "DB Board Size": st.session_state.circuit_info["db_size"].replace("_", " "),
+                        }
+                        excel_bytes = export_bq_to_excel(
+                            st.session_state.bq_items,
+                            project_info,
+                            st.session_state.circuit_info
+                        )
+                        st.download_button(
+                            label="⬇️ Download Excel",
+                            data=excel_bytes,
+                            file_name=f"residential_bq_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.error("Excel export requires openpyxl. Install with: pip install openpyxl")
+
+            st.markdown("---")
+
+            # COC Pre-Check Checklist
+            st.markdown("### 📋 COC Pre-Inspection Checklist")
+            st.markdown("*Verify your installation is ready for COC inspection*")
+
+            if st.button("Generate COC Checklist", key="gen_coc_checklist"):
+                # Build installation data from session state
+                installation_data = {
+                    "earth_installed": True,
+                    "total_circuits": st.session_state.circuit_info.get("total_circuits", 0),
+                    "earth_loop_compliant": True,
+                }
+                if "vd_result" in st.session_state:
+                    installation_data["max_voltage_drop_percent"] = st.session_state.vd_result.get("voltage_drop_percent", 0)
+
+                coc_result = generate_coc_checklist(installation_data)
+                st.session_state.coc_checklist = coc_result
+
+            if "coc_checklist" in st.session_state:
+                coc = st.session_state.coc_checklist
+
+                # Summary metrics
+                coc_cols = st.columns(4)
+                with coc_cols[0]:
+                    st.metric("Passed", coc['pass_count'], delta_color="normal")
+                with coc_cols[1]:
+                    st.metric("Failed", coc['fail_count'], delta_color="inverse" if coc['fail_count'] > 0 else "normal")
+                with coc_cols[2]:
+                    st.metric("Warnings", coc['warning_count'])
+                with coc_cols[3]:
+                    ready_color = "🟢" if coc['ready_for_coc'] else "🔴"
+                    st.metric("Status", f"{ready_color} {'Ready' if coc['ready_for_coc'] else 'Not Ready'}")
+
+                # Detailed checklist
+                for item in coc['checklist']:
+                    status_icons = {"pass": "✅", "fail": "❌", "warning": "⚠️"}
+                    icon = status_icons.get(item['status'], "⚪")
+                    with st.expander(f"{icon} {item['item']}"):
+                        st.write(f"**Requirement:** {item['requirement']}")
+                        st.write(f"**Notes:** {item['notes']}")
+
+                # Overall recommendation
+                if coc['ready_for_coc']:
+                    st.success(f"✅ {coc['overall_status']}")
+                else:
+                    st.error(f"❌ {coc['overall_status']}")
+
+            st.markdown("---")
+
+            # Eskom Application Helper
+            st.markdown("### ⚡ Eskom Supply Application Helper")
+            st.markdown("*Generate pre-populated Eskom application data*")
+
+            eskom_col1, eskom_col2 = st.columns(2)
+
+            with eskom_col1:
+                eskom_app_type = st.selectbox(
+                    "Application Type",
+                    ["new_connection", "upgrade", "temporary"],
+                    format_func=lambda x: x.replace("_", " ").title(),
+                    key="eskom_app_type"
+                )
+
+            with eskom_col2:
+                eskom_province = st.selectbox(
+                    "Province",
+                    ["Gauteng", "KwaZulu-Natal", "Western Cape", "Eastern Cape",
+                     "Mpumalanga", "Limpopo", "North West", "Free State", "Northern Cape"],
+                    key="eskom_province"
+                )
+
+            if st.button("Generate Eskom Application", key="gen_eskom_app"):
+                # Use ADMD data if available, otherwise use circuit info
+                if "admd_result" in st.session_state:
+                    load_data = st.session_state.admd_result
+                else:
+                    load_data = {
+                        "total_admd_kva": st.session_state.circuit_info["total_load_kva"],
+                        "recommended_supply": st.session_state.circuit_info["main_size"],
+                        "supply_type": "Single Phase",
+                    }
+
+                location = {"province": eskom_province}
+                eskom_result = generate_eskom_application(eskom_app_type, load_data, location)
+                st.session_state.eskom_result = eskom_result
+
+            if "eskom_result" in st.session_state:
+                eskom = st.session_state.eskom_result
+
+                # Display key info
+                eskom_cols = st.columns(3)
+                with eskom_cols[0]:
+                    st.metric("Supply Size", eskom['load_details']['supply_size'])
+                with eskom_cols[1]:
+                    st.metric("Supply Type", eskom['load_details']['supply_type'])
+                with eskom_cols[2]:
+                    st.metric("Est. Cost", f"R {eskom['estimated_costs']['estimated_total']:,.0f}")
+
+                with st.expander("Required Documents"):
+                    for doc in eskom['required_documents']:
+                        st.write(f"- {doc}")
+
+                with st.expander("Cost Breakdown"):
+                    for key, value in eskom['estimated_costs'].items():
+                        if isinstance(value, (int, float)) and key != "extension_cost_per_meter":
+                            st.write(f"- {key.replace('_', ' ').title()}: R {value:,.0f}")
+
+                with st.expander("Timeline"):
+                    for key, value in eskom['estimated_timeline'].items():
+                        st.write(f"- {key.replace('_', ' ').title()}: {value}")
+
+                # Download summary
+                summary_text = generate_application_summary_text(eskom)
+                st.download_button(
+                    label="⬇️ Download Eskom Application Summary",
+                    data=summary_text,
+                    file_name=f"eskom_application_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                    mime="text/plain",
+                )
+
+                st.info(f"**Contact:** {eskom['eskom_contact']['region']} - {eskom['eskom_contact']['phone']}")
+
         else:
             st.info("👆 Configure rooms and calculate electrical requirements first.")
 

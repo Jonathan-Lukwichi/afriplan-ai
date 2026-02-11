@@ -18,7 +18,13 @@ from utils.constants import (
     COMMERCIAL_DISTRIBUTION,
     COMMERCIAL_EMERGENCY_POWER,
 )
-from utils.calculations import calculate_commercial_electrical
+from utils.calculations import (
+    calculate_commercial_electrical,
+    calculate_pfc,
+    calculate_energy_efficiency,
+    calculate_fire_detection,
+    check_discrimination,
+)
 from utils.optimizer import generate_quotation_options
 from utils.pdf_generator import generate_generic_electrical_pdf
 
@@ -139,6 +145,143 @@ with tab2:
                     st.write(f"- Labour: R{ep.get('labour', 0):,}")
                     total = sum(c['price'] for c in ep["components"].values()) + ep.get('labour', 0) + ep.get('civil', 0)
                     st.write(f"**Total: R{total:,}**")
+
+        st.markdown("---")
+
+        # Power Factor Correction Calculator
+        st.subheader("⚡ Power Factor Correction (Eskom Compliance)")
+        st.markdown("*Avoid Eskom penalties - maintain PF ≥ 0.90*")
+
+        pfc_col1, pfc_col2 = st.columns(2)
+
+        with pfc_col1:
+            pfc_active_kw = st.number_input(
+                "Active Power (kW)",
+                10.0, 5000.0,
+                float(result['total_kva'] * 0.85),  # Estimate from kVA
+                10.0,
+                key="pfc_kw"
+            )
+            pfc_current = st.slider("Current Power Factor", 0.50, 0.95, 0.75, 0.01, key="pfc_current")
+
+        with pfc_col2:
+            pfc_target = st.slider("Target Power Factor", 0.90, 0.98, 0.95, 0.01, key="pfc_target")
+
+            if st.button("Calculate PFC Bank", key="calc_pfc", type="primary"):
+                pfc_result = calculate_pfc(pfc_active_kw, pfc_current, pfc_target)
+                st.session_state.pfc_result = pfc_result
+
+        if "pfc_result" in st.session_state:
+            pfc = st.session_state.pfc_result
+            if pfc.get("kvar_required", 0) > 0:
+                pfc_cols = st.columns(4)
+                with pfc_cols[0]:
+                    st.metric("kVAr Required", f"{pfc['kvar_required']} kVAr")
+                with pfc_cols[1]:
+                    st.metric("Bank Size", f"{pfc['recommended_bank_size']} kVAr")
+                with pfc_cols[2]:
+                    st.metric("Est. Cost", f"R {pfc['estimated_cost']:,}")
+                with pfc_cols[3]:
+                    st.metric("Annual Savings", f"R {pfc['annual_savings']:,}")
+
+                st.info(f"**Payback Period:** {pfc['payback_months']} months | **kVA Reduction:** {pfc['kva_reduction']} kVA")
+            else:
+                st.success("✅ Power factor already meets target - no correction needed")
+
+        st.markdown("---")
+
+        # Energy Efficiency Rating
+        st.subheader("💡 Energy Efficiency Rating (SANS 10400-XA)")
+        st.markdown("*Lighting Power Density compliance check*")
+
+        ee_col1, ee_col2 = st.columns(2)
+
+        with ee_col1:
+            ee_lighting_kw = st.number_input(
+                "Installed Lighting Load (kW)",
+                0.5, 500.0,
+                float(result['lighting_load']),
+                0.5,
+                key="ee_lighting"
+            )
+
+        with ee_col2:
+            ee_area = st.number_input(
+                "Floor Area (m²)",
+                50, 50000,
+                area_m2,
+                50,
+                key="ee_area"
+            )
+
+        if st.button("Check Energy Efficiency", key="calc_ee"):
+            ee_result = calculate_energy_efficiency(
+                ee_lighting_kw * 1000,  # Convert to watts
+                ee_area,
+                selected_subtype
+            )
+            st.session_state.ee_result = ee_result
+
+        if "ee_result" in st.session_state:
+            ee = st.session_state.ee_result
+            status_colors = {"A": "🟢", "B": "🟢", "C": "🟡", "D": "🟠", "F": "🔴"}
+
+            ee_cols = st.columns(4)
+            with ee_cols[0]:
+                st.metric("LPD Actual", f"{ee['lpd_actual']} W/m²")
+            with ee_cols[1]:
+                st.metric("LPD Limit", f"{ee['lpd_limit']} W/m²")
+            with ee_cols[2]:
+                st.metric("Class", f"{status_colors.get(ee['efficiency_class'], '⚪')} {ee['efficiency_class']}")
+            with ee_cols[3]:
+                st.metric("Compliant", "✅ Yes" if ee['compliant'] else "❌ No")
+
+            if ee['compliant']:
+                st.success(f"✅ {ee['status']}")
+            else:
+                st.error(f"❌ {ee['status']} - Potential annual savings: R{ee['potential_annual_savings']:,}")
+
+        st.markdown("---")
+
+        # Fire Detection Calculator
+        if fire_alarm:
+            st.subheader("🔥 Fire Detection System (SANS 10139)")
+            st.markdown("*Zone calculation and equipment sizing*")
+
+            fd_col1, fd_col2 = st.columns(2)
+
+            with fd_col1:
+                fd_detector_type = st.selectbox("Detector Type", ["smoke", "heat"], key="fd_type")
+
+            with fd_col2:
+                if st.button("Calculate Fire System", key="calc_fd", type="primary"):
+                    fd_result = calculate_fire_detection(
+                        area_m2,
+                        selected_subtype,
+                        floors,
+                        fd_detector_type
+                    )
+                    st.session_state.fd_result = fd_result
+
+            if "fd_result" in st.session_state:
+                fd = st.session_state.fd_result
+
+                fd_cols = st.columns(4)
+                with fd_cols[0]:
+                    st.metric("Zones", fd['num_zones'])
+                with fd_cols[1]:
+                    st.metric("Detectors", fd['total_detectors'])
+                with fd_cols[2]:
+                    st.metric("Call Points", fd['total_call_points'])
+                with fd_cols[3]:
+                    st.metric("Total Cost", f"R {fd['total_cost']:,}")
+
+                st.info(f"**Panel Type:** {fd['panel_type']} | **Sounders:** {fd['total_sounders']}")
+
+                with st.expander("Fire Detection BQ Items"):
+                    for item in fd['bq_items']:
+                        st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+
     else:
         st.info("👆 Configure building parameters and calculate load first.")
 

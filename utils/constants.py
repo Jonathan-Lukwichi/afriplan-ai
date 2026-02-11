@@ -408,7 +408,7 @@ COMMERCIAL_LOAD_FACTORS = {
         "general_lighting": 12,
         "task_lighting": 5,
         "small_power": 25,
-        "hvac": 80,
+        "hvac": 120,  # Updated for SA climate (100-150 W/m² typical)
         "diversity_factor": 0.7,
         "power_factor": 0.9,
     },
@@ -442,7 +442,7 @@ COMMERCIAL_LOAD_FACTORS = {
     "education": {
         "general_lighting": 12,
         "small_power": 15,
-        "hvac": 60,
+        "hvac": 100,  # Updated for SA climate
         "computer_lab": 40,
         "diversity_factor": 0.6,
         "power_factor": 0.85,
@@ -923,4 +923,308 @@ SUPPLIER_PRICES = {
         "quality": 5,
         "lead_time": 5,
     }
+}
+
+# ─────────────────────────────────────────────
+# SANS 10142 COMPLIANCE DATA
+# ─────────────────────────────────────────────
+
+# ADMD Values per NRS 034 (After Diversity Maximum Demand)
+# Used for Eskom supply applications
+ADMD_VALUES = {
+    "rdp_low_cost": {
+        "name": "RDP / Low Cost Housing",
+        "admd_kva": 1.5,
+        "supply": "20A",
+        "description": "Basic electrification with limited points",
+    },
+    "standard_house": {
+        "name": "Standard House",
+        "admd_kva": 3.5,
+        "supply": "60A",
+        "description": "Typical suburban house (100-150m²)",
+    },
+    "medium_house": {
+        "name": "Medium House",
+        "admd_kva": 5.5,
+        "supply": "60A",
+        "description": "Larger house (150-250m²) with pool or multiple AC",
+    },
+    "large_house": {
+        "name": "Large House",
+        "admd_kva": 8.0,
+        "supply": "80A",
+        "description": "Large house (250-400m²) with multiple luxury loads",
+    },
+    "luxury_estate": {
+        "name": "Luxury Estate",
+        "admd_kva": 12.0,
+        "supply": "100A",
+        "description": "Estate/mansion (400m²+) with extensive loads",
+    },
+    "townhouse": {
+        "name": "Townhouse / Cluster",
+        "admd_kva": 4.0,
+        "supply": "60A",
+        "description": "Townhouse or cluster unit",
+    },
+    "flat_apartment": {
+        "name": "Flat / Apartment",
+        "admd_kva": 3.0,
+        "supply": "40A",
+        "description": "Apartment or flat",
+    },
+    "bachelor_flat": {
+        "name": "Bachelor Flat / Studio",
+        "admd_kva": 2.0,
+        "supply": "30A",
+        "description": "Small bachelor or studio unit",
+    },
+}
+
+# Cable Current Ratings per SANS 10142 Annexure B
+# Installation Method C: Clipped direct to surface or on tray
+SANS_10142_CABLE_RATINGS = {
+    "1.5": {
+        "current_rating_single": 17.5,
+        "current_rating_three": 15.5,
+        "max_breaker": 10,
+        "voltage_drop_mv_a_m": 29.0,  # mV/A/m for single phase
+        "typical_use": "Lighting circuits",
+    },
+    "2.5": {
+        "current_rating_single": 24,
+        "current_rating_three": 21,
+        "max_breaker": 16,
+        "voltage_drop_mv_a_m": 18.0,
+        "typical_use": "General power circuits",
+    },
+    "4.0": {
+        "current_rating_single": 32,
+        "current_rating_three": 28,
+        "max_breaker": 25,
+        "voltage_drop_mv_a_m": 11.0,
+        "typical_use": "High load circuits, small appliances",
+    },
+    "6.0": {
+        "current_rating_single": 41,
+        "current_rating_three": 36,
+        "max_breaker": 32,
+        "voltage_drop_mv_a_m": 7.3,
+        "typical_use": "Stoves, geysers, small AC",
+    },
+    "10": {
+        "current_rating_single": 57,
+        "current_rating_three": 50,
+        "max_breaker": 40,
+        "voltage_drop_mv_a_m": 4.4,
+        "typical_use": "Sub-mains, large appliances",
+    },
+    "16": {
+        "current_rating_single": 76,
+        "current_rating_three": 68,
+        "max_breaker": 63,
+        "voltage_drop_mv_a_m": 2.8,
+        "typical_use": "Sub-mains, distribution",
+    },
+    "25": {
+        "current_rating_single": 101,
+        "current_rating_three": 89,
+        "max_breaker": 80,
+        "voltage_drop_mv_a_m": 1.75,
+        "typical_use": "Main supply, larger distribution",
+    },
+    "35": {
+        "current_rating_single": 125,
+        "current_rating_three": 110,
+        "max_breaker": 100,
+        "voltage_drop_mv_a_m": 1.25,
+        "typical_use": "Main supply cables",
+    },
+    "50": {
+        "current_rating_single": 151,
+        "current_rating_three": 134,
+        "max_breaker": 125,
+        "voltage_drop_mv_a_m": 0.93,
+        "typical_use": "Large installations",
+    },
+    "70": {
+        "current_rating_single": 192,
+        "current_rating_three": 171,
+        "max_breaker": 160,
+        "voltage_drop_mv_a_m": 0.63,
+        "typical_use": "Commercial mains",
+    },
+    "95": {
+        "current_rating_single": 232,
+        "current_rating_three": 207,
+        "max_breaker": 200,
+        "voltage_drop_mv_a_m": 0.46,
+        "typical_use": "Large commercial, small industrial",
+    },
+    "120": {
+        "current_rating_single": 269,
+        "current_rating_three": 239,
+        "max_breaker": 250,
+        "voltage_drop_mv_a_m": 0.36,
+        "typical_use": "Industrial mains",
+    },
+    "150": {
+        "current_rating_single": 300,
+        "current_rating_three": 267,
+        "max_breaker": 315,
+        "voltage_drop_mv_a_m": 0.29,
+        "typical_use": "Large industrial",
+    },
+    "185": {
+        "current_rating_single": 341,
+        "current_rating_three": 304,
+        "max_breaker": 400,
+        "voltage_drop_mv_a_m": 0.24,
+        "typical_use": "Major distribution",
+    },
+    "240": {
+        "current_rating_single": 400,
+        "current_rating_three": 356,
+        "max_breaker": 500,
+        "voltage_drop_mv_a_m": 0.19,
+        "typical_use": "Utility connections",
+    },
+}
+
+# Voltage Drop Limits per SANS 10142
+VOLTAGE_DROP_LIMITS = {
+    "sub_mains": 2.5,       # % max for sub-mains
+    "final_circuit": 2.5,   # % max for final circuits
+    "total": 5.0,           # % max total from supply point
+    "motor_starting": 10.0, # % max during motor starting
+}
+
+# Conductor Resistivity (ohm.mm²/m at 20°C)
+CONDUCTOR_RESISTIVITY = {
+    "copper": 0.0178,
+    "aluminium": 0.0286,
+}
+
+# Conductor Temperature Coefficients (per °C)
+CONDUCTOR_TEMP_COEFFICIENT = {
+    "copper": 0.00393,
+    "aluminium": 0.00403,
+}
+
+# Discrimination Ratios for Circuit Breakers
+DISCRIMINATION_RATIOS = {
+    "minimum": 1.6,      # Minimum ratio for discrimination
+    "recommended": 2.0,  # Recommended ratio for reliable discrimination
+}
+
+# Earth Fault Loop Impedance (Zs max) per SANS 10142
+# Maximum earth fault loop impedance for 0.4s disconnection time
+# Based on Type B MCB with 230V supply
+ZS_MAX_VALUES = {
+    6: 7.67,
+    10: 4.60,
+    16: 2.87,
+    20: 2.30,
+    25: 1.84,
+    32: 1.44,
+    40: 1.15,
+    50: 0.92,
+    63: 0.73,
+    80: 0.57,
+    100: 0.46,
+    125: 0.37,
+}
+
+# SANS 10400-XA Lighting Power Density Limits (W/m²)
+# For energy efficiency compliance
+SANS_10400_XA_LPD = {
+    "office": {"limit": 12, "description": "Office buildings"},
+    "retail": {"limit": 18, "description": "Retail and shopping"},
+    "industrial": {"limit": 14, "description": "Industrial and warehouse"},
+    "warehouse": {"limit": 10, "description": "Storage and warehouse"},
+    "residential": {"limit": 10, "description": "Residential buildings"},
+    "healthcare": {"limit": 15, "description": "Healthcare facilities"},
+    "education": {"limit": 12, "description": "Educational buildings"},
+    "hospitality": {"limit": 15, "description": "Hotels and restaurants"},
+}
+
+# Diversity Factors per Load Type (for Max Demand calculations)
+DIVERSITY_FACTORS = {
+    "lighting": 0.9,
+    "small_power": 0.5,
+    "hvac": 0.8,
+    "motors": 0.7,  # Plus largest motor at 1.0
+    "cooking": 0.8,
+    "water_heating": 1.0,  # Controlled loads
+    "lifts": 0.75,
+}
+
+# Power Factor Correction Targets
+POWER_FACTOR_TARGETS = {
+    "eskom_minimum": 0.90,      # Eskom minimum before penalties
+    "recommended": 0.95,        # Recommended target
+    "unity": 0.98,              # Near-unity (over-correction risk)
+}
+
+# Essential Load Categories for Backup Power Sizing (SA Load Shedding)
+ESSENTIAL_LOADS = {
+    "lighting_basic": {"watts": 100, "description": "2-3 LED lights"},
+    "lighting_full": {"watts": 300, "description": "Full house LED lighting"},
+    "fridge": {"watts": 150, "description": "Fridge/freezer (running)"},
+    "tv": {"watts": 100, "description": "LED TV"},
+    "wifi_router": {"watts": 15, "description": "WiFi router"},
+    "phone_charger": {"watts": 20, "description": "Phone/laptop charger"},
+    "alarm": {"watts": 30, "description": "Alarm system"},
+    "gate_motor": {"watts": 300, "description": "Gate motor (operating)"},
+    "garage_door": {"watts": 400, "description": "Garage door motor"},
+    "geyser": {"watts": 2000, "description": "Electric geyser element"},
+    "pool_pump": {"watts": 1100, "description": "Pool pump"},
+    "aircon_small": {"watts": 1200, "description": "Small AC unit"},
+    "aircon_medium": {"watts": 2500, "description": "Medium AC unit"},
+    "microwave": {"watts": 1000, "description": "Microwave oven"},
+    "kettle": {"watts": 2000, "description": "Electric kettle"},
+    "computer": {"watts": 200, "description": "Desktop PC"},
+}
+
+# Fire Detection Zone Limits per SANS 10139
+FIRE_DETECTION_ZONES = {
+    "max_area_per_zone": 2000,  # m² maximum per zone
+    "max_detectors_per_zone": 30,
+    "detector_spacing": {
+        "smoke": 7.5,  # meters between detectors
+        "heat": 5.3,
+    },
+    "detector_coverage": {
+        "smoke": 60,   # m² per detector
+        "heat": 30,
+    },
+}
+
+# Municipal Submission Requirements by City
+MUNICIPAL_REQUIREMENTS = {
+    "cape_town": {
+        "name": "City of Cape Town",
+        "forms": ["Electrical Installation Certificate", "As-Built Drawings", "Load Schedule"],
+        "inspection_fee": 850,
+        "turnaround_days": 14,
+    },
+    "johannesburg": {
+        "name": "City of Johannesburg",
+        "forms": ["COC", "Test Reports", "Single Line Diagram"],
+        "inspection_fee": 750,
+        "turnaround_days": 21,
+    },
+    "ethekwini": {
+        "name": "eThekwini Municipality",
+        "forms": ["COC", "As-Built Drawings", "Compliance Affidavit"],
+        "inspection_fee": 680,
+        "turnaround_days": 14,
+    },
+    "tshwane": {
+        "name": "City of Tshwane",
+        "forms": ["COC", "Load Schedule", "Earth Resistance Certificate"],
+        "inspection_fee": 720,
+        "turnaround_days": 21,
+    },
 }
