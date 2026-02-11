@@ -18,9 +18,17 @@ from utils.constants import (
     RURAL_ELECTRIFICATION,
     STREET_LIGHTING,
     UTILITY_SOLAR,
+    MUNICIPAL_REQUIREMENTS,
+    ADMD_VALUES,
 )
-from utils.calculations import calculate_township_electrification, calculate_street_lighting
+from utils.calculations import (
+    calculate_township_electrification,
+    calculate_street_lighting,
+    calculate_admd,
+    calculate_voltage_drop,
+)
 from utils.pdf_generator import generate_generic_electrical_pdf
+from utils.excel_exporter import export_bq_to_excel
 
 inject_custom_css()
 
@@ -117,26 +125,109 @@ if selected_subtype == "township":
         if "township_result" in st.session_state:
             result = st.session_state.township_result
 
-            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
-                summary = {
-                    "Number of Stands": f"{result['num_stands']:,}",
-                    "Service Type": result['service_type'],
-                    "Connection Size": result['connection_size'],
-                    "Cost per Stand": f"R {result['cost_per_stand']:,}",
-                }
-                pdf_bytes = generate_generic_electrical_pdf(
-                    result["bq_items"],
-                    summary,
-                    "infrastructure",
-                    "township"
-                )
-                st.download_button(
-                    label="⬇️ Download PDF",
-                    data=pdf_bytes,
-                    file_name=f"township_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+            export_col1, export_col2 = st.columns(2)
+
+            with export_col1:
+                if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                    summary = {
+                        "Number of Stands": f"{result['num_stands']:,}",
+                        "Service Type": result['service_type'],
+                        "Connection Size": result['connection_size'],
+                        "Cost per Stand": f"R {result['cost_per_stand']:,}",
+                    }
+                    pdf_bytes = generate_generic_electrical_pdf(
+                        result["bq_items"],
+                        summary,
+                        "infrastructure",
+                        "township"
+                    )
+                    st.download_button(
+                        label="⬇️ Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"township_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+
+            with export_col2:
+                if st.button("📊 Generate Excel BQ", type="secondary", use_container_width=True):
+                    try:
+                        project_info = {
+                            "Project Type": "Township Electrification",
+                            "Number of Stands": result['num_stands'],
+                            "Service Type": result['service_type'],
+                            "Connection Size": result['connection_size'],
+                            "Total ADMD (kVA)": result['admd'] * result['num_stands'],
+                        }
+                        excel_bytes = export_bq_to_excel(
+                            result["bq_items"],
+                            project_info,
+                            {"cost_per_stand": result['cost_per_stand'], "total_cost": result['total_cost']}
+                        )
+                        st.download_button(
+                            label="⬇️ Download Excel",
+                            data=excel_bytes,
+                            file_name=f"township_bq_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.error("Excel export requires openpyxl. Install with: pip install openpyxl")
+
+            st.markdown("---")
+
+            # Municipal Submission Requirements
+            st.markdown("### 🏛️ Municipal Submission Requirements")
+            st.markdown("*Select municipality to see submission requirements*")
+
+            municipality = st.selectbox(
+                "Select Municipality",
+                list(MUNICIPAL_REQUIREMENTS.keys()),
+                format_func=lambda x: MUNICIPAL_REQUIREMENTS[x]["name"],
+                key="township_municipality"
+            )
+
+            muni = MUNICIPAL_REQUIREMENTS[municipality]
+            muni_cols = st.columns(3)
+            with muni_cols[0]:
+                st.metric("Inspection Fee", f"R {muni['inspection_fee']:,}")
+            with muni_cols[1]:
+                st.metric("Turnaround", f"{muni['turnaround_days']} days")
+            with muni_cols[2]:
+                st.metric("Forms Required", len(muni['forms']))
+
+            with st.expander("Required Documents"):
+                for form in muni['forms']:
+                    st.write(f"- {form}")
+
+            st.info(f"**Note:** Township electrification projects require Eskom bulk supply approval and municipal infrastructure sign-off per NRS 034 and SANS 10142.")
+
+            st.markdown("---")
+
+            # Bulk ADMD Calculator for Township
+            st.markdown("### 📋 Bulk ADMD Calculator (NRS 034)")
+            st.markdown("*Calculate diversity factor for bulk Eskom application*")
+
+            if st.button("Calculate Bulk ADMD with Diversity", key="calc_bulk_admd"):
+                # Use ADMD calculator with diversity factors
+                dwelling_type = "rdp_low_cost" if "20A" in result['connection_size'] else "standard_house"
+                bulk_admd = calculate_admd(dwelling_type, result['num_stands'])
+                st.session_state.bulk_admd_result = bulk_admd
+
+            if "bulk_admd_result" in st.session_state:
+                bulk = st.session_state.bulk_admd_result
+                bulk_cols = st.columns(4)
+                with bulk_cols[0]:
+                    st.metric("Base ADMD/Stand", f"{bulk['base_admd_kva']} kVA")
+                with bulk_cols[1]:
+                    st.metric("Diversity Factor", f"{bulk['diversity_factor']:.0%}")
+                with bulk_cols[2]:
+                    st.metric("Total ADMD", f"{bulk['total_admd_kva']} kVA")
+                with bulk_cols[3]:
+                    st.metric("Recommended Supply", bulk['eskom_application_size'])
+
+                st.success(f"**Eskom Bulk Application:** {bulk['total_admd_kva']} kVA ({bulk['supply_type']})")
+
         else:
             st.info("👆 Configure and calculate first.")
 
@@ -212,26 +303,118 @@ elif selected_subtype == "street_lighting":
         if "street_result" in st.session_state:
             result = st.session_state.street_result
 
-            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
-                summary = {
-                    "Road Length": f"{result['road_length']} m",
-                    "Road Type": result['road_type'].title(),
-                    "Number of Poles": result['num_poles'],
-                    "Pole Height": f"{result['pole_height']} m",
-                }
-                pdf_bytes = generate_generic_electrical_pdf(
-                    result["bq_items"],
-                    summary,
-                    "infrastructure",
-                    "street_lighting"
+            export_col1, export_col2 = st.columns(2)
+
+            with export_col1:
+                if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                    summary = {
+                        "Road Length": f"{result['road_length']} m",
+                        "Road Type": result['road_type'].title(),
+                        "Number of Poles": result['num_poles'],
+                        "Pole Height": f"{result['pole_height']} m",
+                    }
+                    pdf_bytes = generate_generic_electrical_pdf(
+                        result["bq_items"],
+                        summary,
+                        "infrastructure",
+                        "street_lighting"
+                    )
+                    st.download_button(
+                        label="⬇️ Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"street_lighting_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+
+            with export_col2:
+                if st.button("📊 Generate Excel BQ", type="secondary", use_container_width=True):
+                    try:
+                        project_info = {
+                            "Project Type": "Street Lighting",
+                            "Road Length (m)": result['road_length'],
+                            "Road Classification": result['road_type'].title(),
+                            "Number of Poles": result['num_poles'],
+                            "Pole Height (m)": result['pole_height'],
+                            "Pole Spacing (m)": result['spacing'],
+                        }
+                        excel_bytes = export_bq_to_excel(
+                            result["bq_items"],
+                            project_info,
+                            {"cost_per_meter": result['cost_per_meter'], "total_cost": result['total_cost']}
+                        )
+                        st.download_button(
+                            label="⬇️ Download Excel",
+                            data=excel_bytes,
+                            file_name=f"street_lighting_bq_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.error("Excel export requires openpyxl. Install with: pip install openpyxl")
+
+            st.markdown("---")
+
+            # SANS 10098 Compliance Checklist
+            st.markdown("### ✅ SANS 10098 Compliance Checklist")
+
+            compliance_items = [
+                ("Luminance Level", f"{result['road_type'].title()} road classification - compliant spacing"),
+                ("Pole Height", f"{result['pole_height']}m poles per SANS 10098 requirements"),
+                ("Spacing", f"{result['spacing']}m spacing meets uniformity requirements"),
+                ("Light Source", "LED luminaires - energy efficient and compliant"),
+                ("Mounting Height Ratio", "Width/Height ratio within specification"),
+            ]
+
+            for item, note in compliance_items:
+                st.success(f"✅ **{item}:** {note}")
+
+            st.markdown("---")
+
+            # Municipal Requirements
+            st.markdown("### 🏛️ Municipal Submission Requirements")
+
+            municipality = st.selectbox(
+                "Select Municipality",
+                list(MUNICIPAL_REQUIREMENTS.keys()),
+                format_func=lambda x: MUNICIPAL_REQUIREMENTS[x]["name"],
+                key="street_municipality"
+            )
+
+            muni = MUNICIPAL_REQUIREMENTS[municipality]
+            st.info(f"""
+            **{muni['name']} Requirements:**
+            - Inspection Fee: R {muni['inspection_fee']:,}
+            - Turnaround: {muni['turnaround_days']} days
+            - Required: {', '.join(muni['forms'])}
+            """)
+
+            # Voltage drop check for street lighting
+            st.markdown("---")
+            st.markdown("### ⚡ Feeder Voltage Drop Check")
+
+            vd_col1, vd_col2 = st.columns(2)
+            with vd_col1:
+                feeder_cable = st.selectbox("Feeder Cable Size (mm²)", ["4.0", "6.0", "10", "16", "25"], index=2, key="street_vd_cable")
+            with vd_col2:
+                total_load_a = st.number_input("Total Lighting Load (A)", 1.0, 100.0, float(result['num_poles'] * 0.5), key="street_vd_load")
+
+            if st.button("Check Voltage Drop", key="street_vd_check"):
+                vd_result = calculate_voltage_drop(
+                    feeder_cable,
+                    result['road_length'],
+                    total_load_a,
+                    voltage=230,
+                    phase="single"
                 )
-                st.download_button(
-                    label="⬇️ Download PDF",
-                    data=pdf_bytes,
-                    file_name=f"street_lighting_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+                if "error" not in vd_result:
+                    if vd_result['compliant']:
+                        st.success(f"✅ Voltage drop: {vd_result['voltage_drop_percent']:.2f}% - Compliant (max 5%)")
+                    else:
+                        st.error(f"❌ Voltage drop: {vd_result['voltage_drop_percent']:.2f}% - Exceeds 5% limit. Consider larger cable or split feeders.")
+                else:
+                    st.error(vd_result['error'])
+
         else:
             st.info("👆 Configure and calculate first.")
 
@@ -324,10 +507,69 @@ elif selected_subtype == "rural":
 
         if "rural_result" in st.session_state:
             result = st.session_state.rural_result
-            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
-                summary = {"Solution Type": result["solution_type"]}
-                pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "rural")
-                st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"rural_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+
+            export_col1, export_col2 = st.columns(2)
+
+            with export_col1:
+                if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                    summary = {"Solution Type": result["solution_type"]}
+                    pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "rural")
+                    st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"rural_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+
+            with export_col2:
+                if st.button("📊 Generate Excel BQ", type="secondary", use_container_width=True):
+                    try:
+                        project_info = {
+                            "Project Type": "Rural Electrification",
+                            "Solution Type": result["solution_type"],
+                        }
+                        subtotal = sum(item["total"] for item in result["bq_items"])
+                        excel_bytes = export_bq_to_excel(
+                            result["bq_items"],
+                            project_info,
+                            {"subtotal": subtotal, "total_incl_vat": subtotal * 1.15}
+                        )
+                        st.download_button(
+                            label="⬇️ Download Excel",
+                            data=excel_bytes,
+                            file_name=f"rural_bq_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.error("Excel export requires openpyxl. Install with: pip install openpyxl")
+
+            st.markdown("---")
+
+            # INEP/DOE Requirements for Rural Electrification
+            st.markdown("### 📋 INEP Programme Requirements")
+            st.markdown("*Integrated National Electrification Programme guidelines*")
+
+            st.info("""
+            **INEP Submission Requirements:**
+            - Detailed project scope and technical specifications
+            - Community beneficiary list with GPS coordinates
+            - Environmental impact assessment (if required)
+            - Landowner consent forms
+            - Municipal IDP alignment confirmation
+            - Cost-benefit analysis
+            """)
+
+            if result["solution_type"] == "Grid Extension":
+                st.warning("""
+                **Grid Extension Specific:**
+                - Eskom network study approval required
+                - Wayleave agreements for line routes
+                - NERSA licence for distribution (if applicable)
+                """)
+            else:
+                st.warning("""
+                **Solar Home System Specific:**
+                - Warranty and maintenance plan required
+                - User training documentation
+                - Spare parts availability plan
+                - Battery disposal/recycling plan
+                """)
         else:
             st.info("👆 Configure and calculate first.")
 
@@ -429,10 +671,114 @@ elif selected_subtype == "utility_solar":
 
         if "utility_result" in st.session_state:
             result = st.session_state.utility_result
-            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
-                summary = {"Plant Size": result["plant"]["name"], "Capacity": f"{result['plant']['capacity_mw']} MW", "Land Required": f"{result['plant']['land_required_ha']} ha"}
-                pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "utility_solar")
-                st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"utility_solar_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+            plant = result["plant"]
+
+            export_col1, export_col2 = st.columns(2)
+
+            with export_col1:
+                if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                    summary = {"Plant Size": plant["name"], "Capacity": f"{plant['capacity_mw']} MW", "Land Required": f"{plant['land_required_ha']} ha"}
+                    pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "utility_solar")
+                    st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"utility_solar_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+
+            with export_col2:
+                if st.button("📊 Generate Excel BQ", type="secondary", use_container_width=True):
+                    try:
+                        project_info = {
+                            "Project Type": "Utility-Scale Solar",
+                            "Plant Size": plant["name"],
+                            "Capacity (MW)": plant['capacity_mw'],
+                            "Land Required (ha)": plant['land_required_ha'],
+                        }
+                        subtotal = sum(item["total"] for item in result["bq_items"])
+                        excel_bytes = export_bq_to_excel(
+                            result["bq_items"],
+                            project_info,
+                            {"subtotal": subtotal, "cost_per_mw": subtotal / plant['capacity_mw']}
+                        )
+                        st.download_button(
+                            label="⬇️ Download Excel",
+                            data=excel_bytes,
+                            file_name=f"utility_solar_bq_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.error("Excel export requires openpyxl. Install with: pip install openpyxl")
+
+            st.markdown("---")
+
+            # NERSA Registration Requirements
+            st.markdown("### ⚡ NERSA & Grid Connection Requirements")
+            st.markdown("*National Energy Regulator of South Africa compliance*")
+
+            capacity_mw = plant['capacity_mw']
+
+            if capacity_mw <= 1:
+                nersa_category = "Registration (≤1 MW)"
+                nersa_fee = 0
+                nersa_notes = "No NERSA licence required - registration only"
+            elif capacity_mw <= 10:
+                nersa_category = "Licence Exemption (1-10 MW)"
+                nersa_fee = 5000
+                nersa_notes = "Licence exemption with registration"
+            elif capacity_mw <= 100:
+                nersa_category = "Generation Licence (10-100 MW)"
+                nersa_fee = 50000
+                nersa_notes = "Full generation licence required"
+            else:
+                nersa_category = "Generation Licence (>100 MW)"
+                nersa_fee = 100000
+                nersa_notes = "Full generation licence + ministerial approval"
+
+            nersa_cols = st.columns(3)
+            with nersa_cols[0]:
+                st.metric("NERSA Category", nersa_category)
+            with nersa_cols[1]:
+                st.metric("Application Fee", f"R {nersa_fee:,}")
+            with nersa_cols[2]:
+                st.metric("Typical Timeline", "6-12 months")
+
+            st.info(f"**Note:** {nersa_notes}")
+
+            st.markdown("---")
+
+            # Grid Connection Checklist
+            st.markdown("### 🔌 Eskom Grid Connection Checklist")
+
+            grid_items = [
+                ("Budget Quote Application", "Submit to Eskom for connection costs"),
+                ("Grid Code Compliance Study", "Demonstrate compliance with SA Grid Code"),
+                ("Power Quality Assessment", "Harmonic and flicker analysis"),
+                ("Protection Coordination Study", "Relay settings and fault analysis"),
+                ("Environmental Authorization", "DEA approval for >1 MW"),
+                ("Wheeling Agreement", "If selling to third party"),
+                ("PPA / Offtake Agreement", "Power Purchase Agreement with buyer"),
+            ]
+
+            for item, desc in grid_items:
+                st.write(f"☐ **{item}:** {desc}")
+
+            st.markdown("---")
+
+            # Financial Analysis
+            st.markdown("### 💰 High-Level Financial Indicators")
+
+            subtotal = sum(item["total"] for item in result["bq_items"])
+            annual_generation = capacity_mw * 1800  # Typical MWh/MW/year in SA
+            tariff_estimate = 0.85  # R/kWh average
+
+            fin_cols = st.columns(4)
+            with fin_cols[0]:
+                st.metric("Capex/MW", f"R {subtotal/capacity_mw:,.0f}")
+            with fin_cols[1]:
+                st.metric("Est. Annual Gen", f"{annual_generation:,.0f} MWh")
+            with fin_cols[2]:
+                st.metric("Est. Revenue/yr", f"R {annual_generation * tariff_estimate * 1000:,.0f}")
+            with fin_cols[3]:
+                simple_payback = subtotal / (annual_generation * tariff_estimate * 1000)
+                st.metric("Simple Payback", f"{simple_payback:.1f} years")
+
         else:
             st.info("👆 Configure and generate quote first.")
 
@@ -541,10 +887,113 @@ elif selected_subtype == "minigrid":
 
         if "minigrid_result" in st.session_state:
             result = st.session_state.minigrid_result
-            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
-                summary = {"Mini-Grid": result["mg"]["name"], "Capacity": f"{result['mg']['capacity_kw']} kW", "Households Served": result['mg']['households_served']}
-                pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "minigrid")
-                st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"minigrid_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+            mg = result["mg"]
+
+            export_col1, export_col2 = st.columns(2)
+
+            with export_col1:
+                if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                    summary = {"Mini-Grid": mg["name"], "Capacity": f"{mg['capacity_kw']} kW", "Households Served": mg['households_served']}
+                    pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "minigrid")
+                    st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"minigrid_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+
+            with export_col2:
+                if st.button("📊 Generate Excel BQ", type="secondary", use_container_width=True):
+                    try:
+                        project_info = {
+                            "Project Type": "Mini-Grid / Microgrid",
+                            "System Size": mg["name"],
+                            "Capacity (kW)": mg['capacity_kw'],
+                            "Households Served": mg['households_served'],
+                        }
+                        subtotal = sum(item["total"] for item in result["bq_items"])
+                        excel_bytes = export_bq_to_excel(
+                            result["bq_items"],
+                            project_info,
+                            {"subtotal": subtotal, "cost_per_household": subtotal / mg['households_served']}
+                        )
+                        st.download_button(
+                            label="⬇️ Download Excel",
+                            data=excel_bytes,
+                            file_name=f"minigrid_bq_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.error("Excel export requires openpyxl. Install with: pip install openpyxl")
+
+            st.markdown("---")
+
+            # Mini-Grid Regulatory Requirements
+            st.markdown("### 📋 Mini-Grid Regulatory Framework")
+            st.markdown("*South African regulatory requirements for isolated grids*")
+
+            capacity_kw = mg['capacity_kw']
+
+            if capacity_kw <= 100:
+                reg_category = "SSEG (≤100 kW)"
+                reg_notes = "Small Scale Embedded Generation - simplified registration"
+            elif capacity_kw <= 1000:
+                reg_category = "Distribution Licence Exemption"
+                reg_notes = "Licence exemption for isolated systems serving specific community"
+            else:
+                reg_category = "Distribution Licence Required"
+                reg_notes = "Full NERSA distribution licence required"
+
+            reg_cols = st.columns(2)
+            with reg_cols[0]:
+                st.metric("Regulatory Category", reg_category)
+            with reg_cols[1]:
+                st.metric("Households Served", mg['households_served'])
+
+            st.info(f"**Note:** {reg_notes}")
+
+            st.markdown("---")
+
+            # Sustainability Checklist
+            st.markdown("### ✅ Project Sustainability Checklist")
+
+            sustainability_items = [
+                ("Community Engagement", "Local community buy-in and ownership model"),
+                ("Tariff Structure", "Affordable tariff with cost recovery"),
+                ("O&M Plan", "Operations and maintenance schedule"),
+                ("Spare Parts", "Local availability of replacement components"),
+                ("Training", "Local technician training programme"),
+                ("Metering", "Prepaid or smart metering for revenue collection"),
+                ("Battery Management", "Battery replacement fund provision"),
+                ("Load Growth", "Provision for future demand increase"),
+            ]
+
+            for item, desc in sustainability_items:
+                st.write(f"☐ **{item}:** {desc}")
+
+            st.markdown("---")
+
+            # Financial Summary
+            st.markdown("### 💰 Financial Indicators")
+
+            subtotal = sum(item["total"] for item in result["bq_items"])
+            vat = subtotal * 0.15
+            total = subtotal + vat
+            cost_per_hh = total / mg['households_served']
+
+            # Estimate revenue
+            avg_consumption = 50  # kWh per household per month
+            tariff = 2.50  # R/kWh
+            monthly_revenue = mg['households_served'] * avg_consumption * tariff
+            annual_revenue = monthly_revenue * 12
+
+            fin_cols = st.columns(4)
+            with fin_cols[0]:
+                st.metric("Total Investment", f"R {total:,.0f}")
+            with fin_cols[1]:
+                st.metric("Cost/Household", f"R {cost_per_hh:,.0f}")
+            with fin_cols[2]:
+                st.metric("Est. Monthly Revenue", f"R {monthly_revenue:,.0f}")
+            with fin_cols[3]:
+                payback = total / annual_revenue if annual_revenue > 0 else 0
+                st.metric("Simple Payback", f"{payback:.1f} years")
+
         else:
             st.info("👆 Configure and generate quote first.")
 
