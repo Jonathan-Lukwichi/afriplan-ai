@@ -4,7 +4,7 @@ All electrical calculation functions for SANS 10142 compliance
 """
 
 import math
-from .constants import (
+from utils.constants import (
     ROOM_ELECTRICAL_REQUIREMENTS,
     COMMERCIAL_LOAD_FACTORS,
     COMMERCIAL_DISTRIBUTION,
@@ -530,7 +530,7 @@ def calculate_industrial_electrical(total_motor_load: float, num_motors: int,
     """
     Calculate industrial electrical requirements for motors, MCC, and distribution.
     """
-    from .constants import INDUSTRIAL_MCC, INDUSTRIAL_MV_EQUIPMENT, MINING_SPECIFIC
+    from utils.constants import INDUSTRIAL_MCC, INDUSTRIAL_MV_EQUIPMENT, MINING_SPECIFIC
 
     bq_items = []
 
