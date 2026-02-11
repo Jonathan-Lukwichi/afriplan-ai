@@ -45,15 +45,35 @@ ELECTRICAL_DB = {
     "db_12_way": {"desc": "DB Board 12-way flush", "unit": "each", "price": 1100},
     "db_16_way": {"desc": "DB Board 16-way flush", "unit": "each", "price": 1500},
     "db_24_way": {"desc": "DB Board 24-way flush", "unit": "each", "price": 2200},
+    "ready_board": {"desc": "Ready board (prepaid meter)", "unit": "each", "price": 1800},
     "main_switch_40a": {"desc": "Main switch 40A DP", "unit": "each", "price": 280},
     "main_switch_60a": {"desc": "Main switch 60A DP", "unit": "each", "price": 350},
     "main_switch_80a": {"desc": "Main switch 80A DP", "unit": "each", "price": 450},
+    "main_switch_100a": {"desc": "Main switch 100A DP", "unit": "each", "price": 550},
     "cb_10a": {"desc": "Circuit breaker 10A SP", "unit": "each", "price": 65},
     "cb_16a": {"desc": "Circuit breaker 16A SP", "unit": "each", "price": 65},
     "cb_20a": {"desc": "Circuit breaker 20A SP", "unit": "each", "price": 70},
     "cb_32a": {"desc": "Circuit breaker 32A SP", "unit": "each", "price": 85},
+    "cb_32a_3p": {"desc": "Circuit breaker 32A 3-pole (stove)", "unit": "each", "price": 280},
+    "cb_40a_3p": {"desc": "Circuit breaker 40A 3-pole", "unit": "each", "price": 320},
+    "elcb_40a": {"desc": "Earth leakage 40A 30mA", "unit": "each", "price": 850},
     "elcb_63a": {"desc": "Earth leakage 63A 30mA", "unit": "each", "price": 950},
+    "elcb_80a": {"desc": "Earth leakage 80A 30mA", "unit": "each", "price": 1150},
+    "rcbo_16a": {"desc": "RCBO 16A 30mA (combined)", "unit": "each", "price": 450},
+    "rcbo_20a": {"desc": "RCBO 20A 30mA (combined)", "unit": "each", "price": 480},
     "surge_arrester": {"desc": "Surge arrester Type 2", "unit": "each", "price": 1800},
+    "surge_arrester_type1_2": {"desc": "Surge arrester Type 1+2", "unit": "each", "price": 3200},
+}
+
+# 1.2.1 Safety Devices
+ELECTRICAL_SAFETY = {
+    "smoke_detector": {"desc": "Smoke detector (battery)", "unit": "each", "price": 180},
+    "smoke_detector_mains": {"desc": "Smoke detector (mains powered)", "unit": "each", "price": 450},
+    "heat_detector": {"desc": "Heat detector (kitchen)", "unit": "each", "price": 280},
+    "co_detector": {"desc": "Carbon monoxide detector", "unit": "each", "price": 350},
+    "fire_blanket": {"desc": "Fire blanket 1.2m x 1.2m", "unit": "each", "price": 180},
+    "emergency_light": {"desc": "Emergency light LED", "unit": "each", "price": 450},
+    "exit_sign": {"desc": "Exit sign illuminated", "unit": "each", "price": 380},
 }
 
 # 1.3 Switches and Sockets
@@ -63,14 +83,23 @@ ELECTRICAL_ACCESSORIES = {
     "switch_3_lever": {"desc": "Light switch 3-lever", "unit": "each", "price": 85},
     "switch_4_lever": {"desc": "Light switch 4-lever", "unit": "each", "price": 105},
     "switch_2_way": {"desc": "2-way switch", "unit": "each", "price": 55},
+    "switch_2_way_intermediate": {"desc": "Intermediate switch (3-way)", "unit": "each", "price": 75},
     "switch_dimmer": {"desc": "Dimmer switch", "unit": "each", "price": 180},
     "socket_single": {"desc": "Socket outlet single", "unit": "each", "price": 55},
     "socket_double": {"desc": "Socket outlet double", "unit": "each", "price": 75},
     "socket_double_switched": {"desc": "Socket double switched", "unit": "each", "price": 95},
     "socket_usb": {"desc": "Socket with USB ports", "unit": "each", "price": 250},
+    "socket_usb_c": {"desc": "Socket with USB-A + USB-C", "unit": "each", "price": 320},
+    "socket_data_combo": {"desc": "Data/USB combo socket", "unit": "each", "price": 380},
+    "socket_shaver": {"desc": "Shaver socket (bathroom)", "unit": "each", "price": 280},
     "isolator_stove": {"desc": "Stove isolator 45A", "unit": "each", "price": 250},
     "isolator_geyser": {"desc": "Geyser isolator 20A", "unit": "each", "price": 120},
-    "isolator_aircon": {"desc": "Aircon isolator 20A", "unit": "each", "price": 150},
+    "isolator_aircon": {"desc": "Aircon isolator 32A", "unit": "each", "price": 180},
+    "isolator_pool_pump": {"desc": "Pool pump isolator IP65", "unit": "each", "price": 220},
+    "geyser_timer": {"desc": "Geyser timer (programmable)", "unit": "each", "price": 450},
+    "gate_motor_point": {"desc": "Gate motor connection point", "unit": "each", "price": 180},
+    "extractor_fan_point": {"desc": "Extractor fan connection point", "unit": "each", "price": 120},
+    "security_light_point": {"desc": "Outdoor security light point", "unit": "each", "price": 150},
 }
 
 # 1.4 Light Fittings
@@ -120,20 +149,144 @@ ELECTRICAL_LABOUR = {
 
 # 1.7 Room Electrical Requirements (SANS 10142 Based)
 ROOM_ELECTRICAL_REQUIREMENTS = {
-    "Living Room": {"lights": 3, "plugs": 6, "special": []},
-    "Bedroom": {"lights": 2, "plugs": 4, "special": ["2-way switch"]},
-    "Main Bedroom": {"lights": 3, "plugs": 6, "special": ["2-way switch", "aircon prep"]},
-    "Kitchen": {"lights": 4, "plugs": 8, "special": ["stove", "extractor"]},
-    "Bathroom": {"lights": 2, "plugs": 1, "special": ["extractor", "shaver socket"]},
-    "Toilet": {"lights": 1, "plugs": 0, "special": []},
-    "Garage": {"lights": 2, "plugs": 4, "special": ["garage door motor"]},
-    "Study": {"lights": 2, "plugs": 6, "special": []},
+    "Living Room": {"lights": 3, "plugs": 6, "special": ["2-way switch"], "usb_sockets": 2},
+    "Bedroom": {"lights": 2, "plugs": 4, "special": ["2-way switch"], "usb_sockets": 1},
+    "Main Bedroom": {"lights": 3, "plugs": 6, "special": ["2-way switch", "aircon prep"], "usb_sockets": 2},
+    "Kitchen": {"lights": 4, "plugs": 8, "special": ["stove circuit", "extractor fan"], "dedicated_circuits": ["stove", "dishwasher"]},
+    "Bathroom": {"lights": 2, "plugs": 1, "special": ["extractor fan", "shaver socket"]},
+    "En-suite": {"lights": 2, "plugs": 1, "special": ["extractor fan", "shaver socket"]},
+    "Toilet": {"lights": 1, "plugs": 0, "special": ["extractor fan"]},
+    "Garage": {"lights": 2, "plugs": 4, "special": ["garage door motor", "workbench circuit"]},
+    "Study": {"lights": 2, "plugs": 6, "special": ["data points"], "usb_sockets": 2},
     "Dining Room": {"lights": 2, "plugs": 4, "special": []},
     "Passage": {"lights": 2, "plugs": 1, "special": ["2-way switch"]},
-    "Patio": {"lights": 2, "plugs": 2, "special": ["weatherproof", "sensor"]},
-    "Laundry": {"lights": 1, "plugs": 3, "special": ["washing machine"]},
+    "Stairway": {"lights": 2, "plugs": 0, "special": ["2-way switch", "intermediate switch"]},
+    "Patio": {"lights": 2, "plugs": 2, "special": ["weatherproof", "sensor light"]},
+    "Laundry": {"lights": 1, "plugs": 3, "special": ["washing machine", "tumble dryer"]},
+    "Scullery": {"lights": 1, "plugs": 3, "special": []},
     "Store Room": {"lights": 1, "plugs": 1, "special": []},
-    "Pool Area": {"lights": 2, "plugs": 1, "special": ["pool pump", "weatherproof"]},
+    "Pool Area": {"lights": 2, "plugs": 1, "special": ["pool pump circuit", "weatherproof"]},
+    "Outdoor": {"lights": 2, "plugs": 1, "special": ["security lights", "gate motor"]},
+}
+
+# 1.8 Dedicated Circuits (Big-ticket items)
+DEDICATED_CIRCUITS = {
+    "stove_circuit_3phase": {
+        "desc": "Stove circuit (3-phase 32A)",
+        "cable": "surfix_6mm_100m",
+        "cable_length": 15,
+        "breaker": "cb_32a_3p",
+        "isolator": "isolator_stove",
+        "labour": 1800,
+        "total_cost": 3800,
+    },
+    "stove_circuit_single": {
+        "desc": "Stove circuit (single-phase 32A)",
+        "cable": "surfix_6mm_100m",
+        "cable_length": 15,
+        "breaker": "cb_32a",
+        "isolator": "isolator_stove",
+        "labour": 1500,
+        "total_cost": 2800,
+    },
+    "geyser_circuit": {
+        "desc": "Geyser circuit (20A + timer)",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 20,
+        "breaker": "cb_20a",
+        "isolator": "isolator_geyser",
+        "timer": "geyser_timer",
+        "labour": 1500,
+        "total_cost": 2600,
+    },
+    "aircon_circuit": {
+        "desc": "Aircon circuit (20A)",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 15,
+        "breaker": "cb_20a",
+        "isolator": "isolator_aircon",
+        "labour": 1200,
+        "total_cost": 2200,
+    },
+    "pool_pump_circuit": {
+        "desc": "Pool pump circuit (16A IP65)",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 25,
+        "breaker": "cb_16a",
+        "isolator": "isolator_pool_pump",
+        "labour": 1400,
+        "total_cost": 2400,
+    },
+    "gate_motor_circuit": {
+        "desc": "Gate motor circuit",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 20,
+        "breaker": "cb_16a",
+        "point": "gate_motor_point",
+        "labour": 1200,
+        "total_cost": 1800,
+    },
+    "dishwasher_circuit": {
+        "desc": "Dishwasher circuit (16A)",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 10,
+        "breaker": "cb_16a",
+        "labour": 800,
+        "total_cost": 1400,
+    },
+    "washing_machine_circuit": {
+        "desc": "Washing machine circuit (16A)",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 10,
+        "breaker": "cb_16a",
+        "labour": 800,
+        "total_cost": 1400,
+    },
+    "tumble_dryer_circuit": {
+        "desc": "Tumble dryer circuit (16A)",
+        "cable": "surfix_2.5mm_100m",
+        "cable_length": 10,
+        "breaker": "cb_16a",
+        "labour": 800,
+        "total_cost": 1400,
+    },
+}
+
+# 1.9 Complexity Factors
+COMPLEXITY_FACTORS = {
+    "new_build_single": {"name": "New Build - Single Storey", "factor": 1.0},
+    "new_build_double": {"name": "New Build - Double Storey", "factor": 1.15},
+    "new_build_complex": {"name": "New Build - Complex Design", "factor": 1.25},
+    "renovation_minor": {"name": "Renovation - Minor", "factor": 1.10},
+    "renovation_major": {"name": "Renovation - Major", "factor": 1.30},
+    "renovation_rewire": {"name": "Full Rewire (existing)", "factor": 1.50},
+    "additions": {"name": "Additions to Existing", "factor": 1.20},
+}
+
+# 1.10 Payment Terms (SA Industry Standard)
+PAYMENT_TERMS = {
+    "standard": {
+        "name": "Standard (40/40/20)",
+        "deposit": 0.40,
+        "progress": 0.40,
+        "completion": 0.20,
+        "description": "40% deposit, 40% on progress, 20% on completion",
+    },
+    "conservative": {
+        "name": "Conservative (50/30/20)",
+        "deposit": 0.50,
+        "progress": 0.30,
+        "completion": 0.20,
+        "description": "50% deposit, 30% on progress, 20% on completion",
+    },
+    "progress_based": {
+        "name": "Progress-Based (30/30/30/10)",
+        "deposit": 0.30,
+        "milestone1": 0.30,
+        "milestone2": 0.30,
+        "completion": 0.10,
+        "description": "30% deposit, 30% per milestone, 10% completion",
+    },
 }
 
 # ─────────────────────────────────────────────

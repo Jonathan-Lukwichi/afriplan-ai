@@ -21,6 +21,10 @@ from utils.constants import (
     RESIDENTIAL_SECURITY_SYSTEMS,
     RESIDENTIAL_SMART_HOME,
     RESIDENTIAL_EV_CHARGING,
+    DEDICATED_CIRCUITS,
+    COMPLEXITY_FACTORS,
+    PAYMENT_TERMS,
+    ELECTRICAL_SAFETY,
 )
 from utils.calculations import (
     calculate_electrical_requirements,
@@ -77,6 +81,37 @@ with st.sidebar:
             "4-Bedroom House",
             "5-Bedroom Villa",
         ])
+
+        st.markdown("---")
+        st.markdown("### Project Settings")
+
+        # Complexity factor
+        complexity_options = {v["name"]: k for k, v in COMPLEXITY_FACTORS.items()}
+        complexity_label = st.selectbox(
+            "Project Complexity",
+            list(complexity_options.keys()),
+            help="Affects labour costs based on project difficulty"
+        )
+        st.session_state.complexity_factor = COMPLEXITY_FACTORS[complexity_options[complexity_label]]["factor"]
+
+        # Markup/margin slider
+        st.session_state.markup_percent = st.slider(
+            "Profit Margin %",
+            min_value=10,
+            max_value=50,
+            value=25,
+            step=5,
+            help="Adjust contractor profit margin"
+        )
+
+        # Payment terms
+        payment_options = {v["name"]: k for k, v in PAYMENT_TERMS.items()}
+        payment_label = st.selectbox(
+            "Payment Terms",
+            list(payment_options.keys()),
+            help="Standard SA industry: 40/40/20"
+        )
+        st.session_state.payment_terms = PAYMENT_TERMS[payment_options[payment_label]]
 
 # Initialize session state
 if "residential_rooms" not in st.session_state:
@@ -183,12 +218,105 @@ if selected_subtype in ["new_house", "renovation", "coc_compliance"]:
                 })
                 st.rerun()
 
+        st.markdown("---")
+
+        # Dedicated Circuits Section
+        st.markdown("### Dedicated Circuits")
+        st.caption("Select big-ticket dedicated circuits (auto-populated based on rooms)")
+
+        # Auto-detect from rooms
+        has_kitchen = any(r.get("type") == "Kitchen" for r in default_rooms)
+        has_laundry = any(r.get("type") == "Laundry" for r in default_rooms)
+        has_pool = any("pool" in r.get("type", "").lower() or "pool" in r.get("name", "").lower() for r in default_rooms)
+        has_outdoor = any(r.get("type") in ["Patio", "Outdoor", "Garage"] for r in default_rooms)
+
+        ded_col1, ded_col2 = st.columns(2)
+
+        with ded_col1:
+            include_stove = st.checkbox("Stove Circuit (3-phase 32A)", value=has_kitchen, help="R3,800 - Dedicated circuit for electric stove")
+            include_geyser = st.checkbox("Geyser Circuit + Timer", value=True, help="R2,600 - Includes programmable timer")
+            include_aircon = st.checkbox("Aircon Circuits", value=False, help="R2,200 per unit")
+            if include_aircon:
+                num_aircons = st.number_input("Number of Aircons", 1, 5, 1, key="num_aircons")
+            else:
+                num_aircons = 0
+
+        with ded_col2:
+            include_pool = st.checkbox("Pool Pump Circuit", value=has_pool, help="R2,400 - IP65 rated")
+            include_gate = st.checkbox("Gate Motor Circuit", value=has_outdoor, help="R1,800")
+            include_dishwasher = st.checkbox("Dishwasher Circuit", value=has_kitchen, help="R1,400")
+            include_washer = st.checkbox("Washing Machine Circuit", value=has_laundry, help="R1,400")
+
+        # Safety devices
+        st.markdown("### Safety Devices")
+        safety_col1, safety_col2 = st.columns(2)
+        with safety_col1:
+            include_smoke = st.checkbox("Smoke Detectors", value=True, help="SANS 10400 requirement")
+            if include_smoke:
+                num_smoke = st.number_input("Number of Detectors", 1, 10, max(2, len([r for r in default_rooms if r.get("type") in ["Bedroom", "Main Bedroom", "Passage"]])), key="num_smoke")
+            else:
+                num_smoke = 0
+        with safety_col2:
+            include_surge = st.checkbox("Surge Protection (Type 1+2)", value=True, help="R3,200 - Protects against lightning")
+
+        # Store dedicated circuits in session
+        st.session_state.dedicated_circuits = {
+            "stove": include_stove,
+            "geyser": include_geyser,
+            "aircon": include_aircon,
+            "num_aircons": num_aircons,
+            "pool_pump": include_pool,
+            "gate_motor": include_gate,
+            "dishwasher": include_dishwasher,
+            "washing_machine": include_washer,
+            "smoke_detectors": include_smoke,
+            "num_smoke": num_smoke,
+            "surge_protection": include_surge,
+        }
+
+        st.markdown("---")
+
         # Calculate button
         if st.button("🔌 Calculate Electrical Requirements", type="primary", use_container_width=True):
             if default_rooms:
                 st.session_state.elec_req = calculate_electrical_requirements(default_rooms)
                 st.session_state.circuit_info = calculate_load_and_circuits(st.session_state.elec_req)
-                st.session_state.bq_items = calculate_electrical_bq(st.session_state.elec_req, st.session_state.circuit_info)
+
+                # Add dedicated circuits to BQ
+                base_bq = calculate_electrical_bq(st.session_state.elec_req, st.session_state.circuit_info)
+                dedicated_bq = []
+
+                ded = st.session_state.dedicated_circuits
+                if ded.get("stove"):
+                    circuit = DEDICATED_CIRCUITS["stove_circuit_3phase"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": 1, "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"], "category": "Dedicated Circuits"})
+                if ded.get("geyser"):
+                    circuit = DEDICATED_CIRCUITS["geyser_circuit"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": 1, "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"], "category": "Dedicated Circuits"})
+                if ded.get("aircon") and ded.get("num_aircons", 0) > 0:
+                    circuit = DEDICATED_CIRCUITS["aircon_circuit"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": ded["num_aircons"], "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"] * ded["num_aircons"], "category": "Dedicated Circuits"})
+                if ded.get("pool_pump"):
+                    circuit = DEDICATED_CIRCUITS["pool_pump_circuit"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": 1, "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"], "category": "Dedicated Circuits"})
+                if ded.get("gate_motor"):
+                    circuit = DEDICATED_CIRCUITS["gate_motor_circuit"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": 1, "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"], "category": "Dedicated Circuits"})
+                if ded.get("dishwasher"):
+                    circuit = DEDICATED_CIRCUITS["dishwasher_circuit"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": 1, "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"], "category": "Dedicated Circuits"})
+                if ded.get("washing_machine"):
+                    circuit = DEDICATED_CIRCUITS["washing_machine_circuit"]
+                    dedicated_bq.append({"item": circuit["desc"], "qty": 1, "unit": "each", "rate": circuit["total_cost"], "total": circuit["total_cost"], "category": "Dedicated Circuits"})
+                if ded.get("smoke_detectors") and ded.get("num_smoke", 0) > 0:
+                    smoke = ELECTRICAL_SAFETY["smoke_detector_mains"]
+                    dedicated_bq.append({"item": smoke["desc"], "qty": ded["num_smoke"], "unit": "each", "rate": smoke["price"], "total": smoke["price"] * ded["num_smoke"], "category": "Safety Devices"})
+                if ded.get("surge_protection"):
+                    from utils.constants import ELECTRICAL_DB
+                    surge = ELECTRICAL_DB["surge_arrester_type1_2"]
+                    dedicated_bq.append({"item": surge["desc"], "qty": 1, "unit": "each", "rate": surge["price"], "total": surge["price"], "category": "Safety Devices"})
+
+                st.session_state.bq_items = base_bq + dedicated_bq
                 st.success("✅ Electrical requirements calculated! Go to the Electrical tab.")
 
     with tab2:
@@ -411,18 +539,56 @@ if selected_subtype in ["new_house", "renovation", "coc_compliance"]:
             elec_req = st.session_state.elec_req
             circuit_info = st.session_state.circuit_info
 
-            # BQ Summary
-            subtotal = sum(item["total"] for item in bq_items)
-            vat = subtotal * 0.15
-            total = subtotal + vat
+            # Get pricing adjustments from sidebar
+            complexity_factor = st.session_state.get("complexity_factor", 1.0)
+            markup_percent = st.session_state.get("markup_percent", 25) / 100
+            payment_terms = st.session_state.get("payment_terms", PAYMENT_TERMS["standard"])
 
-            col1, col2, col3 = st.columns(3)
+            # BQ Summary with complexity and markup
+            base_subtotal = sum(item["total"] for item in bq_items)
+            adjusted_subtotal = base_subtotal * complexity_factor
+            markup_amount = adjusted_subtotal * markup_percent
+            subtotal_with_markup = adjusted_subtotal + markup_amount
+            vat = subtotal_with_markup * 0.15
+            total = subtotal_with_markup + vat
+
+            # Show pricing breakdown
+            st.markdown("### Pricing Summary")
+            price_col1, price_col2 = st.columns(2)
+
+            with price_col1:
+                st.markdown(f"""
+                | Item | Amount |
+                |------|--------|
+                | Base Material & Labour | R {base_subtotal:,.0f} |
+                | Complexity Factor ({complexity_factor:.0%}) | R {base_subtotal * (complexity_factor - 1):,.0f} |
+                | **Adjusted Subtotal** | **R {adjusted_subtotal:,.0f}** |
+                | Profit Margin ({markup_percent:.0%}) | R {markup_amount:,.0f} |
+                """)
+
+            with price_col2:
+                st.markdown(f"""
+                | Item | Amount |
+                |------|--------|
+                | Subtotal (excl VAT) | R {subtotal_with_markup:,.0f} |
+                | VAT (15%) | R {vat:,.0f} |
+                | **TOTAL (incl VAT)** | **R {total:,.0f}** |
+                """)
+
+            # Key metrics
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Subtotal (excl VAT)", f"R {subtotal:,.0f}")
+                st.metric("Base Cost", f"R {base_subtotal:,.0f}")
             with col2:
-                st.metric("VAT (15%)", f"R {vat:,.0f}")
+                st.metric("Your Profit", f"R {markup_amount:,.0f}", delta=f"{markup_percent:.0%}")
             with col3:
-                st.metric("TOTAL (incl VAT)", f"R {total:,.0f}")
+                st.metric("TOTAL", f"R {total:,.0f}")
+            with col4:
+                deposit = total * payment_terms["deposit"]
+                st.metric("Deposit Required", f"R {deposit:,.0f}", delta=f"{payment_terms['deposit']:.0%}")
+
+            # Payment terms info
+            st.info(f"**Payment Terms:** {payment_terms['description']}")
 
             st.markdown("---")
 

@@ -155,7 +155,7 @@ def generate_electrical_pdf(elec_req: dict, circuit_info: dict, bq_items: list,
         "- COC Certificate included upon completion\n"
         "- Excludes builders work (chasing, making good)\n"
         "- SANS 10142 compliant installation\n"
-        "- 50% deposit required to commence work"
+        "- Payment: 40% deposit, 40% on progress, 20% on completion"
     )
 
     # Footer
@@ -265,7 +265,7 @@ def generate_generic_electrical_pdf(bq_items: list, summary: dict, tier: str, su
         "- Quote valid for 30 days from date of issue\n"
         "- Prices based on current SA market rates\n"
         "- All work compliant with applicable SANS standards\n"
-        "- 50% deposit required to commence work"
+        "- Payment: 40% deposit, 40% on progress, 20% on completion"
     )
 
     # Footer
