@@ -52,4 +52,5 @@ secrets.json
 credentials.json
 *.pem
 *.key
+.streamlit/secrets.toml
 nul

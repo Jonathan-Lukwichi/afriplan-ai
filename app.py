@@ -21,6 +21,11 @@ welcome = st.Page(
     default=True
 )
 
+smart_upload = st.Page(
+    "pages/5_Smart_Upload.py",
+    title="Smart Upload"
+)
+
 residential = st.Page(
     "pages/1_Residential.py",
     title="Residential"
@@ -43,7 +48,7 @@ infrastructure = st.Page(
 
 # Create navigation with all pages
 pg = st.navigation(
-    [welcome, residential, commercial, industrial, infrastructure],
+    [welcome, smart_upload, residential, commercial, industrial, infrastructure],
     position="sidebar"
 )
 
