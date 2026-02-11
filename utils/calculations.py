@@ -511,3 +511,199 @@ def calculate_street_lighting(road_length_m: float, road_type: str = "residentia
         "cost_per_meter": round(total_cost / road_length_m, 2),
         "bq_items": bq_items,
     }
+
+
+def calculate_industrial_electrical(total_motor_load: float, num_motors: int,
+                                     hazardous_area: bool = False, mv_required: bool = False,
+                                     project_type: str = "manufacturing") -> dict:
+    """
+    Calculate industrial electrical requirements for motors, MCC, and distribution.
+    """
+    from .constants import INDUSTRIAL_MCC, INDUSTRIAL_MV_EQUIPMENT, MINING_SPECIFIC
+
+    bq_items = []
+
+    # Determine MCC type based on hazardous area
+    mcc_type = "mining_mcc" if hazardous_area else "standard_mcc"
+    mcc = INDUSTRIAL_MCC[mcc_type]
+
+    # MCC Panel base cost
+    mcc_base_cost = sum(c['price'] for c in mcc["components"].values())
+    bq_items.append({
+        "category": "Motor Control Centre",
+        "item": mcc["name"],
+        "qty": 1,
+        "unit": "each",
+        "rate": mcc_base_cost,
+        "total": mcc_base_cost
+    })
+
+    # Motor starters based on configuration
+    if hazardous_area:
+        # Flameproof starters for hazardous areas
+        avg_motor_kw = total_motor_load / num_motors if num_motors > 0 else 10
+        if avg_motor_kw <= 7.5:
+            starter_price = 85000  # Flameproof DOL
+            starter_type = "Flameproof DOL Starter"
+        elif avg_motor_kw <= 45:
+            starter_price = 125000  # Flameproof Star-Delta
+            starter_type = "Flameproof Star-Delta Starter"
+        else:
+            starter_price = 225000  # Flameproof VSD
+            starter_type = "Flameproof VSD Starter"
+    else:
+        avg_motor_kw = total_motor_load / num_motors if num_motors > 0 else 10
+        if avg_motor_kw <= 7.5:
+            starter_price = 12500  # DOL
+            starter_type = "DOL Starter Bucket"
+        elif avg_motor_kw <= 45:
+            starter_price = 25000  # Star-Delta
+            starter_type = "Star-Delta Starter Bucket"
+        else:
+            starter_price = 85000  # VSD
+            starter_type = "VSD Starter Bucket"
+
+    bq_items.append({
+        "category": "Motor Starters",
+        "item": starter_type,
+        "qty": num_motors,
+        "unit": "each",
+        "rate": starter_price,
+        "total": num_motors * starter_price
+    })
+
+    # Cables - estimate based on motor sizes
+    avg_motor_kw = total_motor_load / num_motors if num_motors > 0 else 10
+    if avg_motor_kw <= 7.5:
+        cable_size = "6mm²"
+        cable_price_per_m = 85
+    elif avg_motor_kw <= 45:
+        cable_size = "35mm²"
+        cable_price_per_m = 250
+    else:
+        cable_size = "120mm²"
+        cable_price_per_m = 650
+
+    cable_length = num_motors * 30  # Estimate 30m per motor average
+    bq_items.append({
+        "category": "Cables",
+        "item": f"Motor Power Cable {cable_size}",
+        "qty": cable_length,
+        "unit": "meters",
+        "rate": cable_price_per_m,
+        "total": cable_length * cable_price_per_m
+    })
+
+    # Control cables
+    control_cable_length = num_motors * 50
+    bq_items.append({
+        "category": "Cables",
+        "item": "Control Cable 1.5mm² Screened",
+        "qty": control_cable_length,
+        "unit": "meters",
+        "rate": 35,
+        "total": control_cable_length * 35
+    })
+
+    # MV Equipment if required
+    if mv_required:
+        # VCB Panel
+        bq_items.append({
+            "category": "MV Equipment",
+            "item": "11kV VCB Panel",
+            "qty": 1,
+            "unit": "each",
+            "rate": 385000,
+            "total": 385000
+        })
+
+        # Transformer sizing based on load
+        load_kva = total_motor_load / 0.85  # Power factor
+        if load_kva <= 80:
+            tx_kva, tx_price = 100, 125000
+        elif load_kva <= 250:
+            tx_kva, tx_price = 315, 245000
+        elif load_kva <= 400:
+            tx_kva, tx_price = 500, 325000
+        else:
+            tx_kva, tx_price = 1000, 545000
+
+        bq_items.append({
+            "category": "MV Equipment",
+            "item": f"Transformer {tx_kva}kVA 11kV/400V",
+            "qty": 1,
+            "unit": "each",
+            "rate": tx_price,
+            "total": tx_price
+        })
+
+        # MV Cables
+        bq_items.append({
+            "category": "MV Equipment",
+            "item": "11kV XLPE Cable",
+            "qty": 50,
+            "unit": "meters",
+            "rate": 1850,
+            "total": 50 * 1850
+        })
+
+        # Protection relay
+        bq_items.append({
+            "category": "MV Equipment",
+            "item": "Numerical Protection Relay",
+            "qty": 1,
+            "unit": "each",
+            "rate": 85000,
+            "total": 85000
+        })
+
+    # Mining-specific equipment
+    if project_type in ["mining_surface", "mining_underground"]:
+        mine_type = "underground" if project_type == "mining_underground" else "surface"
+        equipment = MINING_SPECIFIC.get(mine_type, {})
+        for key, item in equipment.items():
+            bq_items.append({
+                "category": "Mining Equipment",
+                "item": item['item'],
+                "qty": 1,
+                "unit": "each",
+                "rate": item['price'],
+                "total": item['price']
+            })
+
+    # Power Factor Correction
+    pfc_kvar = total_motor_load * 0.4  # Estimate 0.4 kVAr per kW
+    pfc_price = int(pfc_kvar / 50) * 45000  # R45,000 per 50 kVAr
+    if pfc_price > 0:
+        bq_items.append({
+            "category": "Power Factor Correction",
+            "item": f"PFC Panel {int(pfc_kvar)} kVAr",
+            "qty": 1,
+            "unit": "each",
+            "rate": pfc_price,
+            "total": pfc_price
+        })
+
+    # Labour
+    labour_cost = mcc["testing_commissioning"] + (num_motors * mcc["labour_per_bucket"])
+    bq_items.append({
+        "category": "Labour",
+        "item": "Installation & Commissioning",
+        "qty": 1,
+        "unit": "lump sum",
+        "rate": labour_cost,
+        "total": labour_cost
+    })
+
+    # Calculate totals
+    subtotal = sum(item["total"] for item in bq_items)
+
+    return {
+        "total_motor_load": total_motor_load,
+        "num_motors": num_motors,
+        "hazardous_area": hazardous_area,
+        "mv_required": mv_required,
+        "mcc_type": mcc_type,
+        "subtotal": subtotal,
+        "bq_items": bq_items,
+    }

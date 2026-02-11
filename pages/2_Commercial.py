@@ -143,12 +143,13 @@ with tab2:
         st.info("👆 Configure building parameters and calculate load first.")
 
 with tab3:
-    st.markdown('<p class="section-title">Bill of Quantities</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">Bill of Quantities & Smart Cost Optimizer</p>', unsafe_allow_html=True)
 
     if "commercial_result" in st.session_state:
         result = st.session_state.commercial_result
         bq_items = result["bq_items"]
 
+        # BQ Summary
         subtotal = sum(item["total"] for item in bq_items)
         vat = subtotal * 0.15
         total = subtotal + vat
@@ -163,9 +164,59 @@ with tab3:
 
         st.markdown("---")
 
+        # BQ Table by category
         st.subheader("Bill of Quantities")
+        categories = {}
         for item in bq_items:
-            st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+            cat = item["category"]
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(item)
+
+        for cat_name, items in categories.items():
+            cat_total = sum(i['total'] for i in items)
+            with st.expander(f"**{cat_name}** - R {cat_total:,.0f}"):
+                for item in items:
+                    st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+
+        st.markdown("---")
+
+        # Smart Cost Optimizer
+        st.subheader("🎯 Smart Cost Optimizer")
+        st.markdown("Generate 4 quotation options with different strategies:")
+
+        if st.button("Generate Quotation Options", type="primary"):
+            options = generate_quotation_options(bq_items, result, result)
+            st.session_state.commercial_quote_options = options
+
+        if "commercial_quote_options" in st.session_state and st.session_state.commercial_quote_options:
+            options = st.session_state.commercial_quote_options
+            option_icons = ["💰", "⭐", "💎", "🏆"]
+
+            cols = st.columns(4)
+            for idx, (col, option) in enumerate(zip(cols, options)):
+                with col:
+                    border_color = "#22C55E" if option["recommended"] else option["color"]
+                    bg_color = "rgba(34, 197, 94, 0.1)" if option["recommended"] else "rgba(30, 41, 59, 0.5)"
+                    rec_badge = '<span style="background: #22C55E; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">RECOMMENDED</span>' if option["recommended"] else ""
+
+                    html_content = f"""<div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px; background: {bg_color};">
+<div style="text-align: center; font-size: 24px;">{option_icons[idx]}</div>
+<div style="text-align: center; font-weight: bold; color: {option['color']}; margin: 5px 0;">{option['name']}</div>
+<div style="text-align: center; font-size: 11px; color: #94A3B8;">{option['strategy']}</div>
+{rec_badge}
+<hr style="border-color: #334155; margin: 10px 0;">
+<div style="font-size: 20px; font-weight: bold; text-align: center; color: #00D4FF;">R {option['selling_price']:,.0f}</div>
+<div style="font-size: 11px; text-align: center; color: #64748B;">Selling Price</div>
+<div style="margin-top: 10px; font-size: 12px;">
+<div>Base Cost: R {option['base_cost']:,.0f}</div>
+<div>Markup: {option['markup_percent']:.0f}%</div>
+<div>Profit: R {option['profit']:,.0f}</div>
+<div>Margin: {option['profit_margin']:.1f}%</div>
+<div>Quality: {'⭐' * int(option['quality_score'])}</div>
+</div>
+</div>"""
+                    st.markdown(html_content, unsafe_allow_html=True)
     else:
         st.info("👆 Configure building parameters and calculate load first.")
 

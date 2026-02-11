@@ -19,6 +19,8 @@ from utils.constants import (
     INDUSTRIAL_MV_EQUIPMENT,
     MINING_SPECIFIC,
 )
+from utils.calculations import calculate_industrial_electrical
+from utils.optimizer import generate_quotation_options
 from utils.pdf_generator import generate_generic_electrical_pdf
 
 inject_custom_css()
@@ -147,81 +149,22 @@ with tab3:
             st.write(f"- {item['item']}: R{item['price']:,}")
 
 with tab4:
-    st.markdown('<p class="section-title">Industrial Quotation</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">Industrial Quotation & Smart Cost Optimizer</p>', unsafe_allow_html=True)
 
     config = st.session_state.get("industrial_config", {})
 
     if config:
-        # Generate BQ items based on configuration
-        bq_items = []
-
-        # MCC
+        # Use the proper calculation function
         hazardous = config.get("hazardous_area", False)
-        mcc_type = "mining_mcc" if hazardous else "standard_mcc"
-        mcc = INDUSTRIAL_MCC[mcc_type]
-
-        bq_items.append({
-            "category": "Motor Control Centre",
-            "item": mcc["name"],
-            "qty": 1,
-            "unit": "each",
-            "rate": sum(c['price'] for c in mcc["components"].values()),
-            "total": sum(c['price'] for c in mcc["components"].values())
-        })
-
-        # Motor starters (estimate)
-        num_motors = config.get("num_motors", 5)
-        starter_price = 25000 if not hazardous else 85000
-        bq_items.append({
-            "category": "Motor Starters",
-            "item": "Motor Starter Buckets",
-            "qty": num_motors,
-            "unit": "each",
-            "rate": starter_price,
-            "total": num_motors * starter_price
-        })
-
-        # MV Equipment if required
-        if config.get("mv_required", False):
-            bq_items.append({
-                "category": "MV Equipment",
-                "item": "11kV VCB Panel",
-                "qty": 1,
-                "unit": "each",
-                "rate": 385000,
-                "total": 385000
-            })
-
-            # Estimate transformer size
-            load_kw = config.get("total_motor_load", 100)
-            if load_kw <= 80:
-                tx_kva, tx_price = 100, 125000
-            elif load_kw <= 250:
-                tx_kva, tx_price = 315, 245000
-            elif load_kw <= 400:
-                tx_kva, tx_price = 500, 325000
-            else:
-                tx_kva, tx_price = 1000, 545000
-
-            bq_items.append({
-                "category": "MV Equipment",
-                "item": f"Transformer {tx_kva}kVA 11kV/400V",
-                "qty": 1,
-                "unit": "each",
-                "rate": tx_price,
-                "total": tx_price
-            })
-
-        # Labour
-        bq_items.append({
-            "category": "Labour",
-            "item": "Installation & Commissioning",
-            "qty": 1,
-            "unit": "lump sum",
-            "rate": mcc["testing_commissioning"] + (num_motors * mcc["labour_per_bucket"]),
-            "total": mcc["testing_commissioning"] + (num_motors * mcc["labour_per_bucket"])
-        })
-
+        result = calculate_industrial_electrical(
+            config.get("total_motor_load", 100),
+            config.get("num_motors", 5),
+            hazardous,
+            config.get("mv_required", False),
+            selected_subtype
+        )
+        bq_items = result["bq_items"]
+        st.session_state.industrial_result = result
         st.session_state.industrial_bq = bq_items
 
         # Display totals
@@ -239,18 +182,69 @@ with tab4:
 
         st.markdown("---")
 
+        # BQ by category
         st.subheader("Bill of Quantities")
+        categories = {}
         for item in bq_items:
-            st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+            cat = item["category"]
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(item)
+
+        for cat_name, items in categories.items():
+            cat_total = sum(i['total'] for i in items)
+            with st.expander(f"**{cat_name}** - R {cat_total:,.0f}"):
+                for item in items:
+                    st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
 
         st.markdown("---")
 
-        if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+        # Smart Cost Optimizer
+        st.subheader("🎯 Smart Cost Optimizer")
+        st.markdown("Generate 4 quotation options with different strategies:")
+
+        if st.button("Generate Quotation Options", type="primary"):
+            options = generate_quotation_options(bq_items, result, result)
+            st.session_state.industrial_quote_options = options
+
+        if "industrial_quote_options" in st.session_state and st.session_state.industrial_quote_options:
+            options = st.session_state.industrial_quote_options
+            option_icons = ["💰", "⭐", "💎", "🏆"]
+
+            cols = st.columns(4)
+            for idx, (col, option) in enumerate(zip(cols, options)):
+                with col:
+                    border_color = "#22C55E" if option["recommended"] else option["color"]
+                    bg_color = "rgba(34, 197, 94, 0.1)" if option["recommended"] else "rgba(30, 41, 59, 0.5)"
+                    rec_badge = '<span style="background: #22C55E; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">RECOMMENDED</span>' if option["recommended"] else ""
+
+                    html_content = f"""<div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px; background: {bg_color};">
+<div style="text-align: center; font-size: 24px;">{option_icons[idx]}</div>
+<div style="text-align: center; font-weight: bold; color: {option['color']}; margin: 5px 0;">{option['name']}</div>
+<div style="text-align: center; font-size: 11px; color: #94A3B8;">{option['strategy']}</div>
+{rec_badge}
+<hr style="border-color: #334155; margin: 10px 0;">
+<div style="font-size: 20px; font-weight: bold; text-align: center; color: #00D4FF;">R {option['selling_price']:,.0f}</div>
+<div style="font-size: 11px; text-align: center; color: #64748B;">Selling Price</div>
+<div style="margin-top: 10px; font-size: 12px;">
+<div>Base Cost: R {option['base_cost']:,.0f}</div>
+<div>Markup: {option['markup_percent']:.0f}%</div>
+<div>Profit: R {option['profit']:,.0f}</div>
+<div>Margin: {option['profit_margin']:.1f}%</div>
+<div>Quality: {'⭐' * int(option['quality_score'])}</div>
+</div>
+</div>"""
+                    st.markdown(html_content, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True, key="pdf_btn"):
             summary = {
                 "Project Type": selected_subtype.replace('_', ' ').title(),
                 "Motor Load": f"{config.get('total_motor_load', 0)} kW",
                 "Number of Motors": config.get('num_motors', 0),
                 "Hazardous Area": "Yes" if hazardous else "No",
+                "MV Required": "Yes" if config.get('mv_required', False) else "No",
             }
             pdf_bytes = generate_generic_electrical_pdf(
                 bq_items,

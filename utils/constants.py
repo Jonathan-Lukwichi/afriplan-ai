@@ -313,6 +313,59 @@ RESIDENTIAL_SECURITY_SYSTEMS = {
     },
 }
 
+# Smart Home Automation Systems
+RESIDENTIAL_SMART_HOME = {
+    "basic": {
+        "name": "Basic Smart Home",
+        "description": "Essential smart home automation for lighting and security",
+        "components": {
+            "hub": {"item": "Smart Home Hub (WiFi/Zigbee)", "qty": 1, "price": 2500},
+            "smart_switches": {"item": "Smart Light Switch", "qty": 6, "price": 450},
+            "smart_plugs": {"item": "Smart Plug Socket", "qty": 4, "price": 350},
+            "motion_sensors": {"item": "Smart Motion Sensor", "qty": 3, "price": 380},
+            "door_sensors": {"item": "Smart Door/Window Sensor", "qty": 4, "price": 280},
+        },
+        "labour": {"installation": 3500, "configuration": 1500},
+    },
+    "standard": {
+        "name": "Standard Smart Home",
+        "description": "Comprehensive automation with climate and security control",
+        "components": {
+            "hub": {"item": "Smart Home Hub Pro (Matter)", "qty": 1, "price": 4500},
+            "smart_switches": {"item": "Smart Light Switch", "qty": 12, "price": 450},
+            "smart_dimmers": {"item": "Smart Dimmer Switch", "qty": 4, "price": 650},
+            "smart_plugs": {"item": "Smart Plug Socket", "qty": 8, "price": 350},
+            "motion_sensors": {"item": "Smart Motion Sensor", "qty": 6, "price": 380},
+            "door_sensors": {"item": "Smart Door/Window Sensor", "qty": 8, "price": 280},
+            "thermostat": {"item": "Smart Thermostat", "qty": 1, "price": 3500},
+            "doorbell": {"item": "Smart Video Doorbell", "qty": 1, "price": 2800},
+            "lock": {"item": "Smart Door Lock", "qty": 1, "price": 4500},
+        },
+        "labour": {"installation": 6500, "configuration": 2500},
+    },
+    "premium": {
+        "name": "Premium Smart Home",
+        "description": "Full home automation with voice control, security, and energy management",
+        "components": {
+            "hub": {"item": "Smart Home Controller (Pro)", "qty": 1, "price": 8500},
+            "smart_switches": {"item": "Smart Light Switch", "qty": 20, "price": 450},
+            "smart_dimmers": {"item": "Smart Dimmer Switch", "qty": 8, "price": 650},
+            "smart_plugs": {"item": "Smart Plug Socket", "qty": 12, "price": 350},
+            "motion_sensors": {"item": "Smart Motion Sensor", "qty": 10, "price": 380},
+            "door_sensors": {"item": "Smart Door/Window Sensor", "qty": 12, "price": 280},
+            "thermostat": {"item": "Smart Thermostat (Zoned)", "qty": 2, "price": 3500},
+            "doorbell": {"item": "Smart Video Doorbell Pro", "qty": 1, "price": 4500},
+            "lock": {"item": "Smart Door Lock", "qty": 2, "price": 4500},
+            "blinds": {"item": "Smart Motorized Blinds", "qty": 6, "price": 2800},
+            "speakers": {"item": "Smart Speaker/Display", "qty": 4, "price": 1800},
+            "energy_monitor": {"item": "Smart Energy Monitor", "qty": 1, "price": 3500},
+            "irrigation": {"item": "Smart Irrigation Controller", "qty": 1, "price": 2500},
+            "garage": {"item": "Smart Garage Controller", "qty": 1, "price": 1800},
+        },
+        "labour": {"installation": 12000, "configuration": 4500, "training": 1500},
+    },
+}
+
 RESIDENTIAL_EV_CHARGING = {
     "level1": {
         "name": "Level 1 - Basic (3.7kW)",
@@ -647,6 +700,98 @@ RURAL_ELECTRIFICATION = {
             "labour": 800,
             "total": 5020,
         },
+        "standard": {
+            "name": "Standard Solar Home (200Wp)",
+            "capacity_wp": 200,
+            "components": {
+                "panel": {"item": "Solar Panel 200W", "qty": 1, "price": 2200},
+                "battery": {"item": "Battery 100Ah", "qty": 1, "price": 2800},
+                "controller": {"item": "MPPT Controller 20A", "qty": 1, "price": 1200},
+                "lights": {"item": "LED Lights 9W", "qty": 6, "price": 180},
+                "phone_charger": {"item": "USB Phone Charger", "qty": 2, "price": 150},
+                "radio": {"item": "DC Radio", "qty": 1, "price": 450},
+            },
+            "labour": 1200,
+            "total": 9130,
+        },
+        "premium": {
+            "name": "Premium Solar Home (500Wp)",
+            "capacity_wp": 500,
+            "components": {
+                "panel": {"item": "Solar Panel 250W", "qty": 2, "price": 2500},
+                "battery": {"item": "Lithium Battery 200Ah", "qty": 1, "price": 8500},
+                "inverter": {"item": "Inverter 1kW Pure Sine", "qty": 1, "price": 3500},
+                "controller": {"item": "MPPT Controller 30A", "qty": 1, "price": 1800},
+                "lights": {"item": "LED Lights 12W", "qty": 8, "price": 220},
+                "tv": {"item": "DC TV 24-inch", "qty": 1, "price": 3500},
+                "fan": {"item": "DC Ceiling Fan", "qty": 2, "price": 850},
+            },
+            "labour": 2500,
+            "total": 26810,
+        },
+    },
+    "minigrid": {
+        "30kw": {
+            "name": "Community Mini-Grid 30kW",
+            "capacity_kw": 30,
+            "households_served": 50,
+            "components": {
+                "panels": {"item": "Solar Panels 550W", "qty": 55, "price": 1800},
+                "inverters": {"item": "Grid-forming Inverter 15kW", "qty": 2, "price": 45000},
+                "battery": {"item": "Lithium Battery Bank 100kWh", "qty": 1, "price": 350000},
+                "controller": {"item": "Microgrid Controller", "qty": 1, "price": 85000},
+                "meters": {"item": "Prepaid Smart Meter", "qty": 50, "price": 1200},
+                "db_main": {"item": "Main Distribution Board", "qty": 1, "price": 25000},
+            },
+            "distribution": {
+                "lv_cable": {"item": "LV ABC Cable per meter", "qty": 1000, "price": 85},
+                "poles": {"item": "Wood Pole 8m", "qty": 25, "price": 3500},
+                "transformers": {"item": "Mini Transformer 25kVA", "qty": 2, "price": 35000},
+            },
+            "civil": 85000,
+            "commissioning": 45000,
+        },
+        "50kw": {
+            "name": "Community Mini-Grid 50kW",
+            "capacity_kw": 50,
+            "households_served": 80,
+            "components": {
+                "panels": {"item": "Solar Panels 550W", "qty": 91, "price": 1800},
+                "inverters": {"item": "Grid-forming Inverter 25kW", "qty": 2, "price": 65000},
+                "battery": {"item": "Lithium Battery Bank 150kWh", "qty": 1, "price": 485000},
+                "controller": {"item": "Microgrid Controller Pro", "qty": 1, "price": 125000},
+                "meters": {"item": "Prepaid Smart Meter", "qty": 80, "price": 1200},
+                "db_main": {"item": "Main Distribution Board", "qty": 1, "price": 35000},
+            },
+            "distribution": {
+                "lv_cable": {"item": "LV ABC Cable per meter", "qty": 1500, "price": 85},
+                "poles": {"item": "Wood Pole 8m", "qty": 40, "price": 3500},
+                "transformers": {"item": "Mini Transformer 50kVA", "qty": 2, "price": 55000},
+            },
+            "civil": 125000,
+            "commissioning": 65000,
+        },
+        "100kw": {
+            "name": "Community Mini-Grid 100kW",
+            "capacity_kw": 100,
+            "households_served": 150,
+            "components": {
+                "panels": {"item": "Solar Panels 550W", "qty": 182, "price": 1800},
+                "inverters": {"item": "Grid-forming Inverter 50kW", "qty": 2, "price": 125000},
+                "battery": {"item": "Lithium Battery Bank 300kWh", "qty": 1, "price": 850000},
+                "controller": {"item": "Advanced Microgrid Controller", "qty": 1, "price": 185000},
+                "meters": {"item": "Prepaid Smart Meter", "qty": 150, "price": 1200},
+                "db_main": {"item": "Main Distribution Board", "qty": 1, "price": 55000},
+                "genset": {"item": "Backup Generator 50kVA", "qty": 1, "price": 185000},
+            },
+            "distribution": {
+                "lv_cable": {"item": "LV ABC Cable per meter", "qty": 2500, "price": 85},
+                "poles": {"item": "Concrete Pole 9m", "qty": 65, "price": 5500},
+                "transformers": {"item": "Mini Transformer 100kVA", "qty": 2, "price": 85000},
+            },
+            "civil": 185000,
+            "commissioning": 95000,
+        },
     },
 }
 
@@ -682,6 +827,23 @@ STREET_LIGHTING = {
 
 UTILITY_SOLAR = {
     "ground_mount": {
+        "500kw": {
+            "name": "500kW Ground Mount Solar",
+            "capacity_mw": 0.5,
+            "land_required_ha": 1,
+            "components": {
+                "panels": {"item": "Solar Panels 550W (910 units)", "price": 2275000},
+                "inverters": {"item": "String Inverters 100kW (5)", "price": 925000},
+                "mounting": {"item": "Ground Mount Structure", "price": 650000},
+                "dc_cables": {"item": "DC Cabling System", "price": 250000},
+                "transformer": {"item": "Step-up Transformer 630kVA", "price": 450000},
+                "switchgear": {"item": "MV Switchgear", "price": 350000},
+                "scada": {"item": "SCADA & Monitoring", "price": 185000},
+            },
+            "civil": 450000,
+            "grid_connection": 850000,
+            "epc_margin": 0.12,
+        },
         "1mw": {
             "name": "1MW Ground Mount Solar",
             "capacity_mw": 1,
@@ -698,6 +860,42 @@ UTILITY_SOLAR = {
             "civil": 850000,
             "grid_connection": 1250000,
             "epc_margin": 0.12,
+        },
+        "5mw": {
+            "name": "5MW Ground Mount Solar",
+            "capacity_mw": 5,
+            "land_required_ha": 10,
+            "components": {
+                "panels": {"item": "Solar Panels 550W (9100 units)", "price": 20475000},
+                "inverters": {"item": "Central Inverters 1MW (5)", "price": 7500000},
+                "mounting": {"item": "Ground Mount Structure", "price": 5500000},
+                "dc_cables": {"item": "DC Cabling System", "price": 1850000},
+                "transformer": {"item": "Step-up Transformer 5MVA", "price": 2850000},
+                "switchgear": {"item": "MV Switchgear 11kV", "price": 1850000},
+                "scada": {"item": "SCADA & Monitoring", "price": 650000},
+                "security": {"item": "Security & Fencing", "price": 850000},
+            },
+            "civil": 3500000,
+            "grid_connection": 4500000,
+            "epc_margin": 0.10,
+        },
+        "10mw": {
+            "name": "10MW Ground Mount Solar",
+            "capacity_mw": 10,
+            "land_required_ha": 20,
+            "components": {
+                "panels": {"item": "Solar Panels 550W (18200 units)", "price": 38220000},
+                "inverters": {"item": "Central Inverters 2.5MW (4)", "price": 12800000},
+                "mounting": {"item": "Ground Mount Structure", "price": 9800000},
+                "dc_cables": {"item": "DC Cabling System", "price": 3200000},
+                "transformer": {"item": "Step-up Transformer 10MVA", "price": 4850000},
+                "switchgear": {"item": "MV Switchgear 22kV", "price": 3250000},
+                "scada": {"item": "SCADA & Monitoring", "price": 1250000},
+                "security": {"item": "Security & Fencing", "price": 1450000},
+            },
+            "civil": 6500000,
+            "grid_connection": 8500000,
+            "epc_margin": 0.10,
         },
     },
 }

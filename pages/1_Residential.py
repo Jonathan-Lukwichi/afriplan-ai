@@ -19,6 +19,7 @@ from utils.constants import (
     PROJECT_TYPES,
     RESIDENTIAL_SOLAR_SYSTEMS,
     RESIDENTIAL_SECURITY_SYSTEMS,
+    RESIDENTIAL_SMART_HOME,
     RESIDENTIAL_EV_CHARGING,
 )
 from utils.calculations import (
@@ -27,7 +28,7 @@ from utils.calculations import (
     calculate_electrical_bq,
 )
 from utils.optimizer import generate_quotation_options
-from utils.pdf_generator import generate_electrical_pdf
+from utils.pdf_generator import generate_electrical_pdf, generate_generic_electrical_pdf
 
 inject_custom_css()
 
@@ -493,6 +494,149 @@ elif selected_subtype == "ev_charging":
         st.metric("Labour", f"R {labour_total:,.0f}")
     with col3:
         st.metric("TOTAL", f"R {total:,.0f}")
+
+# Smart Home
+elif selected_subtype == "smart_home":
+    tab1, tab2, tab3 = st.tabs(["🏠 System Selection", "📊 Quote", "📄 Export"])
+
+    with tab1:
+        st.markdown('<p class="section-title">Smart Home Automation</p>', unsafe_allow_html=True)
+
+        smart_options = list(RESIDENTIAL_SMART_HOME.keys())
+        smart_labels = {k: v["name"] for k, v in RESIDENTIAL_SMART_HOME.items()}
+
+        selected_smart = st.selectbox(
+            "Select Smart Home Package",
+            smart_options,
+            format_func=lambda x: smart_labels[x]
+        )
+
+        system = RESIDENTIAL_SMART_HOME[selected_smart]
+
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(17,24,39,0.8), rgba(15,23,42,0.6));
+                    border: 1px solid rgba(0,212,255,0.1); border-radius: 16px; padding: 1.5rem;">
+            <h4 style="color: #00D4FF; margin-bottom: 0.5rem;">{system['name']}</h4>
+            <p style="color: #94a3b8;">{system['description']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        st.subheader("Components Included")
+        component_total = 0
+        for key, comp in system["components"].items():
+            item_total = comp['qty'] * comp['price']
+            component_total += item_total
+            st.write(f"- {comp['item']}: {comp['qty']} x R{comp['price']:,} = **R{item_total:,}**")
+
+        st.markdown("---")
+
+        st.subheader("Installation & Setup")
+        labour_total = 0
+        for key, price in system["labour"].items():
+            labour_total += price
+            st.write(f"- {key.replace('_', ' ').title()}: **R{price:,}**")
+
+        total = component_total + labour_total
+
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Components", f"R {component_total:,.0f}")
+        with col2:
+            st.metric("Installation", f"R {labour_total:,.0f}")
+        with col3:
+            st.metric("TOTAL", f"R {total:,.0f}")
+
+        # Store for quote tab
+        st.session_state.smart_home_system = system
+        st.session_state.smart_home_total = total
+
+    with tab2:
+        st.markdown('<p class="section-title">Smart Home Quotation</p>', unsafe_allow_html=True)
+
+        if "smart_home_system" in st.session_state:
+            system = st.session_state.smart_home_system
+
+            # Generate BQ items
+            bq_items = []
+            for key, comp in system["components"].items():
+                bq_items.append({
+                    "category": "Smart Home Equipment",
+                    "item": comp['item'],
+                    "qty": comp['qty'],
+                    "unit": "each",
+                    "rate": comp['price'],
+                    "total": comp['qty'] * comp['price']
+                })
+
+            for key, price in system["labour"].items():
+                bq_items.append({
+                    "category": "Labour",
+                    "item": key.replace('_', ' ').title(),
+                    "qty": 1,
+                    "unit": "lump sum",
+                    "rate": price,
+                    "total": price
+                })
+
+            subtotal = sum(item["total"] for item in bq_items)
+            vat = subtotal * 0.15
+            total = subtotal + vat
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Subtotal (excl VAT)", f"R {subtotal:,.0f}")
+            with col2:
+                st.metric("VAT (15%)", f"R {vat:,.0f}")
+            with col3:
+                st.metric("TOTAL (incl VAT)", f"R {total:,.0f}")
+
+            st.markdown("---")
+
+            st.subheader("Bill of Quantities")
+            categories = {}
+            for item in bq_items:
+                cat = item["category"]
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(item)
+
+            for cat_name, items in categories.items():
+                cat_total = sum(i['total'] for i in items)
+                with st.expander(f"**{cat_name}** - R {cat_total:,.0f}"):
+                    for item in items:
+                        st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+
+            st.session_state.smart_home_bq = bq_items
+        else:
+            st.info("👆 Select a smart home package first.")
+
+    with tab3:
+        st.markdown('<p class="section-title">Export Quotation</p>', unsafe_allow_html=True)
+
+        if "smart_home_bq" in st.session_state:
+            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                summary = {
+                    "Package": st.session_state.smart_home_system['name'],
+                    "Description": st.session_state.smart_home_system['description'],
+                }
+                pdf_bytes = generate_generic_electrical_pdf(
+                    st.session_state.smart_home_bq,
+                    summary,
+                    "residential",
+                    "smart_home"
+                )
+                st.download_button(
+                    label="⬇️ Download PDF",
+                    data=pdf_bytes,
+                    file_name=f"smart_home_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+        else:
+            st.info("👆 Configure smart home package first.")
 
 else:
     st.info(f"Configuration for {selected_subtype.replace('_', ' ').title()} coming soon!")

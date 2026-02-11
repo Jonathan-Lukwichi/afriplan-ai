@@ -237,83 +237,316 @@ elif selected_subtype == "street_lighting":
 
 # Rural Electrification
 elif selected_subtype == "rural":
-    st.markdown('<p class="section-title">Rural Electrification</p>', unsafe_allow_html=True)
+    tab1, tab2, tab3 = st.tabs(["📐 Configure", "📊 Cost Breakdown", "📄 Export"])
 
-    st.subheader("Grid Extension Costs")
-    for key, line in RURAL_ELECTRIFICATION["grid_extension"]["mv_line_overhead"].items():
-        st.write(f"- {line['item']}: R{line['price']:,}")
+    with tab1:
+        st.markdown('<p class="section-title">Rural Electrification Options</p>', unsafe_allow_html=True)
 
-    st.markdown("---")
+        col1, col2 = st.columns(2)
 
-    st.subheader("Pole-Mount Transformers")
-    for key, tx in RURAL_ELECTRIFICATION["grid_extension"]["transformer_pole_mount"].items():
-        st.write(f"- {tx['item']}: R{tx['price']:,}")
+        with col1:
+            solution_type = st.radio(
+                "Electrification Solution",
+                ["Grid Extension", "Solar Home System"],
+                help="Grid extension for areas near existing grid, Solar Home Systems for remote areas"
+            )
 
-    st.markdown("---")
+        with col2:
+            if solution_type == "Grid Extension":
+                line_type = st.selectbox("MV Line Type", ["11kV Single Phase", "11kV Three Phase", "22kV Three Phase"])
+                line_length = st.number_input("Line Length (km)", 0.5, 100.0, 5.0, 0.5)
+                num_transformers = st.number_input("Number of Transformers", 1, 20, 2)
+                tx_size = st.selectbox("Transformer Size", ["16kVA", "50kVA", "100kVA"])
+            else:
+                shs_type = st.selectbox("Solar Home System Type",
+                    list(RURAL_ELECTRIFICATION["solar_home_system"].keys()),
+                    format_func=lambda x: RURAL_ELECTRIFICATION["solar_home_system"][x]["name"])
+                num_households = st.number_input("Number of Households", 10, 1000, 50, 10)
 
-    st.subheader("Solar Home Systems (Off-Grid)")
-    for key, shs in RURAL_ELECTRIFICATION["solar_home_system"].items():
-        with st.expander(f"{shs['name']} ({shs['capacity_wp']}Wp)"):
-            for comp_key, comp in shs["components"].items():
-                st.write(f"- {comp['item']}: {comp['qty']} x R{comp['price']:,}")
-            st.write(f"- Labour: R{shs['labour']:,}")
-            st.write(f"**Total: R{shs['total']:,}**")
+        if st.button("📊 Calculate Project Cost", type="primary", use_container_width=True):
+            bq_items = []
+            if solution_type == "Grid Extension":
+                line_key = "11kV_single" if "Single" in line_type else "11kV_three" if "11kV" in line_type else "22kV_three"
+                line_data = RURAL_ELECTRIFICATION["grid_extension"]["mv_line_overhead"][line_key]
+                line_total = line_data["price"] * line_length
+                bq_items.append({"category": "MV Lines", "item": line_data["item"], "qty": line_length, "unit": "km", "rate": line_data["price"], "total": line_total})
+
+                tx_key = tx_size.lower().replace("kva", "kva")
+                tx_data = RURAL_ELECTRIFICATION["grid_extension"]["transformer_pole_mount"][tx_key]
+                tx_total = tx_data["price"] * num_transformers
+                bq_items.append({"category": "Transformers", "item": tx_data["item"], "qty": num_transformers, "unit": "each", "rate": tx_data["price"], "total": tx_total})
+
+                poles_needed = int(line_length * 15)
+                pole_total = 4500 * poles_needed
+                bq_items.append({"category": "Poles", "item": "Wood Pole 11m treated", "qty": poles_needed, "unit": "each", "rate": 4500, "total": pole_total})
+
+                labour = line_length * 25000
+                bq_items.append({"category": "Labour", "item": "Installation Labour", "qty": line_length, "unit": "km", "rate": 25000, "total": labour})
+            else:
+                shs_data = RURAL_ELECTRIFICATION["solar_home_system"][shs_type]
+                for comp_key, comp in shs_data["components"].items():
+                    comp_total = comp["qty"] * comp["price"] * num_households
+                    bq_items.append({"category": "SHS Equipment", "item": comp["item"], "qty": comp["qty"] * num_households, "unit": "each", "rate": comp["price"], "total": comp_total})
+                labour_total = shs_data["labour"] * num_households
+                bq_items.append({"category": "Labour", "item": "Installation Labour", "qty": num_households, "unit": "households", "rate": shs_data["labour"], "total": labour_total})
+
+            st.session_state.rural_result = {"bq_items": bq_items, "solution_type": solution_type}
+            st.success("✅ Project cost calculated!")
+
+    with tab2:
+        st.markdown('<p class="section-title">Cost Breakdown</p>', unsafe_allow_html=True)
+
+        if "rural_result" in st.session_state:
+            result = st.session_state.rural_result
+            bq_items = result["bq_items"]
+
+            subtotal = sum(item["total"] for item in bq_items)
+            vat = subtotal * 0.15
+            total = subtotal + vat
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Subtotal (excl VAT)", f"R {subtotal:,.0f}")
+            with col2:
+                st.metric("VAT (15%)", f"R {vat:,.0f}")
+            with col3:
+                st.metric("TOTAL (incl VAT)", f"R {total:,.0f}")
+
+            st.markdown("---")
+            st.subheader("Bill of Quantities")
+            for item in bq_items:
+                st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+        else:
+            st.info("👆 Configure project parameters and calculate first.")
+
+    with tab3:
+        st.markdown('<p class="section-title">Export Quotation</p>', unsafe_allow_html=True)
+
+        if "rural_result" in st.session_state:
+            result = st.session_state.rural_result
+            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                summary = {"Solution Type": result["solution_type"]}
+                pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "rural")
+                st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"rural_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+        else:
+            st.info("👆 Configure and calculate first.")
 
 # Utility Solar
 elif selected_subtype == "utility_solar":
-    st.markdown('<p class="section-title">Utility-Scale Solar</p>', unsafe_allow_html=True)
+    tab1, tab2, tab3 = st.tabs(["📐 Configure", "📊 Cost Breakdown", "📄 Export"])
 
-    for size, plant in UTILITY_SOLAR["ground_mount"].items():
-        with st.expander(f"**{plant['name']}**"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**Capacity:** {plant['capacity_mw']} MW")
-                st.write(f"**Land Required:** {plant['land_required_ha']} ha")
-            with col2:
-                st.write(f"**Civil Works:** R{plant['civil']:,}")
-                st.write(f"**Grid Connection:** R{plant['grid_connection']:,}")
+    with tab1:
+        st.markdown('<p class="section-title">Utility-Scale Solar Plant Design</p>', unsafe_allow_html=True)
 
-            st.markdown("---")
-            st.write("**Components:**")
-            component_total = 0
+        col1, col2 = st.columns(2)
+
+        with col1:
+            plant_options = list(UTILITY_SOLAR["ground_mount"].keys())
+            plant_labels = {k: UTILITY_SOLAR["ground_mount"][k]["name"] for k in plant_options}
+            selected_plant = st.selectbox("Plant Size", plant_options, format_func=lambda x: plant_labels[x])
+
+        plant = UTILITY_SOLAR["ground_mount"][selected_plant]
+
+        with col2:
+            st.info(f"""
+            **{plant['name']}**
+            - Capacity: {plant['capacity_mw']} MW
+            - Land Required: {plant['land_required_ha']} ha
+            - EPC Margin: {plant['epc_margin']*100:.0f}%
+            """)
+
+        st.markdown("---")
+        st.subheader("Plant Components")
+
+        component_total = 0
+        for key, comp in plant["components"].items():
+            component_total += comp["price"]
+            st.write(f"- {comp['item']}: **R{comp['price']:,}**")
+
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Civil Works", f"R {plant['civil']:,}")
+        with col2:
+            st.metric("Grid Connection", f"R {plant['grid_connection']:,}")
+
+        if st.button("📊 Generate Detailed Quote", type="primary", use_container_width=True):
+            bq_items = []
             for key, comp in plant["components"].items():
-                st.write(f"- {comp['item']}: R{comp['price']:,}")
-                component_total += comp['price']
+                bq_items.append({"category": "Equipment", "item": comp["item"], "qty": 1, "unit": "lot", "rate": comp["price"], "total": comp["price"]})
+            bq_items.append({"category": "Civil Works", "item": "Site Preparation & Foundations", "qty": 1, "unit": "lot", "rate": plant["civil"], "total": plant["civil"]})
+            bq_items.append({"category": "Grid Connection", "item": "Grid Interconnection", "qty": 1, "unit": "lot", "rate": plant["grid_connection"], "total": plant["grid_connection"]})
 
-            total = component_total + plant['civil'] + plant['grid_connection']
-            total_with_margin = total * (1 + plant['epc_margin'])
+            base_total = sum(item["total"] for item in bq_items)
+            epc_margin = base_total * plant["epc_margin"]
+            bq_items.append({"category": "EPC Margin", "item": f"EPC Margin ({plant['epc_margin']*100:.0f}%)", "qty": 1, "unit": "lot", "rate": epc_margin, "total": epc_margin})
+
+            st.session_state.utility_result = {"bq_items": bq_items, "plant": plant}
+            st.success("✅ Quote generated!")
+
+    with tab2:
+        st.markdown('<p class="section-title">Cost Breakdown</p>', unsafe_allow_html=True)
+
+        if "utility_result" in st.session_state:
+            result = st.session_state.utility_result
+            bq_items = result["bq_items"]
+            plant = result["plant"]
+
+            subtotal = sum(item["total"] for item in bq_items)
+            vat = subtotal * 0.15
+            total = subtotal + vat
+
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Subtotal", f"R {subtotal:,.0f}")
+            with col2:
+                st.metric("VAT (15%)", f"R {vat:,.0f}")
+            with col3:
+                st.metric("TOTAL", f"R {total:,.0f}")
+            with col4:
+                st.metric("Cost per MW", f"R {total/plant['capacity_mw']:,.0f}")
 
             st.markdown("---")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Base Cost", f"R {total:,.0f}")
-            with col2:
-                st.metric(f"With EPC Margin ({plant['epc_margin']*100:.0f}%)", f"R {total_with_margin:,.0f}")
+            st.subheader("Bill of Quantities")
+            categories = {}
+            for item in bq_items:
+                cat = item["category"]
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(item)
 
-            st.write(f"**Cost per MW:** R {total_with_margin/plant['capacity_mw']:,.0f}")
+            for cat_name, items in categories.items():
+                cat_total = sum(i['total'] for i in items)
+                with st.expander(f"**{cat_name}** - R {cat_total:,.0f}"):
+                    for item in items:
+                        st.write(f"- {item['item']}: **R{item['total']:,}**")
+        else:
+            st.info("👆 Configure plant and generate quote first.")
+
+    with tab3:
+        st.markdown('<p class="section-title">Export Quotation</p>', unsafe_allow_html=True)
+
+        if "utility_result" in st.session_state:
+            result = st.session_state.utility_result
+            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                summary = {"Plant Size": result["plant"]["name"], "Capacity": f"{result['plant']['capacity_mw']} MW", "Land Required": f"{result['plant']['land_required_ha']} ha"}
+                pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "utility_solar")
+                st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"utility_solar_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+        else:
+            st.info("👆 Configure and generate quote first.")
 
 # Mini-Grid
 elif selected_subtype == "minigrid":
-    st.markdown('<p class="section-title">Mini-Grid & Microgrid</p>', unsafe_allow_html=True)
+    tab1, tab2, tab3 = st.tabs(["📐 Configure", "📊 Cost Breakdown", "📄 Export"])
 
-    st.info("Mini-grid configuration coming soon. This will include community solar, battery storage, and distribution network design.")
+    with tab1:
+        st.markdown('<p class="section-title">Mini-Grid & Microgrid Design</p>', unsafe_allow_html=True)
 
-    st.subheader("Typical Mini-Grid Configuration (50kW)")
+        col1, col2 = st.columns(2)
 
-    if "minigrid" in RURAL_ELECTRIFICATION:
-        mg = RURAL_ELECTRIFICATION["minigrid"]["50kw"]
-        st.write(f"**{mg['name']}**")
-        st.write(f"- Capacity: {mg['capacity_kw']} kW")
-        st.write(f"- Households Served: {mg['households_served']}")
+        with col1:
+            if "minigrid" in RURAL_ELECTRIFICATION:
+                mg_options = list(RURAL_ELECTRIFICATION["minigrid"].keys())
+                mg_labels = {k: RURAL_ELECTRIFICATION["minigrid"][k]["name"] for k in mg_options}
+                selected_mg = st.selectbox("Mini-Grid Size", mg_options, format_func=lambda x: mg_labels[x])
+                mg = RURAL_ELECTRIFICATION["minigrid"][selected_mg]
 
-        st.markdown("---")
-        st.write("**Components:**")
-        for key, comp in mg["components"].items():
-            total = comp['qty'] * comp['price'] if isinstance(comp['qty'], int) else comp['price']
-            st.write(f"- {comp['item']}: R{total:,}")
+        with col2:
+            if "minigrid" in RURAL_ELECTRIFICATION:
+                st.info(f"""
+                **{mg['name']}**
+                - Capacity: {mg['capacity_kw']} kW
+                - Households Served: {mg['households_served']}
+                """)
 
-        st.write(f"- Civil Works: R{mg['civil']:,}")
-        st.write(f"- Commissioning: R{mg['commissioning']:,}")
+        if "minigrid" in RURAL_ELECTRIFICATION:
+            st.markdown("---")
+            st.subheader("Generation & Storage Components")
+            for key, comp in mg["components"].items():
+                total = comp['qty'] * comp['price']
+                st.write(f"- {comp['item']}: {comp['qty']} x R{comp['price']:,} = **R{total:,}**")
+
+            st.markdown("---")
+            st.subheader("Distribution Network")
+            for key, item in mg["distribution"].items():
+                total = item['qty'] * item['price']
+                st.write(f"- {item['item']}: {item['qty']} x R{item['price']:,} = **R{total:,}**")
+
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Civil Works", f"R {mg['civil']:,}")
+            with col2:
+                st.metric("Commissioning", f"R {mg['commissioning']:,}")
+
+            if st.button("📊 Generate Detailed Quote", type="primary", use_container_width=True):
+                bq_items = []
+                for key, comp in mg["components"].items():
+                    total = comp['qty'] * comp['price']
+                    bq_items.append({"category": "Generation & Storage", "item": comp["item"], "qty": comp['qty'], "unit": "each", "rate": comp["price"], "total": total})
+                for key, item in mg["distribution"].items():
+                    total = item['qty'] * item['price']
+                    bq_items.append({"category": "Distribution", "item": item["item"], "qty": item['qty'], "unit": "each" if "pole" in key.lower() else "m", "rate": item["price"], "total": total})
+                bq_items.append({"category": "Civil & Installation", "item": "Civil Works", "qty": 1, "unit": "lot", "rate": mg["civil"], "total": mg["civil"]})
+                bq_items.append({"category": "Civil & Installation", "item": "Testing & Commissioning", "qty": 1, "unit": "lot", "rate": mg["commissioning"], "total": mg["commissioning"]})
+
+                st.session_state.minigrid_result = {"bq_items": bq_items, "mg": mg}
+                st.success("✅ Quote generated!")
+        else:
+            st.warning("Mini-grid data not available.")
+
+    with tab2:
+        st.markdown('<p class="section-title">Cost Breakdown</p>', unsafe_allow_html=True)
+
+        if "minigrid_result" in st.session_state:
+            result = st.session_state.minigrid_result
+            bq_items = result["bq_items"]
+            mg = result["mg"]
+
+            subtotal = sum(item["total"] for item in bq_items)
+            vat = subtotal * 0.15
+            total = subtotal + vat
+            cost_per_hh = total / mg["households_served"]
+
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Subtotal", f"R {subtotal:,.0f}")
+            with col2:
+                st.metric("VAT (15%)", f"R {vat:,.0f}")
+            with col3:
+                st.metric("TOTAL", f"R {total:,.0f}")
+            with col4:
+                st.metric("Cost per Household", f"R {cost_per_hh:,.0f}")
+
+            st.markdown("---")
+            st.subheader("Bill of Quantities")
+            categories = {}
+            for item in bq_items:
+                cat = item["category"]
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(item)
+
+            for cat_name, items in categories.items():
+                cat_total = sum(i['total'] for i in items)
+                with st.expander(f"**{cat_name}** - R {cat_total:,.0f}"):
+                    for item in items:
+                        st.write(f"- {item['item']}: {item['qty']} {item['unit']} @ R{item['rate']:,} = **R{item['total']:,}**")
+        else:
+            st.info("👆 Configure mini-grid and generate quote first.")
+
+    with tab3:
+        st.markdown('<p class="section-title">Export Quotation</p>', unsafe_allow_html=True)
+
+        if "minigrid_result" in st.session_state:
+            result = st.session_state.minigrid_result
+            if st.button("📄 Generate PDF Quote", type="primary", use_container_width=True):
+                summary = {"Mini-Grid": result["mg"]["name"], "Capacity": f"{result['mg']['capacity_kw']} kW", "Households Served": result['mg']['households_served']}
+                pdf_bytes = generate_generic_electrical_pdf(result["bq_items"], summary, "infrastructure", "minigrid")
+                st.download_button(label="⬇️ Download PDF", data=pdf_bytes, file_name=f"minigrid_quote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf", mime="application/pdf", use_container_width=True)
+        else:
+            st.info("👆 Configure and generate quote first.")
 
 else:
     st.info(f"Configuration for {selected_subtype.replace('_', ' ').title()} coming soon!")
