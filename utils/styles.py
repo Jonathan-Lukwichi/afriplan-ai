@@ -667,6 +667,55 @@ CUSTOM_CSS = """
     }
 
     /* ========================================
+       FIX BROKEN MATERIAL ICONS IN EXPANDERS
+    ======================================== */
+    /* Hide broken Material Icons text (arrow_right, etc.) in expander headers */
+    .streamlit-expanderHeader span[data-testid="stMarkdownContainer"] p {
+        display: inline !important;
+    }
+
+    /* Target the icon span that shows broken text like "arrow_right" */
+    .streamlit-expanderHeader svg + span,
+    .streamlit-expanderHeader [data-baseweb="icon"] + span {
+        font-size: 0 !important;
+    }
+
+    /* Force hide any Material Icons text fallback throughout the app */
+    [class*="material-icons"],
+    [class*="Material-icons"] {
+        font-size: 0 !important;
+    }
+
+    /* Specifically target expander toggle icons showing text */
+    details summary span:first-child {
+        font-size: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Ensure expander SVG icons remain visible */
+    details summary svg,
+    .streamlit-expanderHeader svg {
+        font-size: initial !important;
+        width: 24px !important;
+        height: 24px !important;
+        visibility: visible !important;
+    }
+
+    /* Fix for Streamlit 1.30+ expander structure */
+    [data-testid="stExpander"] summary > span:first-of-type {
+        font-size: 0 !important;
+        width: 20px !important;
+        display: inline-block !important;
+        overflow: hidden !important;
+    }
+
+    [data-testid="stExpander"] summary > span:first-of-type svg {
+        font-size: initial !important;
+        visibility: visible !important;
+    }
+
+    /* ========================================
        BQ TABLE
     ======================================== */
     .bq-table {
