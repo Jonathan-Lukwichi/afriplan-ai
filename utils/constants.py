@@ -290,6 +290,271 @@ PAYMENT_TERMS = {
 }
 
 # ─────────────────────────────────────────────
+# COC INSPECTION FEES (SA 2024/2025)
+# ─────────────────────────────────────────────
+COC_INSPECTION_FEES = {
+    "basic": {
+        "name": "Basic Inspection (flat/bachelor)",
+        "base_fee": 1200,
+        "per_point_above_20": 30,
+        "certificate_fee": 450,
+        "description": "Suitable for flats, bachelor pads, small units",
+    },
+    "standard": {
+        "name": "Standard House (up to 4 bedrooms)",
+        "base_fee": 1800,
+        "per_point_above_40": 25,
+        "certificate_fee": 450,
+        "description": "Typical residential property inspection",
+    },
+    "large": {
+        "name": "Large House (5+ bedrooms)",
+        "base_fee": 2500,
+        "per_point_above_60": 20,
+        "certificate_fee": 450,
+        "description": "Large homes, estates, luxury properties",
+    },
+    "complex_unit": {
+        "name": "Complex/Townhouse Unit",
+        "base_fee": 1500,
+        "per_point_above_30": 25,
+        "certificate_fee": 450,
+        "description": "Townhouse, cluster, sectional title unit",
+    },
+    "commercial_small": {
+        "name": "Commercial - Small (<500m²)",
+        "base_fee": 3500,
+        "per_point_above_50": 35,
+        "certificate_fee": 650,
+        "description": "Small office, retail shop, workshop",
+    },
+    "commercial_medium": {
+        "name": "Commercial - Medium (500-2000m²)",
+        "base_fee": 5500,
+        "per_point_above_100": 30,
+        "certificate_fee": 850,
+        "description": "Medium office building, warehouse",
+    },
+}
+
+# ─────────────────────────────────────────────
+# COC DEFECT PRICING (Remedial Work)
+# ─────────────────────────────────────────────
+COC_DEFECT_PRICING = {
+    # Critical Defects (must be fixed for COC)
+    "no_elcb": {
+        "desc": "Install Earth Leakage (ELCB 63A 30mA)",
+        "material": 950,
+        "labour": 450,
+        "total": 1400,
+        "severity": "critical",
+        "sans_ref": "SANS 10142-1 Cl 7.2.6",
+    },
+    "elcb_faulty": {
+        "desc": "Replace faulty ELCB",
+        "material": 950,
+        "labour": 550,
+        "total": 1500,
+        "severity": "critical",
+        "sans_ref": "SANS 10142-1 Cl 7.2.6",
+    },
+    "elcb_trips": {
+        "desc": "ELCB tripping - fault finding & repair",
+        "material": 200,
+        "labour": 750,
+        "total": 950,
+        "severity": "high",
+        "sans_ref": "SANS 10142-1",
+    },
+    "no_earth_spike": {
+        "desc": "Install earth spike & connect",
+        "material": 280,
+        "labour": 600,
+        "total": 880,
+        "severity": "critical",
+        "sans_ref": "SANS 10142-1 Cl 7.3",
+    },
+    "undersized_earth": {
+        "desc": "Upgrade earth conductor",
+        "material": 450,
+        "labour": 650,
+        "total": 1100,
+        "severity": "critical",
+        "sans_ref": "SANS 10142-1 Cl 7.3",
+    },
+    "exposed_wiring": {
+        "desc": "Rewire exposed section (per 5m)",
+        "material": 350,
+        "labour": 450,
+        "total": 800,
+        "severity": "critical",
+        "sans_ref": "SANS 10142-1 Cl 6.6",
+    },
+
+    # High Priority Defects
+    "overloaded_circuit": {
+        "desc": "Split overloaded circuit",
+        "material": 450,
+        "labour": 650,
+        "total": 1100,
+        "severity": "high",
+        "sans_ref": "SANS 10142-1",
+    },
+    "diy_work": {
+        "desc": "Rectify DIY wiring (per circuit)",
+        "material": 400,
+        "labour": 550,
+        "total": 950,
+        "severity": "high",
+        "sans_ref": "SANS 10142-1",
+    },
+    "loose_connection": {
+        "desc": "Fix loose terminal connection",
+        "material": 50,
+        "labour": 350,
+        "total": 400,
+        "severity": "high",
+        "sans_ref": "SANS 10142-1",
+    },
+    "incorrect_mcb": {
+        "desc": "Replace incorrect MCB rating",
+        "material": 85,
+        "labour": 250,
+        "total": 335,
+        "severity": "high",
+        "sans_ref": "SANS 10142-1",
+    },
+    "damaged_cable": {
+        "desc": "Replace damaged cable section",
+        "material": 300,
+        "labour": 450,
+        "total": 750,
+        "severity": "high",
+        "sans_ref": "SANS 10142-1",
+    },
+
+    # Medium Priority Defects
+    "outdated_db": {
+        "desc": "Replace old DB board (12-way)",
+        "material": 1100,
+        "labour": 1500,
+        "total": 2600,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1 Cl 6.4",
+    },
+    "no_surge": {
+        "desc": "Install surge arrester Type 2",
+        "material": 1800,
+        "labour": 350,
+        "total": 2150,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1 Recommended",
+    },
+    "missing_isolator_stove": {
+        "desc": "Install stove isolator 45A",
+        "material": 400,
+        "labour": 350,
+        "total": 750,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1",
+    },
+    "missing_isolator_geyser": {
+        "desc": "Install geyser isolator 20A",
+        "material": 120,
+        "labour": 250,
+        "total": 370,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1",
+    },
+    "missing_isolator_pool": {
+        "desc": "Install pool pump isolator IP65",
+        "material": 220,
+        "labour": 350,
+        "total": 570,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1 Cl 8",
+    },
+    "mixed_circuits": {
+        "desc": "Separate mixed light/power circuit",
+        "material": 350,
+        "labour": 550,
+        "total": 900,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1",
+    },
+    "damaged_socket": {
+        "desc": "Replace damaged socket outlet",
+        "material": 95,
+        "labour": 180,
+        "total": 275,
+        "severity": "medium",
+        "sans_ref": "SANS 10142-1",
+    },
+
+    # Low Priority Defects
+    "no_labels": {
+        "desc": "DB labeling & circuit schedule",
+        "material": 50,
+        "labour": 350,
+        "total": 400,
+        "severity": "low",
+        "sans_ref": "SANS 10142-1 Cl 6.4.2",
+    },
+    "damaged_switch": {
+        "desc": "Replace damaged switch",
+        "material": 65,
+        "labour": 150,
+        "total": 215,
+        "severity": "low",
+        "sans_ref": "SANS 10142-1",
+    },
+    "missing_blanking_plate": {
+        "desc": "Install DB blanking plates",
+        "material": 30,
+        "labour": 80,
+        "total": 110,
+        "severity": "low",
+        "sans_ref": "SANS 10142-1",
+    },
+    "cover_plate_missing": {
+        "desc": "Replace missing cover plate",
+        "material": 25,
+        "labour": 80,
+        "total": 105,
+        "severity": "low",
+        "sans_ref": "SANS 10142-1",
+    },
+}
+
+# COC Defect Likelihood by Installation Age
+COC_AGE_DEFECT_LIKELIHOOD = {
+    "under_5": {
+        "description": "Installation <5 years old",
+        "likely_defects": ["no_labels"],
+        "probability": 0.15,
+        "expected_outcome": "Usually passes, minor items only",
+    },
+    "5_to_15": {
+        "description": "Installation 5-15 years old",
+        "likely_defects": ["no_surge", "no_labels", "damaged_socket"],
+        "probability": 0.35,
+        "expected_outcome": "May need surge protection, minor repairs",
+    },
+    "15_to_30": {
+        "description": "Installation 15-30 years old",
+        "likely_defects": ["no_elcb", "undersized_earth", "outdated_db", "no_surge", "damaged_socket"],
+        "probability": 0.60,
+        "expected_outcome": "Likely needs ELCB, earth upgrade, multiple items",
+    },
+    "over_30": {
+        "description": "Installation >30 years old",
+        "likely_defects": ["no_elcb", "undersized_earth", "outdated_db", "exposed_wiring", "diy_work"],
+        "probability": 0.85,
+        "expected_outcome": "Major work expected, possible rewire needed",
+    },
+}
+
+# ─────────────────────────────────────────────
 # ROOM PRESETS
 # ─────────────────────────────────────────────
 ROOM_PRESETS = {

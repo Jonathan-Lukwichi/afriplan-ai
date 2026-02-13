@@ -1,7 +1,12 @@
 """
-AfriPlan Electrical - Main Application
-SA Electrical Quotation Platform - All Sectors
+AfriPlan Electrical v3.0 - Main Application
+SA Electrical Quotation Platform - 3 Service Tiers
 Uses Streamlit's modern navigation API for reliable multipage support
+
+v3.0 Changes:
+- Simplified to 3 tiers: Residential, Commercial, Maintenance/COC
+- Industrial and Infrastructure deprecated (scope refocus)
+- Added AI Agent pipeline integration
 """
 
 import streamlit as st
@@ -14,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Define all pages using st.Page (no icons to avoid compatibility issues)
+# Define all pages using st.Page (v3.0 - 3 tiers)
 welcome = st.Page(
     "pages/0_Welcome.py",
     title="Welcome",
@@ -36,19 +41,15 @@ commercial = st.Page(
     title="Commercial"
 )
 
-industrial = st.Page(
-    "pages/3_Industrial.py",
-    title="Industrial"
+maintenance = st.Page(
+    "pages/3_Maintenance.py",
+    title="Maintenance & COC"
 )
 
-infrastructure = st.Page(
-    "pages/4_Infrastructure.py",
-    title="Infrastructure"
-)
-
-# Create navigation with all pages
+# Create navigation with 3 active tiers (v3.0)
+# Industrial and Infrastructure removed - scope refocus
 pg = st.navigation(
-    [welcome, smart_upload, residential, commercial, industrial, infrastructure],
+    [welcome, smart_upload, residential, commercial, maintenance],
     position="sidebar"
 )
 

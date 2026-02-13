@@ -25,11 +25,13 @@ except ImportError:
 
 
 class ProjectTier(Enum):
-    """Project classification tiers matching AfriPlan page structure."""
+    """Project classification tiers matching AfriPlan v3.0 page structure."""
     RESIDENTIAL = "residential"
     COMMERCIAL = "commercial"
-    INDUSTRIAL = "industrial"
-    INFRASTRUCTURE = "infrastructure"
+    MAINTENANCE = "maintenance"  # COC inspections, repairs, remedial work
+    # Deprecated tiers (kept for backward compatibility)
+    INDUSTRIAL = "industrial"  # Deprecated - removed in v3.0
+    INFRASTRUCTURE = "infrastructure"  # Deprecated - removed in v3.0
     UNKNOWN = "unknown"
 
 
@@ -103,6 +105,22 @@ CLASSIFICATION_CRITERIA = {
             "rural": ["rural", "off-grid", "electrification", "inep"],
             "utility_solar": ["solar farm", "pv plant", "utility scale", "ipp"],
             "minigrid": ["mini-grid", "microgrid", "isolated", "island"]
+        }
+    },
+    # NEW in v3.0: Maintenance/COC tier
+    ProjectTier.MAINTENANCE: {
+        "keywords": [
+            "coc", "certificate of compliance", "inspection", "defect",
+            "repair", "fault", "tripping", "earth leakage", "remedial",
+            "db board", "upgrade", "rewire", "maintenance", "electrical test",
+            "compliance check", "test report", "earth spike"
+        ],
+        "subtypes": {
+            "coc_inspection": ["coc", "certificate", "compliance", "inspection", "test"],
+            "fault_repair": ["fault", "repair", "fix", "tripping", "not working"],
+            "db_upgrade": ["db board", "upgrade", "replace", "new board"],
+            "remedial": ["remedial", "defect", "rectify", "non-compliance"],
+            "rewire": ["rewire", "replace wiring", "old wiring", "cable replacement"]
         }
     }
 }
@@ -348,8 +366,10 @@ Return ONLY the JSON object, no additional text."""
             tier_map = {
                 "residential": ProjectTier.RESIDENTIAL,
                 "commercial": ProjectTier.COMMERCIAL,
-                "industrial": ProjectTier.INDUSTRIAL,
-                "infrastructure": ProjectTier.INFRASTRUCTURE,
+                "maintenance": ProjectTier.MAINTENANCE,
+                # Deprecated tiers map to maintenance or residential
+                "industrial": ProjectTier.COMMERCIAL,  # Map to commercial in v3.0
+                "infrastructure": ProjectTier.COMMERCIAL,  # Map to commercial in v3.0
             }
             tier = tier_map.get(tier_str, ProjectTier.UNKNOWN)
 
@@ -413,19 +433,21 @@ Return ONLY the JSON object, no additional text."""
 
 
 def get_tier_page_path(tier: ProjectTier) -> str:
-    """Get the page path for a given tier."""
+    """Get the page path for a given tier (v3.0 - 3 tiers)."""
     page_map = {
         ProjectTier.RESIDENTIAL: "pages/1_Residential.py",
         ProjectTier.COMMERCIAL: "pages/2_Commercial.py",
-        ProjectTier.INDUSTRIAL: "pages/3_Industrial.py",
-        ProjectTier.INFRASTRUCTURE: "pages/4_Infrastructure.py",
+        ProjectTier.MAINTENANCE: "pages/3_Maintenance.py",
+        # Deprecated tiers redirect to appropriate v3.0 pages
+        ProjectTier.INDUSTRIAL: "pages/2_Commercial.py",  # Deprecated
+        ProjectTier.INFRASTRUCTURE: "pages/2_Commercial.py",  # Deprecated
         ProjectTier.UNKNOWN: "pages/0_Welcome.py"
     }
     return page_map.get(tier, "pages/0_Welcome.py")
 
 
 def get_tier_display_info(tier: ProjectTier) -> Dict[str, str]:
-    """Get display information for a tier."""
+    """Get display information for a tier (v3.0 - 3 active tiers)."""
     info = {
         ProjectTier.RESIDENTIAL: {
             "icon": "🏠",
@@ -439,16 +461,23 @@ def get_tier_display_info(tier: ProjectTier) -> Dict[str, str]:
             "description": "Offices, retail, hospitality, healthcare, education",
             "color": "#3B82F6"
         },
+        ProjectTier.MAINTENANCE: {
+            "icon": "🔧",
+            "name": "Maintenance & COC",
+            "description": "COC inspections, defect repairs, DB upgrades, remedial work",
+            "color": "#F59E0B"
+        },
+        # Deprecated tiers (kept for backward compatibility)
         ProjectTier.INDUSTRIAL: {
             "icon": "🏭",
-            "name": "Industrial",
-            "description": "Factories, manufacturing, mining, heavy industry",
+            "name": "Industrial (Deprecated)",
+            "description": "Redirects to Commercial in v3.0",
             "color": "#F59E0B"
         },
         ProjectTier.INFRASTRUCTURE: {
             "icon": "🌍",
-            "name": "Infrastructure",
-            "description": "Townships, street lighting, solar farms, municipal",
+            "name": "Infrastructure (Deprecated)",
+            "description": "Redirects to Commercial in v3.0",
             "color": "#8B5CF6"
         },
         ProjectTier.UNKNOWN: {

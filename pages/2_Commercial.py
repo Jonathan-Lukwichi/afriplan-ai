@@ -59,6 +59,108 @@ with st.sidebar:
     emergency_power = st.checkbox("Emergency Power Required")
     fire_alarm = st.checkbox("Fire Alarm System", value=True)
 
+# AI Pre-fill Integration (v3.0)
+# Check if user came from Smart Upload with extracted data
+if st.session_state.get("from_smart_upload") and st.session_state.get("extracted_data"):
+    extracted = st.session_state.extracted_data
+
+    # Show AI pre-fill banner
+    ai_confidence = st.session_state.get("ai_confidence", 0)
+    conf_color = "#22C55E" if ai_confidence >= 0.7 else "#F59E0B" if ai_confidence >= 0.4 else "#EF4444"
+    conf_level = "HIGH" if ai_confidence >= 0.7 else "MEDIUM" if ai_confidence >= 0.4 else "LOW"
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(139,92,246,0.1));
+                border: 1px solid rgba(0,212,255,0.3); border-radius: 12px; padding: 1rem;
+                margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.5rem;">🤖</span>
+                <div>
+                    <div style="font-family: 'Rajdhani', sans-serif; font-weight: 600; color: #00D4FF;">
+                        AI-Extracted Data Loaded
+                    </div>
+                    <div style="font-size: 12px; color: #94a3b8;">
+                        Review and adjust the pre-populated fields below
+                    </div>
+                </div>
+            </div>
+            <span style="background: {conf_color}20; color: {conf_color}; padding: 4px 12px;
+                         border-radius: 6px; font-size: 12px; font-weight: 600;">
+                {conf_level} ({ai_confidence*100:.0f}%)
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Pre-populate building parameters from extracted data
+    if "project" in extracted:
+        proj = extracted["project"]
+
+        # Pre-fill area from GFA
+        if proj.get("gfa_m2") and "ai_prefilled_area" not in st.session_state:
+            st.session_state.ai_prefilled_area = int(proj["gfa_m2"])
+
+        # Pre-fill floors
+        if proj.get("floors") and "ai_prefilled_floors" not in st.session_state:
+            st.session_state.ai_prefilled_floors = int(proj["floors"])
+
+    # Pre-fill from distribution data if available
+    if "distribution" in extracted:
+        dist = extracted["distribution"]
+        # Check for generator provision
+        if dist.get("generator_provision"):
+            st.session_state.ai_emergency_power = True
+
+    # Pre-fill from emergency data if available
+    if "emergency" in extracted:
+        emerg = extracted["emergency"]
+        if emerg.get("generator_provision"):
+            st.session_state.ai_emergency_power = True
+        if emerg.get("fire_alarm"):
+            st.session_state.ai_fire_alarm = True
+
+    # Show areas summary if available
+    if "areas" in extracted and extracted["areas"]:
+        with st.expander("AI Extracted Areas", expanded=False):
+            areas_summary = []
+            for area in extracted["areas"]:
+                areas_summary.append({
+                    "Name": area.get("name", "Unknown"),
+                    "Type": area.get("type", "Unknown"),
+                    "Area (m²)": area.get("area_m2", 0),
+                    "Load (kW)": area.get("total_load_kw", 0)
+                })
+            st.dataframe(areas_summary, use_container_width=True, hide_index=True)
+
+            total_area = sum(a.get("area_m2", 0) for a in extracted["areas"])
+            total_load = sum(a.get("total_load_kw", 0) for a in extracted["areas"])
+            st.caption(f"Total: {total_area:,.0f} m² | {total_load:,.1f} kW")
+
+    # Show validation warnings if available
+    if st.session_state.get("validation_report"):
+        val_report = st.session_state.validation_report
+        flags = val_report.get("flags", [])
+        critical_flags = [f for f in flags if f.get("severity") == "critical"]
+
+        if critical_flags:
+            with st.expander(f"SANS Validation: {len(critical_flags)} issues", expanded=True):
+                for flag in critical_flags:
+                    st.warning(f"**{flag.get('rule', '')}**: {flag.get('message', '')}")
+
+    # Clear the flag so it doesn't re-trigger
+    st.session_state.from_smart_upload = False
+
+# Apply AI pre-filled values to sidebar inputs
+if "ai_prefilled_area" in st.session_state:
+    area_m2 = st.session_state.ai_prefilled_area
+if "ai_prefilled_floors" in st.session_state:
+    floors = st.session_state.ai_prefilled_floors
+if "ai_emergency_power" in st.session_state:
+    emergency_power = st.session_state.ai_emergency_power
+if "ai_fire_alarm" in st.session_state:
+    fire_alarm = st.session_state.ai_fire_alarm
+
 # Main content with tabs
 tab1, tab2, tab3, tab4 = st.tabs(["📐 Configure", "⚡ Load Study", "📊 Quote", "📄 Export"])
 

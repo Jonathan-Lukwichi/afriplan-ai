@@ -117,6 +117,92 @@ with st.sidebar:
 if "residential_rooms" not in st.session_state:
     st.session_state.residential_rooms = []
 
+# AI Pre-fill Integration (v3.0)
+# Check if user came from Smart Upload with extracted data
+if st.session_state.get("from_smart_upload") and st.session_state.get("extracted_data"):
+    extracted = st.session_state.extracted_data
+
+    # Show AI pre-fill banner
+    ai_confidence = st.session_state.get("ai_confidence", 0)
+    conf_color = "#22C55E" if ai_confidence >= 0.7 else "#F59E0B" if ai_confidence >= 0.4 else "#EF4444"
+    conf_level = "HIGH" if ai_confidence >= 0.7 else "MEDIUM" if ai_confidence >= 0.4 else "LOW"
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(139,92,246,0.1));
+                border: 1px solid rgba(0,212,255,0.3); border-radius: 12px; padding: 1rem;
+                margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.5rem;">🤖</span>
+                <div>
+                    <div style="font-family: 'Rajdhani', sans-serif; font-weight: 600; color: #00D4FF;">
+                        AI-Extracted Data Loaded
+                    </div>
+                    <div style="font-size: 12px; color: #94a3b8;">
+                        Review and adjust the pre-populated fields below
+                    </div>
+                </div>
+            </div>
+            <span style="background: {conf_color}20; color: {conf_color}; padding: 4px 12px;
+                         border-radius: 6px; font-size: 12px; font-weight: 600;">
+                {conf_level} ({ai_confidence*100:.0f}%)
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Pre-populate rooms from extracted data
+    if "rooms" in extracted and extracted["rooms"] and not st.session_state.residential_rooms:
+        prefilled_rooms = []
+        for room in extracted["rooms"]:
+            area = room.get("area_m2", 16) or 16
+            side = area ** 0.5
+            prefilled_rooms.append({
+                "name": room.get("name", "Room"),
+                "type": room.get("type", "Living Room"),
+                "w": round(side, 1),
+                "h": round(side, 1),
+            })
+        st.session_state.residential_rooms = prefilled_rooms
+
+    # Pre-populate dedicated circuits from electrical details
+    if "electrical_details" in extracted:
+        elec = extracted["electrical_details"]
+        special_req = elec.get("special_requirements", [])
+
+        # Initialize dedicated circuits state
+        if "ai_dedicated_circuits" not in st.session_state:
+            st.session_state.ai_dedicated_circuits = {
+                "stove": any("stove" in req.lower() for req in special_req),
+                "geyser": any("geyser" in req.lower() for req in special_req),
+                "pool": any("pool" in req.lower() for req in special_req),
+                "aircon": any("aircon" in req.lower() or "air con" in req.lower() for req in special_req),
+            }
+
+    # Pre-set complexity if renovation detected
+    if "project" in extracted:
+        install_type = extracted["project"].get("installation_type", "new")
+        if install_type == "renovation":
+            st.session_state.complexity_factor = 1.15  # Renovation factor
+        elif install_type == "rewire":
+            st.session_state.complexity_factor = 1.30  # Rewire factor
+
+    # Show validation warnings if available
+    if st.session_state.get("validation_report"):
+        val_report = st.session_state.validation_report
+        flags = val_report.get("flags", [])
+        critical_flags = [f for f in flags if f.get("severity") == "critical"]
+
+        if critical_flags:
+            with st.expander(f"SANS 10142 Validation: {len(critical_flags)} issues", expanded=True):
+                for flag in critical_flags:
+                    st.warning(f"**{flag.get('rule', '')}**: {flag.get('message', '')}")
+                    if flag.get("auto_fix"):
+                        st.caption(f"Auto-fix applied: {flag.get('auto_fix')}")
+
+    # Clear the flag so it doesn't re-trigger
+    st.session_state.from_smart_upload = False
+
 # Main content with tabs
 if selected_subtype in ["new_house", "renovation", "coc_compliance"]:
     tab1, tab2, tab3, tab4 = st.tabs(["📐 Configure", "⚡ Electrical", "📊 Quote", "📄 Export"])
