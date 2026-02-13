@@ -1,0 +1,45 @@
+flowchart LR
+    A["🏠 User opens AfriPlan"] --> B{"Choose Entry\nPoint"}
+    B -->|"I have a plan"| D["📄 Smart Upload\nPDF / Photo"]
+    B -->|"Manual entry"| C["📝 Select Tier"]
+
+    C --> C1["🏠 Residential\nWizard"]
+    C --> C2["🏢 Commercial\nWizard"]
+    C --> C3["🔧 Maintenance\nWizard"]
+
+    D --> E["STAGE 1: INGEST\nPython: PyMuPDF + Pillow\nExtract images + text"]
+    E --> F["STAGE 2: CLASSIFY\nClaude Haiku 4.5\nIdentify project type"]
+    F --> G{"Which\nTier?"}
+    G -->|"Residential"| H["Load Residential\nDiscovery Prompt"]
+    G -->|"Commercial"| I["Load Commercial\nDiscovery Prompt"]
+    G -->|"Maintenance"| J["Load Maintenance\nDiscovery Prompt"]
+
+    H --> K["STAGE 3: DISCOVER\nClaude Sonnet 4.5\nExtract JSON inventory"]
+    I --> K
+    J --> K
+
+    K --> L{"Confidence\n> 70%?"}
+    L -->|"Yes ✅"| N["STAGE 4: VALIDATE"]
+    L -->|"No ⚠️"| M["Escalate to\nClaude Opus 4.6"]
+    M --> N
+
+    N --> N1["Python Hard Rules\nSANS 10142-1"]
+    N --> N2["Claude Soft Check\nReasonableness"]
+    N1 --> O["STAGE 5: PRICE\nPython ONLY\nNo AI allowed"]
+    N2 --> O
+
+    C1 --> O
+    C2 --> O
+    C3 --> O
+
+    O --> Q["STAGE 6: OUTPUT"]
+    Q --> Q1["📄 PDF Quotation"]
+    Q --> Q2["📊 Excel BOQ"]
+    Q --> Q3["🖥️ Interactive View"]
+
+    style A fill:#1a237e,color:#fff,stroke:#1a237e
+    style D fill:#ff6f00,color:#fff,stroke:#ff6f00
+    style K fill:#ff6f00,color:#fff,stroke:#ff6f00
+    style O fill:#2e7d32,color:#fff,stroke:#2e7d32
+    style Q fill:#1a237e,color:#fff,stroke:#1a237e
+    style M fill:#d32f2f,color:#fff,stroke:#d32f2f

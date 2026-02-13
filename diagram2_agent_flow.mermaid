@@ -1,0 +1,53 @@
+flowchart TD
+    START["📄 Document Received"] --> INGEST["STAGE 1: INGEST\nPython extracts images + text\nPyMuPDF · Pillow"]
+    INGEST --> CLASSIFY["STAGE 2: CLASSIFY\nClaude Haiku 4.5\nFast · Cheap · R0.18"]
+
+    CLASSIFY --> RES{"Residential?"}
+    CLASSIFY --> COM{"Commercial?"}
+    CLASSIFY --> MAI{"Maintenance?"}
+
+    RES -->|"Yes"| RES_P["Load\nDISCOVERY_RESIDENTIAL\nprompt"]
+    COM -->|"Yes"| COM_P["Load\nDISCOVERY_COMMERCIAL\nprompt"]
+    MAI -->|"Yes"| MAI_P["Load\nDISCOVERY_MAINTENANCE\nprompt"]
+
+    RES_P --> SONNET["STAGE 3: DISCOVER\nClaude Sonnet 4.5\nExtract JSON with\nconfidence scores"]
+    COM_P --> SONNET
+    MAI_P --> SONNET
+
+    SONNET --> CONF{"> 70% items\nHIGH or MEDIUM\nconfidence?"}
+    CONF -->|"Yes ✅"| VALIDATE["STAGE 4: VALIDATE"]
+    CONF -->|"No ⚠️"| OPUS["Escalate to\nClaude Opus 4.6\nRe-extract"]
+    OPUS --> CONF2{"Acceptable\nnow?"}
+    CONF2 -->|"Yes"| VALIDATE
+    CONF2 -->|"Still poor"| MANUAL["Route to Manual Wizard\nPre-fill what was found"]
+
+    VALIDATE --> HARD["Python Hard Rules\n━━━━━━━━━━━━━━━━━━\n• ELCB 30mA mandatory\n• Max 10 lights/circuit\n• Dedicated stove 32A\n• Dedicated geyser 20A\n• Voltage drop < 5%\n• Min 15% spare DB ways"]
+    VALIDATE --> SOFT["Claude Haiku Check\n━━━━━━━━━━━━━━━━━━\n• Point counts reasonable?\n• Missing rooms?\n• Cost risk items?\n• Upsell opportunities?"]
+
+    HARD --> MERGE["Merge all flags"]
+    SOFT --> MERGE
+
+    MERGE --> FLAGS{"Any CRITICAL\nflags?"}
+    FLAGS -->|"None"| PRICE["STAGE 5: PRICE\nPython ONLY"]
+    FLAGS -->|"Has critical"| FIX["Auto-fix critical\nAdd mandatory ELCB\nAdd missing dedicated circuits"]
+    FIX --> PRICE
+
+    PRICE --> MAT["Material cost\nconstants.py × qty\n× waste factor"]
+    PRICE --> LAB["Labour cost\nrates × points\n× difficulty multiplier"]
+    PRICE --> CABLE["Cable sizing\nSANS 10142-1 tables\n+ voltage drop check"]
+
+    MAT --> TOTAL["Project Total\n━━━━━━━━━━━━━━━━━━\nsubtotal\n+ contingency 7.5%\n+ overhead 10%\n+ profit margin\n+ VAT 15%\n= GRAND TOTAL"]
+    LAB --> TOTAL
+    CABLE --> TOTAL
+
+    TOTAL --> OUTPUT["STAGE 6: OUTPUT"]
+    OUTPUT --> PDF["📄 PDF Quotation\nfpdf2"]
+    OUTPUT --> EXCEL["📊 Excel BOQ\nopenpyxl"]
+    OUTPUT --> DISPLAY["🖥️ Streamlit Display\nEditable before export"]
+
+    style START fill:#1a237e,color:#fff
+    style SONNET fill:#ff6f00,color:#fff
+    style OPUS fill:#d32f2f,color:#fff
+    style PRICE fill:#2e7d32,color:#fff
+    style TOTAL fill:#2e7d32,color:#fff
+    style MANUAL fill:#f57f17,color:#000

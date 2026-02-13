@@ -145,14 +145,15 @@ afriplan-ai/
 
 ## SA Electrical Standards Reference
 
-### SANS 10142-1 Key Rules
+### SANS 10142-1:2017 Key Rules (Primary SA Wiring Standard)
 - Max 10 points per lighting circuit
 - Max 10 points per power circuit
 - Stove: dedicated 32A circuit (3-phase recommended)
 - Geyser: dedicated 20A circuit with timer
-- Earth leakage protection mandatory (30mA)
+- Earth leakage protection mandatory (30mA RCD)
 - Surge protection recommended (Type 1+2)
 - Voltage drop max 5% (2.5% sub-mains + 2.5% final)
+- COC (Certificate of Compliance) required for all installations
 
 ### Load Calculation (Updated for LED era)
 - Light point: 50W (LED standard)

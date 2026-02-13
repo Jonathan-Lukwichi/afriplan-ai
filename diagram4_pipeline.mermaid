@@ -1,0 +1,17 @@
+flowchart LR
+    S1["STAGE 1\n━━━━━━━━\nINGEST\n━━━━━━━━\nPython\nPyMuPDF\nPillow\n━━━━━━━━\nInput:\nPDF/Image\n━━━━━━━━\nOutput:\nClean images\n+ text"] --> S2["STAGE 2\n━━━━━━━━\nCLASSIFY\n━━━━━━━━\nClaude\nHaiku 4.5\n━━━━━━━━\nInput:\nClean data\n━━━━━━━━\nOutput:\nTier route\n+ confidence"]
+
+    S2 --> S3["STAGE 3\n━━━━━━━━\nDISCOVER\n━━━━━━━━\nClaude\nSonnet 4.5\nor Opus 4.6\n━━━━━━━━\nInput:\nImages +\ntier prompt\n━━━━━━━━\nOutput:\nJSON inventory\n+ confidence"]
+
+    S3 --> S4["STAGE 4\n━━━━━━━━\nVALIDATE\n━━━━━━━━\nClaude +\nPython rules\n━━━━━━━━\nInput:\nRaw JSON\nextraction\n━━━━━━━━\nOutput:\nValidated JSON\n+ compliance flags"]
+
+    S4 --> S5["STAGE 5\n━━━━━━━━\nPRICE\n━━━━━━━━\nPython\nONLY\n━━━━━━━━\nInput:\nValidated\ninventory\n━━━━━━━━\nOutput:\nComplete BOQ\nwith pricing"]
+
+    S5 --> S6["STAGE 6\n━━━━━━━━\nOUTPUT\n━━━━━━━━\nPython +\nHaiku 4.5\n━━━━━━━━\nInput:\nPriced BOQ\n━━━━━━━━\nOutput:\nPDF + Excel\n+ narrative"]
+
+    style S1 fill:#1a237e,color:#fff
+    style S2 fill:#ff6f00,color:#fff
+    style S3 fill:#ff6f00,color:#fff
+    style S4 fill:#7b1fa2,color:#fff
+    style S5 fill:#2e7d32,color:#fff
+    style S6 fill:#1a237e,color:#fff

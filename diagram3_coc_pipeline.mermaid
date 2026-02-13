@@ -1,0 +1,24 @@
+flowchart LR
+    A["🏠 Client requests\nCOC inspection"] --> B["📋 Property info\n+ DB board photos"]
+    B --> C["🤖 AI classifies as\nMAINTENANCE tier"]
+    C --> D["🔍 AI estimates scope\n+ likely defects\nbased on age"]
+    D --> E["💰 Generate\nINSPECTION\nquotation"]
+    E --> F{"Client\napproves?"}
+    F -->|"No"| END1["❌ End"]
+    F -->|"Yes"| G["🔧 Contractor\nperforms physical\ninspection on site"]
+    G --> H["📱 Input actual\nfindings into\nAfriPlan app"]
+    H --> I{"COC\nresult?"}
+    I -->|"PASS ✅"| J["📜 Generate\nCOC certificate"]
+    I -->|"FAIL ❌"| K["🤖 AI generates\nREMEDIAL quotation\nautomatically"]
+    K --> L["📋 Detailed defects\nCritical → Major → Minor\nMaterials + Labour\nper defect"]
+    L --> M{"Client\napproves\nremedial?"}
+    M -->|"No"| END2["❌ End"]
+    M -->|"Yes"| N["🔧 Contractor\nperforms\nremedial work"]
+    N --> O["🔍 Re-inspection\nfee applies"]
+    O --> P["✅ COC issued\nCompliance achieved"]
+
+    style A fill:#1a237e,color:#fff
+    style C fill:#ff6f00,color:#fff
+    style K fill:#ff6f00,color:#fff
+    style P fill:#2e7d32,color:#fff
+    style J fill:#2e7d32,color:#fff
