@@ -670,7 +670,9 @@ class AfriPlanAgent:
                 model_used = self.MODEL_OPUS
 
             warnings = []
-            if confidence < 0.5:
+            if extraction.get("_parse_error"):
+                warnings.append(f"JSON parse error. Raw response snippet: {extraction.get('_raw_snippet', 'N/A')[:100]}")
+            elif confidence < 0.5:
                 warnings.append("Low confidence extraction - recommend manual verification")
 
             # Calculate cost based on model used
@@ -761,12 +763,31 @@ class AfriPlanAgent:
             confidence = 0.5
             warnings.append(f"Validation error: {str(e)}")
 
+        # Calculate summary metrics from flags
+        passed_count = sum(1 for f in flags if f.get("passed", False))
+        failed_count = sum(1 for f in flags if not f.get("passed", True))
+        warning_count = sum(1 for f in flags if f.get("severity") == "warning")
+        critical_count = sum(1 for f in flags if f.get("severity") == "critical")
+
+        # Calculate compliance score (100% - penalty for failures)
+        if flags:
+            total_checks = len(flags)
+            compliance_score = int((passed_count / total_checks) * 100) if total_checks > 0 else 100
+        else:
+            compliance_score = 100
+
         return StageResult(
             stage=PipelineStage.VALIDATE,
             success=True,
             data={
                 "validated_data": validated_data,
                 "flags": flags,
+                # Summary metrics for UI display
+                "passed": passed_count,
+                "failed": failed_count,
+                "warnings": warning_count,
+                "critical": critical_count,
+                "compliance_score": compliance_score,
             },
             confidence=confidence,
             processing_time_ms=(time.time() - start_time) * 1000,
@@ -926,6 +947,10 @@ class AfriPlanAgent:
 
     def _parse_json_response(self, text: str) -> Dict[str, Any]:
         """Parse JSON from Claude response, handling markdown code blocks."""
+        if not text:
+            return {}
+
+        original_text = text  # Keep for debugging
         text = text.strip()
 
         # Remove markdown code blocks
@@ -941,7 +966,7 @@ class AfriPlanAgent:
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            # Try to extract JSON from response
+            # Try to extract JSON object from response
             start = text.find("{")
             end = text.rfind("}") + 1
             if start != -1 and end > start:
@@ -949,7 +974,29 @@ class AfriPlanAgent:
                     return json.loads(text[start:end])
                 except json.JSONDecodeError:
                     pass
-            return {}
+
+            # Try to find JSON array if no object found
+            start = text.find("[")
+            end = text.rfind("]") + 1
+            if start != -1 and end > start:
+                try:
+                    result = json.loads(text[start:end])
+                    if isinstance(result, list):
+                        return {"items": result}
+                except json.JSONDecodeError:
+                    pass
+
+            # Last resort: Try to fix common JSON issues
+            # Remove trailing commas before } or ]
+            import re
+            fixed = re.sub(r',\s*([}\]])', r'\1', text)
+            try:
+                return json.loads(fixed)
+            except json.JSONDecodeError:
+                pass
+
+            # Return empty dict with debug info
+            return {"_parse_error": True, "_raw_snippet": original_text[:200]}
 
     def _parse_confidence(self, confidence_str: str) -> float:
         """Convert confidence string to float."""
@@ -963,6 +1010,10 @@ class AfriPlanAgent:
     def _evaluate_extraction_confidence(self, extraction: Dict[str, Any]) -> float:
         """Evaluate overall confidence of extraction based on completeness."""
         if not extraction:
+            return 0.0
+
+        # Check if JSON parsing failed
+        if extraction.get("_parse_error"):
             return 0.0
 
         # Count fields with values

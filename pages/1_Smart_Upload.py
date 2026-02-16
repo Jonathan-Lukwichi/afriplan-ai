@@ -178,30 +178,40 @@ def render_validation_report(validation_flags: list):
         st.success("All SANS 10142-1 checks passed")
         return
 
-    critical = [f for f in validation_flags if f.get("severity") == "critical"]
-    warnings = [f for f in validation_flags if f.get("severity") == "warning"]
-    info = [f for f in validation_flags if f.get("severity") == "info"]
+    # Filter by severity - only show failed checks
+    critical = [f for f in validation_flags if f.get("severity") == "critical" and not f.get("passed", True)]
+    warnings = [f for f in validation_flags if f.get("severity") == "warning" and not f.get("passed", True)]
+    info = [f for f in validation_flags if f.get("severity") == "info" and not f.get("passed", True)]
 
     if critical:
         st.error(f"**{len(critical)} Critical Issues Found**")
         for flag in critical:
+            # Use correct field names: rule_name (not rule), auto_corrected (not auto_fix)
+            rule_name = flag.get('rule_name', 'Unknown')
+            message = flag.get('message', '')
+            auto_corrected = flag.get('auto_corrected', False)
+            corrected_value = flag.get('corrected_value', '')
+
+            auto_fix_html = ""
+            if auto_corrected:
+                auto_fix_html = f"<br><span style='color: #22C55E; font-size: 12px;'>✓ Auto-corrected: {corrected_value}</span>"
+
             st.markdown(f"""
             <div style="background: rgba(239, 68, 68, 0.1); border-left: 3px solid #EF4444;
                         padding: 0.5rem 1rem; margin: 0.5rem 0; border-radius: 0 8px 8px 0;">
-                <strong>{flag.get('rule', 'Unknown')}</strong>: {flag.get('message', '')}
-                {f"<br><span style='color: #22C55E; font-size: 12px;'>Auto-fix: {flag.get('auto_fix')}</span>" if flag.get('auto_fix') else ""}
+                <strong>{rule_name}</strong>: {message}{auto_fix_html}
             </div>
             """, unsafe_allow_html=True)
 
     if warnings:
         with st.expander(f"Warnings ({len(warnings)})", expanded=False):
             for flag in warnings:
-                st.warning(f"**{flag.get('rule', '')}**: {flag.get('message', '')}")
+                st.warning(f"**{flag.get('rule_name', '')}**: {flag.get('message', '')}")
 
     if info:
         with st.expander(f"Info ({len(info)})", expanded=False):
             for flag in info:
-                st.info(f"**{flag.get('rule', '')}**: {flag.get('message', '')}")
+                st.info(f"**{flag.get('rule_name', '')}**: {flag.get('message', '')}")
 
 
 # Initialize agent/analyzer with caching
