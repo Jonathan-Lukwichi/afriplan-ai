@@ -27,22 +27,22 @@ welcome = st.Page(
 )
 
 smart_upload = st.Page(
-    "pages/5_Smart_Upload.py",
+    "pages/1_Smart_Upload.py",
     title="Smart Upload"
 )
 
 residential = st.Page(
-    "pages/1_Residential.py",
+    "pages/2_Residential.py",
     title="Residential"
 )
 
 commercial = st.Page(
-    "pages/2_Commercial.py",
+    "pages/3_Commercial.py",
     title="Commercial"
 )
 
 maintenance = st.Page(
-    "pages/3_Maintenance.py",
+    "pages/4_Maintenance.py",
     title="Maintenance & COC"
 )
 
