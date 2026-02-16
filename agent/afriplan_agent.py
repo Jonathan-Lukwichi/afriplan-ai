@@ -343,7 +343,26 @@ class AfriPlanAgent:
         errors: List[str] = []
 
         try:
+            # Handle both MIME types and file extensions
             file_type = file_type.lower().strip('.')
+
+            # Convert MIME types to extensions
+            mime_to_ext = {
+                "application/pdf": "pdf",
+                "image/png": "png",
+                "image/jpeg": "jpg",
+                "image/jpg": "jpg",
+                "image/bmp": "bmp",
+                "image/tiff": "tiff",
+            }
+            if file_type in mime_to_ext:
+                file_type = mime_to_ext[file_type]
+
+            # Also try extracting from filename if still not recognized
+            if file_type not in ("pdf", "png", "jpg", "jpeg", "bmp", "tiff"):
+                ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+                if ext in ("pdf", "png", "jpg", "jpeg", "bmp", "tiff"):
+                    file_type = ext
 
             if file_type == "pdf":
                 if not PDF_AVAILABLE:
