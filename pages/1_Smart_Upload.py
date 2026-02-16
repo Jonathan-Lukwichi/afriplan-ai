@@ -263,11 +263,25 @@ with st.sidebar:
     if agent and agent.available:
         st.success("Full Pipeline Active")
         st.caption("6-stage processing available")
+
+        # API test button
+        if st.button("🧪 Test API", key="test_api"):
+            with st.spinner("Testing API connection..."):
+                try:
+                    test_response = agent.client.messages.create(
+                        model="claude-3-5-haiku-20241022",
+                        max_tokens=50,
+                        messages=[{"role": "user", "content": "Reply with just 'OK'"}]
+                    )
+                    st.success(f"API working! Response: {test_response.content[0].text}")
+                except Exception as e:
+                    st.error(f"API Error: {str(e)}")
     elif analyzer and analyzer.available:
         st.warning("Legacy Mode")
         st.caption("Basic analysis only")
     else:
         st.error("API Not Configured")
+        st.caption("Add ANTHROPIC_API_KEY")
 
     st.markdown("---")
     st.markdown("### Supported Formats")
@@ -436,6 +450,24 @@ with tab1:
                         st.warning(f"Pipeline complete with medium confidence: {result.overall_confidence*100:.0f}%")
                     else:
                         st.error(f"Pipeline complete with low confidence: {result.overall_confidence*100:.0f}%")
+
+                        # Show diagnostic info for low confidence
+                        with st.expander("🔧 Diagnostic Info", expanded=True):
+                            st.markdown("**Stage Results:**")
+                            for stage in result.stages:
+                                status = "✅" if stage.success else "❌"
+                                st.markdown(f"- {stage.stage.name}: {status} (conf: {stage.confidence*100:.0f}%)")
+                                if stage.errors:
+                                    for err in stage.errors:
+                                        st.error(f"  Error: {err}")
+                                if stage.warnings:
+                                    for warn in stage.warnings:
+                                        st.warning(f"  Warning: {warn}")
+
+                            if result.errors:
+                                st.markdown("**Pipeline Errors:**")
+                                for err in result.errors:
+                                    st.error(err)
 
                 st.info("Check **Pipeline**, **Extraction**, and **Validation** tabs for details.")
 
