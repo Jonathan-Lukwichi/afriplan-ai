@@ -78,6 +78,7 @@ class StageResult:
     processing_time_ms: float
     model_used: Optional[str] = None
     tokens_used: int = 0
+    cost_zar: float = 0.0  # API cost for this stage in ZAR
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
@@ -502,6 +503,8 @@ class AfriPlanAgent:
 
             tier = result.get("tier", "unknown").lower()
             confidence = self._parse_confidence(result.get("confidence", "medium"))
+            tokens = response.usage.input_tokens + response.usage.output_tokens
+            cost_zar = self._calculate_stage_cost("haiku", tokens)
 
             return StageResult(
                 stage=PipelineStage.CLASSIFY,
@@ -515,7 +518,8 @@ class AfriPlanAgent:
                 confidence=confidence,
                 processing_time_ms=(time.time() - start_time) * 1000,
                 model_used=self.MODEL_HAIKU,
-                tokens_used=response.usage.input_tokens + response.usage.output_tokens,
+                tokens_used=tokens,
+                cost_zar=cost_zar,
             )
 
         except Exception as e:
@@ -610,6 +614,10 @@ class AfriPlanAgent:
             if confidence < 0.5:
                 warnings.append("Low confidence extraction - recommend manual verification")
 
+            # Calculate cost based on model used
+            model_type = "opus" if escalated else "sonnet"
+            cost_zar = self._calculate_stage_cost(model_type, tokens_used)
+
             return StageResult(
                 stage=PipelineStage.DISCOVER,
                 success=True,
@@ -622,6 +630,7 @@ class AfriPlanAgent:
                 processing_time_ms=(time.time() - start_time) * 1000,
                 model_used=model_used,
                 tokens_used=tokens_used,
+                cost_zar=cost_zar,
                 warnings=warnings,
             )
 
@@ -977,6 +986,19 @@ class AfriPlanAgent:
                 total_cost += cost
 
         return total_cost
+
+    def _calculate_stage_cost(self, model_type: str, tokens: int) -> float:
+        """Calculate API cost for a single stage in ZAR."""
+        if model_type not in self.COST_PER_1K_INPUT:
+            return 0.0
+
+        # Rough estimate: assume 70% input, 30% output
+        input_tokens = tokens * 0.7
+        output_tokens = tokens * 0.3
+
+        cost = (input_tokens / 1000) * self.COST_PER_1K_INPUT[model_type]
+        cost += (output_tokens / 1000) * self.COST_PER_1K_OUTPUT[model_type]
+        return cost
 
     def _convert_rooms_for_calculation(self, validated_data: Dict) -> List[Dict]:
         """Convert extracted room data to format expected by calculations.py."""

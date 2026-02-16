@@ -519,8 +519,9 @@ with tab2:
                         st.caption(f"Tokens: {stage_result.tokens_used:,}")
 
                 with col3:
-                    if stage_result.cost_zar:
-                        st.metric("Cost", f"R{stage_result.cost_zar:.2f}")
+                    cost_zar = getattr(stage_result, 'cost_zar', None)
+                    if cost_zar:
+                        st.metric("Cost", f"R{cost_zar:.2f}")
 
                 # Show stage data summary
                 if stage_result.data:
@@ -534,7 +535,7 @@ with tab2:
 
         # Total cost
         st.markdown("---")
-        total_cost = sum(s.cost_zar for s in result.stages if s.cost_zar)
+        total_cost = sum(getattr(s, 'cost_zar', 0) or 0 for s in result.stages)
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Total Pipeline Cost", f"R{total_cost:.2f}")
@@ -809,7 +810,7 @@ with tab5:
             st.markdown(f"**Confidence:** {get_confidence_badge(result.confidence)}", unsafe_allow_html=True)
         with col2:
             if "pipeline_result" in st.session_state and st.session_state.pipeline_result:
-                total_cost = sum(s.cost_zar for s in st.session_state.pipeline_result.stages if s.cost_zar)
+                total_cost = sum(getattr(s, 'cost_zar', 0) or 0 for s in st.session_state.pipeline_result.stages)
                 st.markdown(f"**Pipeline Cost:** R{total_cost:.2f}")
 
         st.markdown("---")
