@@ -344,7 +344,8 @@ class AfriPlanAgent:
 
         try:
             # Handle both MIME types and file extensions
-            file_type = file_type.lower().strip('.')
+            # Strip whitespace and normalize
+            file_type = file_type.lower().strip().strip('.')
 
             # Convert MIME types to extensions
             mime_to_ext = {
@@ -354,14 +355,23 @@ class AfriPlanAgent:
                 "image/jpg": "jpg",
                 "image/bmp": "bmp",
                 "image/tiff": "tiff",
+                "image/gif": "gif",
             }
+
+            # Check exact match first
             if file_type in mime_to_ext:
                 file_type = mime_to_ext[file_type]
+            # Check if file_type contains a known MIME type (handle extra chars)
+            elif "/" in file_type:
+                for mime, ext in mime_to_ext.items():
+                    if mime in file_type:
+                        file_type = ext
+                        break
 
             # Also try extracting from filename if still not recognized
-            if file_type not in ("pdf", "png", "jpg", "jpeg", "bmp", "tiff"):
-                ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-                if ext in ("pdf", "png", "jpg", "jpeg", "bmp", "tiff"):
+            if file_type not in ("pdf", "png", "jpg", "jpeg", "bmp", "tiff", "gif"):
+                ext = filename.rsplit(".", 1)[-1].lower().strip() if "." in filename else ""
+                if ext in ("pdf", "png", "jpg", "jpeg", "bmp", "tiff", "gif"):
                     file_type = ext
 
             if file_type == "pdf":
