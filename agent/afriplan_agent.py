@@ -530,7 +530,37 @@ class AfriPlanAgent:
             response_text = response.content[0].text
             result = self._parse_json_response(response_text)
 
-            tier = result.get("tier", "unknown").lower()
+            # Extract and normalize tier
+            raw_tier = result.get("tier", "unknown")
+            if isinstance(raw_tier, str):
+                tier = raw_tier.lower().strip()
+            else:
+                tier = "unknown"
+
+            # Map variations to standard tiers
+            tier_mapping = {
+                "residential": "residential",
+                "res": "residential",
+                "house": "residential",
+                "home": "residential",
+                "domestic": "residential",
+                "commercial": "commercial",
+                "com": "commercial",
+                "office": "commercial",
+                "business": "commercial",
+                "maintenance": "maintenance",
+                "maint": "maintenance",
+                "coc": "maintenance",
+                "repair": "maintenance",
+            }
+            tier = tier_mapping.get(tier, tier)
+
+            # If still unknown and we have images, default to residential
+            if tier not in ("residential", "commercial", "maintenance"):
+                tier = "residential"  # Most common case
+                result["reasoning"] = (result.get("reasoning", "") +
+                    " [Note: Classification uncertain, defaulted to residential]")
+
             confidence = self._parse_confidence(result.get("confidence", "medium"))
             tokens = response.usage.input_tokens + response.usage.output_tokens
             cost_zar = self._calculate_stage_cost("haiku", tokens)
