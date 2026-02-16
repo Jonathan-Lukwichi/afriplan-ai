@@ -3,10 +3,10 @@
 ## Project Overview
 
 **Name:** AfriPlan Electrical
-**Purpose:** SA Electrical Quotation Platform - All Sectors
+**Purpose:** SA Electrical Quotation Platform - 3 Service Tiers
 **GitHub:** https://github.com/Jonathan-Lukwichi/afriplan-ai
 **Live:** https://afriplan-ai.streamlit.app
-**Version:** 2.0 (Professional Edition)
+**Version:** 3.0 (AI Agent Pipeline Edition)
 
 ---
 
@@ -15,12 +15,21 @@
 | Component | Technology |
 |-----------|------------|
 | Frontend | Streamlit (Python) |
+| AI Pipeline | Claude API (Anthropic) |
 | PDF Export | fpdf2 |
 | Excel Export | openpyxl |
 | Optimization | PuLP (Operations Research) |
 | CAD Export | ezdxf |
-| AI Analysis | Claude Vision API (Anthropic) |
-| PDF Processing | PyMuPDF |
+| PDF Processing | PyMuPDF (fitz) |
+| Image Processing | Pillow |
+
+### AI Models Used
+
+| Model | Use Case | Cost (ZAR/doc) |
+|-------|----------|----------------|
+| Haiku 4.5 | Fast classification | ~R0.18 |
+| Sonnet 4.5 | Balanced extraction | ~R1.80 |
+| Opus 4.6 | Escalation for low confidence | ~R8.50 |
 
 ---
 
@@ -28,36 +37,104 @@
 
 ```
 afriplan-ai/
-├── app.py                          # Main application entry
+├── app.py                          # Main application entry (st.navigation)
+├── agent/                          # v3.0 AI Agent Pipeline
+│   ├── __init__.py                 # Package exports
+│   ├── afriplan_agent.py           # 6-stage pipeline orchestrator
+│   ├── classifier.py               # Tier classification logic
+│   └── prompts/                    # Tier-specific prompts
+│       ├── system_prompt.py        # SA electrical context
+│       ├── residential_prompts.py  # Room-based extraction
+│       ├── commercial_prompts.py   # Area-based extraction
+│       └── maintenance_prompts.py  # COC/defect extraction
 ├── pages/
 │   ├── 0_Welcome.py                # Landing page with tier selection
-│   ├── 1_Residential.py            # Residential quotations
-│   ├── 2_Commercial.py             # Commercial quotations
-│   ├── 3_Industrial.py             # Industrial/mining quotations
-│   ├── 4_Infrastructure.py         # Township/street lighting
-│   └── 5_Smart_Upload.py           # AI document analysis
+│   ├── 1_Smart_Upload.py           # AI document analysis (v3.0)
+│   ├── 2_Residential.py            # Residential quotations
+│   ├── 3_Commercial.py             # Commercial quotations
+│   └── 4_Maintenance.py            # Maintenance & COC
 ├── utils/
 │   ├── __init__.py                 # Package initialization
 │   ├── calculations.py             # SANS 10142 calculation functions
 │   ├── constants.py                # Material databases & pricing
+│   ├── validators.py               # SANS 10142-1 hard rule validator
 │   ├── pdf_generator.py            # PDF quotation export
 │   ├── excel_exporter.py           # Excel BQ export
 │   ├── eskom_forms.py              # Eskom application helper
 │   ├── components.py               # Reusable UI components
 │   ├── optimizer.py                # PuLP cost optimization
 │   ├── styles.py                   # Custom CSS styling
-│   └── document_analyzer.py        # Claude Vision API integration
+│   └── document_analyzer.py        # Legacy Claude Vision integration
 ├── .streamlit/
 │   ├── config.toml                 # Streamlit configuration
-│   └── secrets.toml.example        # API key template
+│   └── secrets.toml                # API key (ANTHROPIC_API_KEY)
 ├── requirements.txt                # Python dependencies
 ├── .gitignore                      # Git ignore rules
+├── questions.md                    # Expert validation questions
 └── CLAUDE.md                       # This file
 ```
 
 ---
 
+## v3.0 AI Agent Pipeline
+
+### 6-Stage Processing
+
+```
+INGEST → CLASSIFY → DISCOVER → VALIDATE → PRICE → OUTPUT
+```
+
+| Stage | Description | AI Model | Purpose |
+|-------|-------------|----------|---------|
+| 1. INGEST | Document processing | None | Convert PDF/image to Claude-ready format |
+| 2. CLASSIFY | Tier detection | Haiku 4.5 | Fast routing to residential/commercial/maintenance |
+| 3. DISCOVER | JSON extraction | Sonnet 4.5 | Extract rooms, areas, circuits, defects |
+| 4. VALIDATE | SANS 10142-1 check | None | Python hard rules + auto-corrections |
+| 5. PRICE | Cost calculation | None | Deterministic pricing from constants.py |
+| 6. OUTPUT | Quote generation | None | PDF/Excel export |
+
+### Confidence & Escalation
+
+- **High confidence (≥70%)**: Direct processing
+- **Medium confidence (40-70%)**: Warning displayed, recommend verification
+- **Low confidence (<40%)**: Escalate DISCOVER to Opus 4.6
+
+---
+
+## Service Tiers (v3.0)
+
+### Tier 1: Residential
+- Room-by-room configuration
+- ADMD calculation (NRS 034)
+- Dedicated circuits (stove, geyser, aircon, pool)
+- Safety devices (smoke detectors, surge protection)
+
+### Tier 2: Commercial
+- Area-based W/m² calculations
+- Three-phase load balancing
+- Emergency lighting & fire detection
+- Building types: office, retail, hospitality, healthcare, education
+
+### Tier 3: Maintenance & COC
+- COC inspection quotations
+- Fault finding & repairs
+- DB board upgrades
+- Remedial work from defect lists
+
+**Note:** Industrial and Infrastructure tiers deprecated in v3.0 (scope refocus)
+
+---
+
 ## Current Implementation Status
+
+### AI Pipeline - COMPLETE
+- [x] 6-stage pipeline orchestration
+- [x] Multi-model strategy (Haiku → Sonnet → Opus)
+- [x] Confidence scoring and escalation
+- [x] JSON extraction with parse error handling
+- [x] SANS 10142-1 hard rule validation
+- [x] Validation metrics (passed/failed/warnings/score)
+- [x] Cost tracking per stage (ZAR)
 
 ### Tier 1: Residential - COMPLETE
 - [x] Room-based configuration
@@ -65,49 +142,28 @@ afriplan-ai/
 - [x] ADMD calculator (NRS 034)
 - [x] Voltage drop verification
 - [x] Cable sizing per Annexure B
-- [x] Dedicated circuits section (stove, geyser, aircon, pool)
-- [x] Safety devices (smoke detectors, surge protection)
-- [x] Complexity factors (new build vs renovation)
+- [x] Dedicated circuits section
+- [x] Safety devices
+- [x] Complexity factors (1.0x - 1.5x)
 - [x] Profit margin slider (10-50%)
 - [x] Payment terms (40/40/20 standard)
-- [x] Solar & backup power
-- [x] Smart home automation
-- [x] Security systems
-- [x] EV charging
 - [x] PDF & Excel export
 - [x] COC checklist generator
 
 ### Tier 2: Commercial - COMPLETE
 - [x] Area-based calculations
-- [x] Office, retail, hospitality, healthcare, education
+- [x] Building type selection
 - [x] Three-phase load calculations
 - [x] Emergency lighting
 - [x] Fire detection zones
 - [x] PDF & Excel export
 
-### Tier 3: Industrial - COMPLETE
-- [x] Motor load calculations
-- [x] MCC panel sizing
-- [x] MV equipment (mining)
-- [x] Hazardous area compliance
-- [x] MHSA standards
+### Tier 3: Maintenance & COC - COMPLETE
+- [x] Property type selection
+- [x] COC inspection pricing
+- [x] Defect detection from photos
+- [x] Remedial work quotations
 - [x] PDF & Excel export
-
-### Tier 4: Infrastructure - COMPLETE
-- [x] Township electrification (NRS 034)
-- [x] Street lighting (SANS 10098)
-- [x] Rural electrification
-- [x] Utility-scale solar
-- [x] Mini-grids
-- [x] Municipal submission requirements
-- [x] NERSA compliance
-- [x] PDF & Excel export
-
-### Smart Features - COMPLETE
-- [x] Smart Document Upload (Claude Vision API)
-- [x] Automatic project classification
-- [x] Data extraction from plans
-- [x] Intelligent routing to correct tier
 
 ---
 
@@ -162,6 +218,7 @@ afriplan-ai/
 - Power factor: 0.85
 
 ### NRS 034 ADMD Values
+
 | Dwelling Type | ADMD (kVA) | Supply |
 |--------------|------------|--------|
 | RDP/Low cost | 1.5-2.0 | 20A |
@@ -184,7 +241,7 @@ afriplan-ai/
 
 ## API Configuration
 
-### Claude Vision API (Smart Upload)
+### Claude API (v3.0 Pipeline)
 
 Set API key via:
 1. **Environment Variable:** `ANTHROPIC_API_KEY`
@@ -193,6 +250,14 @@ Set API key via:
 ```toml
 # .streamlit/secrets.toml
 ANTHROPIC_API_KEY = "sk-ant-api03-your-key-here"
+```
+
+### Model IDs
+
+```python
+MODEL_HAIKU = "claude-3-5-haiku-20241022"   # Fast classification
+MODEL_SONNET = "claude-sonnet-4-20250514"   # Balanced extraction
+MODEL_OPUS = "claude-opus-4-20250514"       # Premium escalation
 ```
 
 ---
@@ -229,32 +294,29 @@ Streamlit Cloud auto-deploys from main branch.
 
 ---
 
-## Recent Changes (v2.0)
+## Recent Changes (v3.0)
+
+### AI Agent Pipeline
+- 6-stage orchestrated processing
+- Multi-model strategy (Haiku → Sonnet → Opus escalation)
+- Confidence scoring with weighted averages
+- Cost tracking per stage in ZAR
 
 ### Smart Document Upload
-- Claude Vision API integration
-- Automatic tier classification
-- Project data extraction
-- Intelligent routing
+- Full pipeline visualization with progress
+- Stage-by-stage confidence display
+- Editable extraction results
+- SANS 10142-1 validation with passed/failed metrics
 
-### Professional Pricing Tools
-- Complexity factors (1.0x - 1.5x)
-- Profit margin slider (10-50%)
-- Payment terms selection
-- Deposit calculation
+### Scope Refocus
+- Simplified to 3 tiers: Residential, Commercial, Maintenance
+- Industrial and Infrastructure tiers deprecated
+- Focused on core SA contractor market
 
-### Dedicated Circuits
-- Stove circuit (3-phase 32A)
-- Geyser circuit with timer
-- Aircon circuits
-- Pool pump circuit
-- Gate motor circuit
-- Safety devices (smoke detectors)
-
-### Updated Standards
-- LED load calculation (50W vs 100W)
-- 40/40/20 payment terms
-- Room-based auto-population
+### Validation Improvements
+- Hard rule validation (Python, no AI)
+- Auto-correction for common issues (ELCB, surge protection)
+- Compliance scoring (percentage based)
 
 ---
 
