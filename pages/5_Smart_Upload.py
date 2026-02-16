@@ -95,7 +95,7 @@ def get_confidence_badge(confidence: float) -> str:
 
 
 def render_pipeline_progress(result: Optional[Any] = None, current_stage: str = None):
-    """Render 6-stage pipeline progress visualization."""
+    """Render 6-stage pipeline progress visualization using st.columns for reliability."""
     stages = list(STAGE_CONFIG.keys())
 
     # Determine stage statuses
@@ -120,44 +120,36 @@ def render_pipeline_progress(result: Optional[Any] = None, current_stage: str = 
     else:
         stage_statuses = {s: "pending" for s in stages}
 
-    # Build pipeline HTML
-    pipeline_html = '<div style="display: flex; justify-content: space-between; margin: 1rem 0;">'
+    # Use st.columns for reliable rendering
+    cols = st.columns(len(stages))
 
-    for i, stage in enumerate(stages):
+    for i, (stage, col) in enumerate(zip(stages, cols)):
         config = STAGE_CONFIG[stage]
         status = stage_statuses[stage]
 
         if status == "complete":
             bg = "rgba(34, 197, 94, 0.2)"
             border = "#22C55E"
-            icon_bg = "#22C55E"
         elif status == "active":
             bg = "rgba(0, 212, 255, 0.2)"
             border = "#00D4FF"
-            icon_bg = "#00D4FF"
         elif status == "error":
             bg = "rgba(239, 68, 68, 0.2)"
             border = "#EF4444"
-            icon_bg = "#EF4444"
         else:
             bg = "rgba(100, 116, 139, 0.1)"
             border = "#64748b"
-            icon_bg = "#334155"
 
-        pipeline_html += f"""
-        <div style="flex: 1; text-align: center; position: relative;">
+        with col:
+            stage_html = f"""
             <div style="background: {bg}; border: 2px solid {border}; border-radius: 12px;
-                        padding: 0.8rem 0.5rem; margin: 0 4px;">
+                        padding: 0.8rem 0.5rem; text-align: center;">
                 <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">{config['icon']}</div>
                 <div style="font-size: 11px; font-weight: 600; color: {border};">{config['name']}</div>
                 <div style="font-size: 9px; color: #64748b;">{config['desc']}</div>
             </div>
-            {"" if i == len(stages) - 1 else f'<div style="position: absolute; right: -8px; top: 50%; transform: translateY(-50%); color: {border};">→</div>'}
-        </div>
-        """
-
-    pipeline_html += '</div>'
-    st.markdown(pipeline_html, unsafe_allow_html=True)
+            """
+            st.markdown(stage_html, unsafe_allow_html=True)
 
 
 def render_model_indicator(model_used: str) -> str:
