@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.1 — PDF Summary Export
+AfriPlan Electrical v4.1 - PDF Summary Export
 
 Generates professional PDF quotation summary using fpdf2.
 """
@@ -159,7 +159,7 @@ def generate_pdf_summary(
             pdf.set_text_color(239, 68, 68)  # Red
             status = "NON-COMPLIANT"
 
-        pdf.cell(0, 6, f"Compliance Score: {score:.0f}% — {status}")
+        pdf.cell(0, 6, f"Compliance Score: {score:.0f}% - {status}")
         pdf.set_text_color(0, 0, 0)
         pdf.ln(6)
 
