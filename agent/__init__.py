@@ -65,6 +65,9 @@ from agent.pipeline import (
     extract_quantities_only,
 )
 
+# Legacy v3.0 agent (still used by Smart Upload page)
+from agent.afriplan_agent import AfriPlanAgent
+
 from agent.stages import (
     ingest,
     classify,
@@ -116,6 +119,7 @@ __all__ = [
 
     # Pipeline
     'AfriPlanPipeline',
+    'AfriPlanAgent',  # Legacy v3.0 compatibility
     'create_pipeline',
     'process_single_document',
     'extract_quantities_only',
