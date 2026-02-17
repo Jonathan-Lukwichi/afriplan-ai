@@ -299,16 +299,93 @@ def create_review_manager(extraction: ExtractionResult) -> ReviewManager:
     return ReviewManager(extraction)
 
 
+def cross_reference_sld_vs_layouts(extraction: ExtractionResult) -> list[dict]:
+    """
+    Cross-reference SLD circuit point counts against layout fixture counts.
+
+    This validates that the "No Of Point" value from SLD schedules matches
+    the actual count of symbols on layout drawings.
+
+    Returns:
+        List of discrepancies: {circuit, db, sld_count, layout_count, diff, severity}
+    """
+    discrepancies = []
+
+    for block in extraction.building_blocks:
+        # Build circuit -> point count from SLDs
+        sld_counts = {}
+        for db in block.distribution_boards:
+            for circuit in db.circuits:
+                if circuit.is_spare:
+                    continue
+                key = f"{db.name} {circuit.id}"
+                sld_counts[key] = {
+                    "db": db.name,
+                    "circuit_id": circuit.id,
+                    "sld_points": circuit.num_points,
+                    "type": circuit.type,
+                }
+
+        # Build circuit -> count from room fixtures
+        layout_counts = {}
+        for room in block.rooms:
+            for ref in room.circuit_refs:
+                if ref not in layout_counts:
+                    layout_counts[ref] = {"count": 0, "rooms": []}
+                # Add fixture counts for this circuit
+                if "L" in ref.upper():  # Lighting circuit
+                    layout_counts[ref]["count"] += room.fixtures.total_lights
+                elif "P" in ref.upper():  # Power circuit
+                    layout_counts[ref]["count"] += room.fixtures.total_sockets
+                layout_counts[ref]["rooms"].append(room.name)
+
+        # Compare SLD vs Layout counts
+        for circuit_ref, sld_info in sld_counts.items():
+            sld_points = sld_info["sld_points"]
+            layout_info = layout_counts.get(circuit_ref, {"count": 0})
+            layout_points = layout_info["count"]
+
+            if sld_points != layout_points and sld_points > 0:
+                diff = abs(sld_points - layout_points)
+                severity = "high" if diff > 3 else "medium" if diff > 1 else "low"
+
+                discrepancies.append({
+                    "circuit": circuit_ref,
+                    "db": sld_info["db"],
+                    "circuit_id": sld_info["circuit_id"],
+                    "sld_count": sld_points,
+                    "layout_count": layout_points,
+                    "diff": diff,
+                    "severity": severity,
+                    "message": f"SLD shows {sld_points} points, layout count is {layout_points}",
+                })
+
+    return discrepancies
+
+
 def get_items_needing_review(extraction: ExtractionResult) -> list[dict]:
     """
     Get list of items that need contractor review.
 
     Items with INFERRED or ESTIMATED confidence are flagged for review.
+    Also includes cross-reference discrepancies.
 
     Returns:
         List of dicts with item info: {type, name, confidence, block, path}
     """
     items = []
+
+    # Add cross-reference discrepancies as high-priority review items
+    discrepancies = cross_reference_sld_vs_layouts(extraction)
+    for disc in discrepancies:
+        items.append({
+            "type": "cross_reference_mismatch",
+            "name": f"{disc['circuit']}: {disc['message']}",
+            "confidence": ItemConfidence.ESTIMATED,
+            "block": "",
+            "path": f"validation.cross_ref.{disc['circuit']}",
+            "severity": disc["severity"],
+        })
 
     for block in extraction.building_blocks:
         block_name = block.name

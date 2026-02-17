@@ -66,6 +66,7 @@ class AfriPlanPipeline:
     def process_documents(
         self,
         files: List[Tuple[bytes, str, str]],  # (file_bytes, filename, mime_type)
+        use_opus_directly: bool = False,
     ) -> Tuple[ExtractionResult, float]:
         """
         Run stages 1-3: INGEST → CLASSIFY → DISCOVER.
@@ -74,6 +75,7 @@ class AfriPlanPipeline:
 
         Args:
             files: List of (file_bytes, filename, mime_type) tuples
+            use_opus_directly: If True, use Opus for extraction (slower but more accurate)
 
         Returns:
             Tuple of (ExtractionResult, overall_confidence)
@@ -91,13 +93,14 @@ class AfriPlanPipeline:
         )
         self.stages.append(classify_result)
 
-        # Stage 3: DISCOVER
+        # Stage 3: DISCOVER (with optional Opus for maximum accuracy)
         self.extraction, discover_result = discover(
             self.doc_set,
             self.tier,
             self.mode,
             self.building_blocks,
             self.client,
+            use_opus_directly=use_opus_directly,
         )
         self.stages.append(discover_result)
 

@@ -349,6 +349,19 @@ with tab1:
             ```
             """)
 
+    # Accuracy mode selection
+    accuracy_mode = st.radio(
+        "Extraction Mode",
+        options=["Standard (Sonnet)", "Maximum Accuracy (Opus)"],
+        horizontal=True,
+        index=0,
+        help="Opus is slower but more accurate. Use for critical quotations."
+    )
+    use_opus = accuracy_mode == "Maximum Accuracy (Opus)"
+
+    if use_opus:
+        st.info("🎯 **Maximum Accuracy Mode** - Uses Opus for initial extraction. Higher cost (~R8/doc) but significantly more accurate.")
+
     # File uploader
     uploaded_file = st.file_uploader(
         "Choose a file",
@@ -411,9 +424,11 @@ with tab1:
                     run_pipeline = create_pipeline()
 
                     # Process document (runs INGEST → CLASSIFY → DISCOVER)
-                    extraction, confidence = run_pipeline.process_documents([
-                        (uploaded_file.getvalue(), uploaded_file.name, uploaded_file.type)
-                    ])
+                    # Pass accuracy mode to use Opus for initial extraction if selected
+                    extraction, confidence = run_pipeline.process_documents(
+                        files=[(uploaded_file.getvalue(), uploaded_file.name, uploaded_file.type)],
+                        use_opus_directly=use_opus
+                    )
 
                     # Store results in session state for v4.1 flow
                     st.session_state.pipeline = run_pipeline  # Keep pipeline for later stages

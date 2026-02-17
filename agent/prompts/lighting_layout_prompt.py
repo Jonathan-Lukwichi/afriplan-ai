@@ -1,8 +1,13 @@
 """
-AfriPlan Electrical v4.0 - Lighting Layout Extraction Prompt
+AfriPlan Electrical v4.1.1 - Lighting Layout Extraction Prompt
 
 Extracts rooms with light fixtures from lighting layout drawings.
-Must capture the legend first, then identify fixtures per room.
+
+CRITICAL RULES:
+1. READ THE LEGEND FIRST - Every symbol type is defined in the legend
+2. COUNT EVERY SYMBOL - Do not estimate, count actual instances
+3. MATCH CIRCUIT LABELS - Each fixture has a circuit label (e.g., "L2 DB-S3")
+4. NEVER FABRICATE - If count is unclear, mark as "estimated"
 """
 
 from typing import List, TYPE_CHECKING
@@ -129,14 +134,49 @@ Respond with ONLY valid JSON matching this schema (no markdown, no explanation):
 
 {LIGHTING_LAYOUT_SCHEMA}
 
+## CRITICAL: LEGEND PARSING
+
+Before counting ANY fixtures, locate and parse the LEGEND/KEY on the drawing.
+Extract EVERY item from the legend table:
+
+Example legend entries:
+```
+SYMBOL | DESCRIPTION
+  ⬜   | 600 x 1200 Recessed 3 x 18W LED Fluorescent Light
+  ○    | 18W LED Ceiling Light Surface Mount
+  ◐    | 30W LED Flood Light
+```
+
+Every legend item MUST appear in your extraction. Missing legend items = INCOMPLETE extraction.
+
+## COUNTING RULES
+
+1. COUNT visible symbols on the drawing - do NOT estimate
+2. If a room shows 8 light symbols, report qty=8, not an estimate
+3. Mark confidence as "extracted" when you physically counted the symbols
+4. Mark confidence as "estimated" ONLY if the count is truly unclear
+
+## CIRCUIT LABEL MATCHING
+
+Look for circuit labels near fixtures:
+- "L2 DB-S3" means Lighting circuit 2 from Distribution Board S3
+- Include the full reference (circuit + DB) in your extraction
+
+## NEVER FABRICATE
+
+If you cannot clearly count fixtures:
+- Use your best count and mark "confidence": "estimated"
+- Add a note: "COUNT UNCLEAR - VERIFY ON SITE"
+- Do NOT invent fixture quantities
+
 ## IMPORTANT REMINDERS
 
-1. Always read the legend FIRST
+1. Always read the legend FIRST - this defines what symbols mean
 2. Count EVERY light fixture - don't estimate
-3. Each room should list ALL its fixtures
-4. Capture circuit references where visible
+3. Each room should list ALL its fixtures with circuit refs
+4. Capture circuit references where visible (e.g., "L1 DB-CA")
 5. Note emergency lights separately
-6. Include confidence level per room
+6. Include confidence level per room and per fixture type
 7. If same fixture type appears multiple times in legend, use the specific wattage
 """
 

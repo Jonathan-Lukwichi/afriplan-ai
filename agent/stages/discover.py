@@ -29,7 +29,7 @@ from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prom
 # Extraction model
 DISCOVER_MODEL = "claude-sonnet-4-20250514"
 ESCALATION_MODEL = "claude-opus-4-20250514"
-CONFIDENCE_THRESHOLD = 0.70  # Below this, escalate to Opus
+CONFIDENCE_THRESHOLD = 0.80  # Below 80%, escalate to Opus for verification
 
 
 def discover(
@@ -38,6 +38,7 @@ def discover(
     mode: ExtractionMode,
     building_blocks: List[str],
     client: Optional[object] = None,
+    use_opus_directly: bool = False,
 ) -> Tuple[ExtractionResult, StageResult]:
     """
     DISCOVER stage: Extract structured data from documents.
@@ -48,6 +49,7 @@ def discover(
         mode: Extraction mode (AS_BUILT, ESTIMATION, etc.)
         building_blocks: List of building block names
         client: Anthropic API client
+        use_opus_directly: If True, use Opus for initial extraction (slower but more accurate)
 
     Returns:
         Tuple of (ExtractionResult, StageResult)
@@ -57,7 +59,13 @@ def discover(
         warnings = []
         total_tokens = 0
         total_cost = 0.0
-        model_used = DISCOVER_MODEL
+
+        # Select model based on accuracy preference
+        extraction_model = ESCALATION_MODEL if use_opus_directly else DISCOVER_MODEL
+        model_used = extraction_model
+
+        if use_opus_directly:
+            warnings.append("Using Opus for maximum extraction accuracy (slower, higher cost)")
 
         extraction = ExtractionResult(
             extraction_mode=mode,
@@ -81,7 +89,7 @@ def discover(
         # Extract from SLD pages
         if sld_pages and client:
             try:
-                sld_data, tokens, cost = _extract_sld_data(sld_pages, client)
+                sld_data, tokens, cost = _extract_sld_data(sld_pages, client, extraction_model)
                 total_tokens += tokens
                 total_cost += cost
                 _merge_sld_data(extraction, sld_data)
@@ -92,7 +100,7 @@ def discover(
         # Extract from lighting pages
         if lighting_pages and client:
             try:
-                lighting_data, tokens, cost = _extract_lighting_data(lighting_pages, client)
+                lighting_data, tokens, cost = _extract_lighting_data(lighting_pages, client, extraction_model)
                 total_tokens += tokens
                 total_cost += cost
                 _merge_lighting_data(extraction, lighting_data)
@@ -103,7 +111,7 @@ def discover(
         # Extract from plug pages
         if plug_pages and client:
             try:
-                plug_data, tokens, cost = _extract_plug_data(plug_pages, client)
+                plug_data, tokens, cost = _extract_plug_data(plug_pages, client, extraction_model)
                 total_tokens += tokens
                 total_cost += cost
                 _merge_plug_data(extraction, plug_data)
@@ -114,7 +122,7 @@ def discover(
         # Extract from outside lights pages
         if outside_pages and client:
             try:
-                outside_data, tokens, cost = _extract_outside_data(outside_pages, client)
+                outside_data, tokens, cost = _extract_outside_data(outside_pages, client, extraction_model)
                 total_tokens += tokens
                 total_cost += cost
                 _merge_outside_data(extraction, outside_data)
@@ -164,6 +172,7 @@ def discover(
 def _extract_sld_data(
     pages: List,
     client: object,
+    model: str = DISCOVER_MODEL,
 ) -> Tuple[Dict[str, Any], int, float]:
     """Extract distribution board data from SLD pages."""
     prompt = f"""{SYSTEM_PROMPT}
@@ -191,14 +200,14 @@ Return JSON matching this schema:
             })
 
     response = client.messages.create(
-        model=DISCOVER_MODEL,
+        model=model,
         max_tokens=8192,
         messages=[{"role": "user", "content": content}]
     )
 
     response_text = response.content[0].text
     tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(DISCOVER_MODEL, response.usage.input_tokens, response.usage.output_tokens)
+    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -207,6 +216,7 @@ Return JSON matching this schema:
 def _extract_lighting_data(
     pages: List,
     client: object,
+    model: str = DISCOVER_MODEL,
 ) -> Tuple[Dict[str, Any], int, float]:
     """Extract lighting fixture data from layout pages."""
     prompt = f"""{SYSTEM_PROMPT}
@@ -233,14 +243,14 @@ Return JSON matching this schema:
             })
 
     response = client.messages.create(
-        model=DISCOVER_MODEL,
+        model=model,
         max_tokens=8192,
         messages=[{"role": "user", "content": content}]
     )
 
     response_text = response.content[0].text
     tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(DISCOVER_MODEL, response.usage.input_tokens, response.usage.output_tokens)
+    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -249,6 +259,7 @@ Return JSON matching this schema:
 def _extract_plug_data(
     pages: List,
     client: object,
+    model: str = DISCOVER_MODEL,
 ) -> Tuple[Dict[str, Any], int, float]:
     """Extract socket/switch data from plug layout pages."""
     prompt = f"""{SYSTEM_PROMPT}
@@ -273,14 +284,14 @@ Return JSON matching this schema:
             })
 
     response = client.messages.create(
-        model=DISCOVER_MODEL,
+        model=model,
         max_tokens=8192,
         messages=[{"role": "user", "content": content}]
     )
 
     response_text = response.content[0].text
     tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(DISCOVER_MODEL, response.usage.input_tokens, response.usage.output_tokens)
+    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -289,6 +300,7 @@ Return JSON matching this schema:
 def _extract_outside_data(
     pages: List,
     client: object,
+    model: str = DISCOVER_MODEL,
 ) -> Tuple[Dict[str, Any], int, float]:
     """Extract site cable runs and outside lights from external drawings."""
     prompt = f"""{SYSTEM_PROMPT}
@@ -314,14 +326,14 @@ Return JSON matching this schema:
             })
 
     response = client.messages.create(
-        model=DISCOVER_MODEL,
+        model=model,
         max_tokens=4096,
         messages=[{"role": "user", "content": content}]
     )
 
     response_text = response.content[0].text
     tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(DISCOVER_MODEL, response.usage.input_tokens, response.usage.output_tokens)
+    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -577,41 +589,56 @@ def _parse_confidence(conf_str: str) -> ItemConfidence:
 
 
 def _calculate_confidence(extraction: ExtractionResult) -> float:
-    """Calculate overall extraction confidence."""
+    """
+    Calculate overall extraction confidence.
+
+    Confidence scoring:
+    - EXTRACTED items = 1.0 (directly read from drawing)
+    - INFERRED items = 0.9 (calculated from other values - still reliable)
+    - ESTIMATED items = 0.3 (guessed/assumed)
+    - MANUAL items = 1.0 (user verified)
+    """
     if extraction.pages_processed == 0:
         return 0.0
 
     # Base confidence from data completeness
     completeness = extraction.completeness
 
-    # Adjust based on extracted vs estimated items
+    # Score items based on confidence level
     total_items = 0
-    extracted_items = 0
+    confidence_score = 0.0
+
+    # Define confidence weights
+    conf_weights = {
+        ItemConfidence.EXTRACTED: 1.0,
+        ItemConfidence.INFERRED: 0.9,   # Inferred is almost as good as extracted
+        ItemConfidence.ESTIMATED: 0.3,  # Estimated is a guess
+        ItemConfidence.MANUAL: 1.0,     # User verified
+    }
 
     for block in extraction.building_blocks:
         for db in block.distribution_boards:
             total_items += 1
-            if db.confidence == ItemConfidence.EXTRACTED:
-                extracted_items += 1
+            confidence_score += conf_weights.get(db.confidence, 0.5)
+
             for circuit in db.circuits:
                 total_items += 1
-                if circuit.confidence == ItemConfidence.EXTRACTED:
-                    extracted_items += 1
+                confidence_score += conf_weights.get(circuit.confidence, 0.5)
 
         for room in block.rooms:
             total_items += 1
-            if room.confidence == ItemConfidence.EXTRACTED:
-                extracted_items += 1
+            confidence_score += conf_weights.get(room.confidence, 0.5)
 
     for run in extraction.site_cable_runs:
         total_items += 1
-        if run.confidence == ItemConfidence.EXTRACTED:
-            extracted_items += 1
+        confidence_score += conf_weights.get(run.confidence, 0.5)
 
-    item_confidence = extracted_items / total_items if total_items > 0 else 0.5
+    # Calculate average item confidence
+    item_confidence = confidence_score / total_items if total_items > 0 else 0.5
 
-    # Weighted average
-    confidence = (completeness * 0.4 + item_confidence * 0.6)
+    # Weighted average: 30% completeness, 70% item confidence
+    # This prioritizes quality of extraction over quantity
+    confidence = (completeness * 0.3 + item_confidence * 0.7)
     return min(1.0, max(0.0, confidence))
 
 
@@ -620,7 +647,308 @@ def _escalate_to_opus(
     extraction: ExtractionResult,
     client: object,
 ) -> Tuple[ExtractionResult, int, float]:
-    """Re-extract with Opus 4.6 for low-confidence results."""
-    # For now, return existing extraction
-    # Full implementation would re-run extraction with Opus
-    return extraction, 0, 0.0
+    """
+    Re-extract with Opus 4.6 for low-confidence results.
+
+    Uses a verification-focused approach:
+    1. Shows Opus the existing extraction
+    2. Asks it to verify and correct any errors
+    3. Re-extracts items marked as "estimated"
+    """
+    total_tokens = 0
+    total_cost = 0.0
+
+    # Build comprehensive verification prompt
+    verification_prompt = f"""{SYSTEM_PROMPT}
+
+You are performing a VERIFICATION pass on an electrical drawing extraction.
+The initial extraction had LOW CONFIDENCE. Your job is to:
+
+1. VERIFY each extracted value against what you see in the drawings
+2. CORRECT any errors you find
+3. RE-EXTRACT items marked as "estimated" - look more carefully
+4. ADD any items that were missed in the first pass
+
+## CURRENT EXTRACTION (to verify/correct):
+```json
+{json.dumps(_extraction_to_dict(extraction), indent=2)}
+```
+
+## YOUR TASK:
+Review the drawings carefully and return a CORRECTED extraction.
+For each item:
+- If you can see it clearly in the drawing, mark confidence as "extracted"
+- If you calculated it from other data, mark as "inferred"
+- ONLY use "estimated" if the item is genuinely not visible and you had to guess
+
+Be METICULOUS. Count every:
+- Distribution board and its circuits
+- Light fitting (by type)
+- Socket outlet (by type)
+- Switch (by type)
+- Cable run with length
+
+Return the complete corrected JSON matching the original schema structure.
+"""
+
+    # Gather all pages for Opus to review
+    all_pages = doc_set.all_pages[:10]  # Limit to 10 pages for cost control
+
+    content = [{"type": "text", "text": verification_prompt}]
+    for page in all_pages:
+        if page.image_base64:
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": page.image_base64,
+                }
+            })
+
+    try:
+        response = client.messages.create(
+            model=ESCALATION_MODEL,
+            max_tokens=16384,  # More tokens for comprehensive extraction
+            messages=[{"role": "user", "content": content}]
+        )
+
+        response_text = response.content[0].text
+        total_tokens = response.usage.input_tokens + response.usage.output_tokens
+        total_cost = estimate_cost_zar(ESCALATION_MODEL, response.usage.input_tokens, response.usage.output_tokens)
+
+        # Parse the corrected extraction
+        corrected_data = parse_json_safely(response_text)
+
+        if corrected_data:
+            # Rebuild extraction from corrected data
+            corrected_extraction = _rebuild_extraction_from_dict(corrected_data, extraction)
+            return corrected_extraction, total_tokens, total_cost
+        else:
+            # JSON parse failed, return original
+            return extraction, total_tokens, total_cost
+
+    except Exception as e:
+        # Log error but return original extraction
+        print(f"Opus escalation failed: {e}")
+        return extraction, total_tokens, total_cost
+
+
+def _extraction_to_dict(extraction: ExtractionResult) -> Dict[str, Any]:
+    """Convert ExtractionResult to dictionary for verification prompt."""
+    result = {
+        "building_blocks": [],
+        "site_cable_runs": [],
+        "outside_lights": {},
+    }
+
+    for block in extraction.building_blocks:
+        block_data = {
+            "name": block.name,
+            "distribution_boards": [],
+            "rooms": [],
+            "heavy_equipment": [],
+        }
+
+        for db in block.distribution_boards:
+            db_data = {
+                "name": db.name,
+                "description": db.description,
+                "location": db.location,
+                "supply_from": db.supply_from,
+                "supply_cable": db.supply_cable,
+                "supply_cable_size_mm2": db.supply_cable_size_mm2,
+                "supply_cable_length_m": db.supply_cable_length_m,
+                "main_breaker_a": db.main_breaker_a,
+                "earth_leakage": db.earth_leakage,
+                "surge_protection": db.surge_protection,
+                "spare_ways": db.spare_ways,
+                "confidence": db.confidence.value,
+                "circuits": [],
+            }
+
+            for circuit in db.circuits:
+                ckt_data = {
+                    "id": circuit.id,
+                    "type": circuit.type,
+                    "description": circuit.description,
+                    "wattage_w": circuit.wattage_w,
+                    "cable_size_mm2": circuit.cable_size_mm2,
+                    "cable_cores": circuit.cable_cores,
+                    "breaker_a": circuit.breaker_a,
+                    "breaker_poles": circuit.breaker_poles,
+                    "num_points": circuit.num_points,
+                    "is_spare": circuit.is_spare,
+                    "has_isolator": circuit.has_isolator,
+                    "confidence": circuit.confidence.value,
+                }
+                db_data["circuits"].append(ckt_data)
+
+            block_data["distribution_boards"].append(db_data)
+
+        for room in block.rooms:
+            room_data = {
+                "name": room.name,
+                "type": room.type,
+                "area_m2": room.area_m2,
+                "confidence": room.confidence.value,
+                "fixtures": {
+                    "recessed_led_600x1200": room.fixtures.recessed_led_600x1200,
+                    "surface_mount_led_18w": room.fixtures.surface_mount_led_18w,
+                    "downlight_led_6w": room.fixtures.downlight_led_6w,
+                    "vapor_proof_2x24w": room.fixtures.vapor_proof_2x24w,
+                    "vapor_proof_2x18w": room.fixtures.vapor_proof_2x18w,
+                    "bulkhead_26w": room.fixtures.bulkhead_26w,
+                    "flood_light_200w": room.fixtures.flood_light_200w,
+                    "pole_light_60w": room.fixtures.pole_light_60w,
+                    "double_socket_300": room.fixtures.double_socket_300,
+                    "double_socket_1100": room.fixtures.double_socket_1100,
+                    "single_socket_300": room.fixtures.single_socket_300,
+                    "double_socket_waterproof": room.fixtures.double_socket_waterproof,
+                    "switch_1lever_1way": room.fixtures.switch_1lever_1way,
+                    "switch_2lever_1way": room.fixtures.switch_2lever_1way,
+                    "isolator_30a": room.fixtures.isolator_30a,
+                    "data_points_cat6": room.fixtures.data_points_cat6,
+                }
+            }
+            block_data["rooms"].append(room_data)
+
+        result["building_blocks"].append(block_data)
+
+    for run in extraction.site_cable_runs:
+        result["site_cable_runs"].append({
+            "from_point": run.from_point,
+            "to_point": run.to_point,
+            "cable_spec": run.cable_spec,
+            "cable_size_mm2": run.cable_size_mm2,
+            "length_m": run.length_m,
+            "is_underground": run.is_underground,
+            "confidence": run.confidence.value,
+        })
+
+    if extraction.outside_lights:
+        result["outside_lights"] = {
+            "pole_light_60w": extraction.outside_lights.pole_light_60w,
+            "flood_light_200w": extraction.outside_lights.flood_light_200w,
+            "bulkhead_26w": extraction.outside_lights.bulkhead_26w,
+        }
+
+    return result
+
+
+def _rebuild_extraction_from_dict(
+    data: Dict[str, Any],
+    original: ExtractionResult,
+) -> ExtractionResult:
+    """Rebuild ExtractionResult from corrected dictionary."""
+    extraction = ExtractionResult(
+        extraction_mode=original.extraction_mode,
+        metadata=original.metadata,
+        pages_processed=original.pages_processed,
+        pages_with_data=original.pages_with_data,
+    )
+
+    # Rebuild building blocks
+    for block_data in data.get("building_blocks", []):
+        block = BuildingBlock(name=block_data.get("name", ""))
+
+        # Rebuild distribution boards
+        for db_data in block_data.get("distribution_boards", []):
+            db = DistributionBoard(
+                name=db_data.get("name", ""),
+                description=db_data.get("description", ""),
+                location=db_data.get("location", ""),
+                building_block=block.name,
+                supply_from=db_data.get("supply_from", ""),
+                supply_cable=db_data.get("supply_cable", ""),
+                supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2", 0)),
+                supply_cable_length_m=float(db_data.get("supply_cable_length_m", 0)),
+                main_breaker_a=int(db_data.get("main_breaker_a", 0)),
+                earth_leakage=db_data.get("earth_leakage", False),
+                earth_leakage_rating_a=int(db_data.get("earth_leakage_rating_a", 0)),
+                surge_protection=db_data.get("surge_protection", False),
+                spare_ways=int(db_data.get("spare_ways", 0)),
+                confidence=_parse_confidence(db_data.get("confidence", "extracted")),
+            )
+
+            # Rebuild circuits
+            for ckt_data in db_data.get("circuits", []):
+                circuit = Circuit(
+                    id=ckt_data.get("id", ""),
+                    type=ckt_data.get("type", "power"),
+                    description=ckt_data.get("description", ""),
+                    wattage_w=float(ckt_data.get("wattage_w", 0)),
+                    wattage_formula=ckt_data.get("wattage_formula", ""),
+                    cable_size_mm2=float(ckt_data.get("cable_size_mm2", 2.5)),
+                    cable_cores=int(ckt_data.get("cable_cores", 3)),
+                    cable_type=ckt_data.get("cable_type", "GP WIRE"),
+                    breaker_a=int(ckt_data.get("breaker_a", 20)),
+                    breaker_poles=int(ckt_data.get("breaker_poles", 1)),
+                    num_points=int(ckt_data.get("num_points", 0)),
+                    is_spare=ckt_data.get("is_spare", False),
+                    has_isolator=ckt_data.get("has_isolator", False),
+                    isolator_rating_a=int(ckt_data.get("isolator_rating_a", 0)),
+                    has_vsd=ckt_data.get("has_vsd", False),
+                    feeds_board=ckt_data.get("feeds_board"),
+                    confidence=_parse_confidence(ckt_data.get("confidence", "extracted")),
+                )
+                db.circuits.append(circuit)
+
+            block.distribution_boards.append(db)
+
+        # Rebuild rooms
+        for room_data in block_data.get("rooms", []):
+            fixtures_data = room_data.get("fixtures", {})
+            room = Room(
+                name=room_data.get("name", ""),
+                type=room_data.get("type", ""),
+                area_m2=float(room_data.get("area_m2", 0)),
+                building_block=block.name,
+                confidence=_parse_confidence(room_data.get("confidence", "extracted")),
+            )
+            room.fixtures = FixtureCounts(
+                recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200", 0)),
+                surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w", 0)),
+                downlight_led_6w=int(fixtures_data.get("downlight_led_6w", 0)),
+                vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w", 0)),
+                vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w", 0)),
+                bulkhead_26w=int(fixtures_data.get("bulkhead_26w", 0)),
+                flood_light_200w=int(fixtures_data.get("flood_light_200w", 0)),
+                pole_light_60w=int(fixtures_data.get("pole_light_60w", 0)),
+                double_socket_300=int(fixtures_data.get("double_socket_300", 0)),
+                double_socket_1100=int(fixtures_data.get("double_socket_1100", 0)),
+                single_socket_300=int(fixtures_data.get("single_socket_300", 0)),
+                double_socket_waterproof=int(fixtures_data.get("double_socket_waterproof", 0)),
+                switch_1lever_1way=int(fixtures_data.get("switch_1lever_1way", 0)),
+                switch_2lever_1way=int(fixtures_data.get("switch_2lever_1way", 0)),
+                isolator_30a=int(fixtures_data.get("isolator_30a", 0)),
+                data_points_cat6=int(fixtures_data.get("data_points_cat6", 0)),
+            )
+            block.rooms.append(room)
+
+        extraction.building_blocks.append(block)
+
+    # Rebuild site cable runs
+    for run_data in data.get("site_cable_runs", []):
+        run = SiteCableRun(
+            from_point=run_data.get("from_point", ""),
+            to_point=run_data.get("to_point", ""),
+            cable_spec=run_data.get("cable_spec", ""),
+            cable_size_mm2=float(run_data.get("cable_size_mm2", 0)),
+            length_m=float(run_data.get("length_m", 0)),
+            is_underground=run_data.get("is_underground", True),
+            needs_trenching=run_data.get("needs_trenching", True),
+            confidence=_parse_confidence(run_data.get("confidence", "estimated")),
+        )
+        extraction.site_cable_runs.append(run)
+
+    # Rebuild outside lights
+    outside_data = data.get("outside_lights", {})
+    if outside_data:
+        extraction.outside_lights = FixtureCounts(
+            pole_light_60w=int(outside_data.get("pole_light_60w", 0)),
+            flood_light_200w=int(outside_data.get("flood_light_200w", 0)),
+            bulkhead_26w=int(outside_data.get("bulkhead_26w", 0)),
+        )
+
+    return extraction

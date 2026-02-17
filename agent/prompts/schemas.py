@@ -10,21 +10,36 @@ v4.1 addition: Every extracted value includes a confidence field:
 
 # Confidence instruction to add to all prompts
 CONFIDENCE_INSTRUCTION = '''
-For each value you extract, set a confidence level:
-- "extracted": you read this directly from the drawing
-- "inferred": you calculated this from other values
-- "estimated": you are using a default or guessing
+## CONFIDENCE MARKING RULES (CRITICAL FOR ACCURACY)
 
-Example: If you can read "384W" in the circuit schedule → "extracted"
-If you count 8 lights at 48W each to get 384W → "inferred"
-If you can't clearly read the value → "estimated"
+Mark confidence for each value you extract:
 
-Always include confidence for:
-- Circuit wattages and point counts
-- Cable lengths (especially important - mark "estimated" if not on drawing)
-- Fixture counts per room
-- Breaker ratings
-- Equipment ratings
+### "extracted" - Use this when:
+- You can READ the exact value from a schedule table (e.g., "384W" in circuit schedule)
+- You can COUNT items clearly visible (e.g., 8 light symbols counted)
+- You can SEE the specification text (e.g., "16mm² 4C PVC SWA PVC")
+- The legend identifies the item type clearly
+
+### "inferred" - Use this when:
+- You CALCULATED from other values (e.g., 8 lights x 48W = 384W)
+- You MATCHED symbols to legend and counted
+- You DETERMINED size from breaker/load relationship
+- The value follows logically from what you extracted
+
+### "estimated" - ONLY use when:
+- The value is NOT VISIBLE and cannot be calculated
+- You are GUESSING based on typical installations
+- The drawing is unclear/illegible for that specific item
+- Cable LENGTH is not marked and you cannot scale it
+
+## IMPORTANT:
+- Counting visible symbols = "extracted" (NOT estimated!)
+- Reading from schedule table = "extracted"
+- Matching symbol to legend = "extracted"
+- Calculating wattage from count x watts = "inferred"
+
+AVOID marking as "estimated" when you can actually see and count items.
+The goal is accuracy - if you can see it, mark it "extracted".
 '''
 
 # Schema for project metadata extraction from register/transmittal pages
@@ -41,6 +56,27 @@ REGISTER_SCHEMA = """{
   "drawing_date": "2024-03-15",
   "revision": "C",
   "notes": ["Phase 1 of 2", "Existing services to remain"]
+}"""
+
+# Schema for title block extraction (from every drawing)
+TITLE_BLOCK_SCHEMA = """{
+  "drawing_number": "TJM-SLD-001",
+  "drawing_number_confidence": "extracted",
+  "revision": "RA",
+  "revision_confidence": "extracted",
+  "description": "PROPOSED NEW OFFICES ON ERF1/1, NEWMARK",
+  "description_confidence": "extracted",
+  "part": "MAIN SLD DB MAIN + COMMON AREA",
+  "consultant": "CHONA-MALANGA ENGINEERING",
+  "consultant_confidence": "extracted",
+  "client": "TJM GREENTECH",
+  "client_confidence": "extracted",
+  "drawn_by": "JM",
+  "checked_by": "CM",
+  "date": "2024-03-15",
+  "standard": "SANS 10142-1",
+  "sap_project_no": "",
+  "network_id_no": ""
 }"""
 
 # Schema for SLD extraction - distribution boards with circuits

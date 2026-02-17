@@ -1,8 +1,12 @@
 """
-AfriPlan Electrical v4.0 - SLD Extraction Prompt
+AfriPlan Electrical v4.1.1 - SLD Extraction Prompt
 
 THE MOST CRITICAL PROMPT - Extracts distribution boards and circuits from
 Single Line Diagram (SLD) pages. This is where all electrical data comes from.
+
+CRITICAL: Focus on the SCHEDULE TABLE at the bottom of SLD pages.
+The schedule table has rows: Circuit No | Wattage | Wire Size | No Of Point
+Each column is one circuit. This is the PRIMARY source of truth.
 """
 
 from typing import List, TYPE_CHECKING
@@ -130,6 +134,32 @@ Respond with ONLY valid JSON matching this schema (no markdown, no explanation):
 
 {SLD_SCHEMA}
 
+## CRITICAL: SCHEDULE TABLE PARSING
+
+The schedule table at the BOTTOM of the SLD drawing is the PRIMARY data source.
+It typically looks like this:
+
+```
+┌────────────┬──────┬──────┬──────┬───────┬──────┬──────┬──────┬───────┐
+│ Circuit No │  P1  │  P2  │  P3  │  L1   │  L2  │  L3  │ AC-1 │ SPARE │
+├────────────┼──────┼──────┼──────┼───────┼──────┼──────┼──────┼───────┤
+│ Wattage    │3680W │3680W │3680W │  30W  │ 198W │  60W │1650W │       │
+├────────────┼──────┼──────┼──────┼───────┼──────┼──────┼──────┼───────┤
+│ Wire Size  │2.5mm²│2.5mm²│2.5mm²│1.5mm²│1.5mm²│1.5mm²│2.5mm²│       │
+├────────────┼──────┼──────┼──────┼───────┼──────┼──────┼──────┼───────┤
+│ No Of Point│   4  │   3  │   2  │   6   │   8  │   6  │   1  │       │
+└────────────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┴───────┘
+```
+
+READ EVERY COLUMN! Each column = one circuit.
+
+## NEVER FABRICATE
+
+If you cannot clearly read a value:
+- Mark it as "confidence": "estimated"
+- Add note: "VALUE NOT READABLE - VERIFY"
+- Do NOT invent values like "60kW HVAC" or fake DB names
+
 ## IMPORTANT REMINDERS
 
 1. Extract EVERY circuit from the schedule table - don't skip any
@@ -138,8 +168,10 @@ Respond with ONLY valid JSON matching this schema (no markdown, no explanation):
 4. Capture the supply chain (what feeds what)
 5. Note any ELCB/RCD or surge protection devices
 6. Read cable sizes carefully - they're critical for pricing
-7. If wattage shows "---" or is blank, estimate from typical loads
-8. Always include confidence level for each DB
+7. If wattage shows "---" or is blank, mark as "estimated" with note
+8. Always include confidence level for each extracted value
+9. DB names MUST match exactly what's on the drawing (e.g., "DB-CA", "DB-S1")
+10. Read main breaker rating from the diagram header
 """
 
 
