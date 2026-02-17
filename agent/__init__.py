@@ -29,8 +29,7 @@ from agent.models import (
     ItemConfidence,
     PipelineStage,
     BQSection,
-    CorrectionType,
-    ValidationSeverity,
+    Severity,
 
     # Contractor/Site
     ContractorProfile,
@@ -43,21 +42,17 @@ from agent.models import (
     ValidationResult,
     ValidationFlag,
     PricingResult,
-    BQItem,
+    BQLineItem,
     StageResult,
     PipelineResult,
 
     # Extraction Models
     BuildingBlock,
     Room,
-    DBBoard,
+    DistributionBoard,
     Circuit,
-    Fixture,
-    PlugPoint,
-    SwitchPoint,
+    FixtureCounts,
     SiteCableRun,
-    OutsideLighting,
-    SpecialSystem,
 
     # Review/Corrections
     CorrectionLog,
@@ -90,8 +85,7 @@ __all__ = [
     'ItemConfidence',
     'PipelineStage',
     'BQSection',
-    'CorrectionType',
-    'ValidationSeverity',
+    'Severity',
 
     # Contractor/Site
     'ContractorProfile',
@@ -104,21 +98,17 @@ __all__ = [
     'ValidationResult',
     'ValidationFlag',
     'PricingResult',
-    'BQItem',
+    'BQLineItem',
     'StageResult',
     'PipelineResult',
 
     # Extraction Models
     'BuildingBlock',
     'Room',
-    'DBBoard',
+    'DistributionBoard',
     'Circuit',
-    'Fixture',
-    'PlugPoint',
-    'SwitchPoint',
+    'FixtureCounts',
     'SiteCableRun',
-    'OutsideLighting',
-    'SpecialSystem',
 
     # Review
     'CorrectionLog',

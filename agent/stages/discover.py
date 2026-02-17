@@ -23,8 +23,8 @@ from agent.prompts.schemas import (
     OUTSIDE_LIGHTS_SCHEMA, CONFIDENCE_INSTRUCTION
 )
 from agent.prompts.system_prompt import SYSTEM_PROMPT
-from agent.prompts.sld_prompt import SLD_EXTRACTION_PROMPT
-from agent.prompts.lighting_layout_prompt import LIGHTING_EXTRACTION_PROMPT
+from agent.prompts.sld_prompt import get_sld_extraction_prompt
+from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prompt
 
 # Extraction model
 DISCOVER_MODEL = "claude-sonnet-4-20250514"
@@ -174,7 +174,7 @@ Extract distribution board and circuit data from these SLD drawings.
 Return JSON matching this schema:
 {SLD_SCHEMA}
 
-{SLD_EXTRACTION_PROMPT}
+{get_sld_extraction_prompt()}
 """
 
     # Build content with images
@@ -217,7 +217,7 @@ Extract room and lighting fixture data from these lighting layout drawings.
 Return JSON matching this schema:
 {LIGHTING_LAYOUT_SCHEMA}
 
-{LIGHTING_EXTRACTION_PROMPT}
+{get_lighting_prompt([])}
 """
 
     content = [{"type": "text", "text": prompt}]

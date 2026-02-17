@@ -9,7 +9,8 @@ from datetime import datetime
 from typing import Optional, Any
 
 from agent.models import (
-    ExtractionResult, CorrectionEntry, CorrectionLog, ItemConfidence
+    ExtractionResult, CorrectionEntry, CorrectionLog, ItemConfidence,
+    StageResult, PipelineStage
 )
 
 
@@ -26,9 +27,10 @@ class ReviewManager:
         manager.complete_review()
     """
 
-    def __init__(self, extraction: ExtractionResult):
+    def __init__(self, extraction: ExtractionResult, project_name: str = ""):
         """Initialize with extraction result from DISCOVER stage."""
         self.extraction = extraction
+        self.project_name = project_name or extraction.metadata.project_name or "Project"
         self.corrections: list[CorrectionEntry] = []
         self._count_ai_items()
 
@@ -146,13 +148,15 @@ class ReviewManager:
             total_removed=removed,
         )
 
-    def complete_review(self) -> None:
+    def complete_review(self) -> ExtractionResult:
         """Mark review as complete and attach correction log to extraction."""
         self.extraction.review_completed = True
         self.extraction.corrections = self.get_correction_log()
 
         # Update confidence for manually corrected items
         self._mark_manual_items()
+
+        return self.extraction
 
     def _mark_manual_items(self) -> None:
         """Mark items that were manually corrected with MANUAL confidence."""
@@ -180,6 +184,114 @@ class ReviewManager:
         log = self.get_correction_log()
         correct = self.total_ai_items - log.total_corrected - log.total_removed
         return round(max(0, correct) / self.total_ai_items * 100, 1)
+
+    def update_circuit_value(
+        self,
+        block_name: str,
+        db_name: str,
+        circuit_id: str,
+        field: str,
+        new_value: Any,
+    ) -> None:
+        """
+        Log a change to a circuit value.
+
+        Args:
+            block_name: Name of the building block
+            db_name: Name of the distribution board
+            circuit_id: ID of the circuit (empty string for DB-level changes)
+            field: Field being changed (e.g., "breaker_a", "cable_size_mm2")
+            new_value: New value for the field
+        """
+        if circuit_id:
+            field_path = f"blocks.{block_name}.dbs.{db_name}.circuits.{circuit_id}.{field}"
+        else:
+            field_path = f"blocks.{block_name}.dbs.{db_name}.{field}"
+
+        # Find original value (simplified - actual implementation would navigate the data structure)
+        original_value = None  # Would be fetched from extraction
+
+        self.log_correction(
+            field_path=field_path,
+            original_value=original_value,
+            corrected_value=new_value,
+            item_type=f"circuit_{field}",
+            building_block=block_name,
+        )
+
+    def update_fixture_count(
+        self,
+        block_name: str,
+        room_name: str,
+        field: str,
+        new_value: int,
+    ) -> None:
+        """
+        Log a change to a fixture count.
+
+        Args:
+            block_name: Name of the building block
+            room_name: Name of the room
+            field: Fixture field being changed (e.g., "vapor_proof_2x18w")
+            new_value: New count for the fixture
+        """
+        field_path = f"blocks.{block_name}.rooms.{room_name}.fixtures.{field}"
+
+        # Find original value (simplified)
+        original_value = None
+
+        self.log_correction(
+            field_path=field_path,
+            original_value=original_value,
+            corrected_value=new_value,
+            item_type="fixture_count",
+            building_block=block_name,
+        )
+
+    def update_cable_length(
+        self,
+        from_point: str,
+        to_point: str,
+        new_length: float,
+    ) -> None:
+        """
+        Log a change to a cable run length.
+
+        Args:
+            from_point: Starting point of the cable run
+            to_point: Ending point of the cable run
+            new_length: New length in meters
+        """
+        field_path = f"site_cables.{from_point}_to_{to_point}.length_m"
+
+        # Find original value (simplified)
+        original_value = None
+
+        self.log_correction(
+            field_path=field_path,
+            original_value=original_value,
+            corrected_value=new_length,
+            item_type="cable_length",
+        )
+
+    def get_accuracy_report(self) -> dict:
+        """
+        Get a summary report of AI accuracy based on corrections made.
+
+        Returns:
+            Dict with accuracy metrics
+        """
+        log = self.get_correction_log()
+        return {
+            "project_name": self.project_name,
+            "total_ai_items": self.total_ai_items,
+            "total_corrections": self.num_corrections,
+            "corrections_changed": log.total_corrected,
+            "corrections_added": log.total_added,
+            "corrections_removed": log.total_removed,
+            "accuracy_pct": log.accuracy_pct,
+            "review_completed": self.extraction.review_completed,
+        }
 
 
 def create_review_manager(extraction: ExtractionResult) -> ReviewManager:
@@ -257,3 +369,40 @@ def get_items_needing_review(extraction: ExtractionResult) -> list[dict]:
             })
 
     return items
+
+
+def create_review_stage_result(
+    review_manager: ReviewManager,
+    processing_time_ms: int = 0,
+) -> StageResult:
+    """
+    Create a StageResult for the REVIEW stage.
+
+    Args:
+        review_manager: The completed ReviewManager instance
+        processing_time_ms: Time spent in the review stage
+
+    Returns:
+        StageResult for the REVIEW pipeline stage
+    """
+    log = review_manager.get_correction_log()
+
+    return StageResult(
+        stage=PipelineStage.REVIEW,
+        success=True,
+        confidence=review_manager.accuracy_preview / 100.0,  # Convert % to 0-1 scale
+        data={
+            "total_corrections": review_manager.num_corrections,
+            "total_ai_items": review_manager.total_ai_items,
+            "accuracy_pct": review_manager.accuracy_preview,
+            "corrections_added": log.total_added,
+            "corrections_removed": log.total_removed,
+            "corrections_changed": log.total_corrected,
+        },
+        model_used=None,  # No AI model used in review stage
+        tokens_used=0,
+        cost_zar=0.0,
+        processing_time_ms=processing_time_ms,
+        errors=[],
+        warnings=[],
+    )
