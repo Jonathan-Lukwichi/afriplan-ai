@@ -205,9 +205,11 @@ def main():
 
         st.markdown("---")
 
+        # Ensure duration is at least 1
+        duration_val = max(1, site.estimated_duration_days or 1)
         estimated_days = st.number_input(
             "Your Estimated Duration (days)",
-            value=site.estimated_duration_days,
+            value=duration_val,
             min_value=1,
             max_value=365,
             step=1,
