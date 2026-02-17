@@ -364,36 +364,36 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
             building_block=block.name,
             supply_from=db_data.get("supply_from", ""),
             supply_cable=db_data.get("supply_cable", ""),
-            supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2", 0)),
-            supply_cable_length_m=float(db_data.get("supply_cable_length_m", 0)),
-            main_breaker_a=int(db_data.get("main_breaker_a", 0)),
-            earth_leakage=db_data.get("earth_leakage", False),
-            earth_leakage_rating_a=int(db_data.get("earth_leakage_rating_a", 0)),
-            surge_protection=db_data.get("surge_protection", False),
-            spare_ways=int(db_data.get("spare_ways", 0)),
+            supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2") or 0),
+            supply_cable_length_m=float(db_data.get("supply_cable_length_m") or 0),
+            main_breaker_a=int(db_data.get("main_breaker_a") or 0),
+            earth_leakage=db_data.get("earth_leakage") or False,
+            earth_leakage_rating_a=int(db_data.get("earth_leakage_rating_a") or 0),
+            surge_protection=db_data.get("surge_protection") or False,
+            spare_ways=int(db_data.get("spare_ways") or 0),
             confidence=_parse_confidence(db_data.get("confidence", "extracted")),
         )
 
         # Add circuits
         for ckt_data in db_data.get("circuits", []):
             circuit = Circuit(
-                id=ckt_data.get("id", ""),
-                type=ckt_data.get("type", "power"),
-                description=ckt_data.get("description", ""),
-                wattage_w=float(ckt_data.get("wattage_w", 0)),
-                wattage_formula=ckt_data.get("wattage_formula", ""),
-                cable_size_mm2=float(ckt_data.get("cable_size_mm2", 2.5)),
-                cable_cores=int(ckt_data.get("cable_cores", 3)),
-                cable_type=ckt_data.get("cable_type", "GP WIRE"),
-                breaker_a=int(ckt_data.get("breaker_a", 20)),
-                breaker_poles=int(ckt_data.get("breaker_poles", 1)),
-                num_points=int(ckt_data.get("num_points", 0)),
-                is_spare=ckt_data.get("is_spare", False),
-                has_isolator=ckt_data.get("has_isolator", False),
-                isolator_rating_a=int(ckt_data.get("isolator_rating_a", 0)),
-                has_vsd=ckt_data.get("has_vsd", False),
+                id=ckt_data.get("id") or "",
+                type=ckt_data.get("type") or "power",
+                description=ckt_data.get("description") or "",
+                wattage_w=float(ckt_data.get("wattage_w") or 0),
+                wattage_formula=ckt_data.get("wattage_formula") or "",
+                cable_size_mm2=float(ckt_data.get("cable_size_mm2") or 2.5),
+                cable_cores=int(ckt_data.get("cable_cores") or 3),
+                cable_type=ckt_data.get("cable_type") or "GP WIRE",
+                breaker_a=int(ckt_data.get("breaker_a") or 20),
+                breaker_poles=int(ckt_data.get("breaker_poles") or 1),
+                num_points=int(ckt_data.get("num_points") or 0),
+                is_spare=ckt_data.get("is_spare") or False,
+                has_isolator=ckt_data.get("has_isolator") or False,
+                isolator_rating_a=int(ckt_data.get("isolator_rating_a") or 0),
+                has_vsd=ckt_data.get("has_vsd") or False,
                 feeds_board=ckt_data.get("feeds_board"),
-                confidence=_parse_confidence(ckt_data.get("confidence", "extracted")),
+                confidence=_parse_confidence(ckt_data.get("confidence") or "extracted"),
             )
             db.circuits.append(circuit)
 
@@ -402,19 +402,19 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
     # Add heavy equipment
     for eq_data in data.get("heavy_equipment", []):
         equipment = HeavyEquipment(
-            name=eq_data.get("name", ""),
-            type=eq_data.get("type", ""),
-            rating_kw=float(eq_data.get("rating_kw", 0)),
-            cable_size_mm2=float(eq_data.get("cable_size_mm2", 4)),
-            cable_type=eq_data.get("cable_type", "PVC SWA PVC"),
-            breaker_a=int(eq_data.get("breaker_a", 32)),
-            has_vsd=eq_data.get("has_vsd", False),
-            has_dol=eq_data.get("has_dol", False),
-            isolator_a=int(eq_data.get("isolator_a", 0)),
-            fed_from_db=eq_data.get("fed_from_db", ""),
+            name=eq_data.get("name") or "",
+            type=eq_data.get("type") or "",
+            rating_kw=float(eq_data.get("rating_kw") or 0),
+            cable_size_mm2=float(eq_data.get("cable_size_mm2") or 4),
+            cable_type=eq_data.get("cable_type") or "PVC SWA PVC",
+            breaker_a=int(eq_data.get("breaker_a") or 32),
+            has_vsd=eq_data.get("has_vsd") or False,
+            has_dol=eq_data.get("has_dol") or False,
+            isolator_a=int(eq_data.get("isolator_a") or 0),
+            fed_from_db=eq_data.get("fed_from_db") or "",
             building_block=block.name,
-            qty=int(eq_data.get("qty", 1)),
-            confidence=_parse_confidence(eq_data.get("confidence", "extracted")),
+            qty=int(eq_data.get("qty") or 1),
+            confidence=_parse_confidence(eq_data.get("confidence") or "extracted"),
         )
         block.heavy_equipment.append(equipment)
 
@@ -440,32 +440,32 @@ def _merge_lighting_data(extraction: ExtractionResult, data: Dict[str, Any]) -> 
         fixtures_data = room_data.get("fixtures", {})
 
         room = Room(
-            name=room_data.get("name", ""),
-            room_number=int(room_data.get("room_number", 0)),
-            type=room_data.get("type", ""),
-            area_m2=float(room_data.get("area_m2", 0)),
-            floor=room_data.get("floor", ""),
+            name=room_data.get("name") or "",
+            room_number=int(room_data.get("room_number") or 0),
+            type=room_data.get("type") or "",
+            area_m2=float(room_data.get("area_m2") or 0),
+            floor=room_data.get("floor") or "",
             building_block=block.name,
-            circuit_refs=room_data.get("circuit_refs", []),
-            is_wet_area=room_data.get("is_wet_area", False),
-            confidence=_parse_confidence(room_data.get("confidence", "extracted")),
-            notes=room_data.get("notes", []),
+            circuit_refs=room_data.get("circuit_refs") or [],
+            is_wet_area=room_data.get("is_wet_area") or False,
+            confidence=_parse_confidence(room_data.get("confidence") or "extracted"),
+            notes=room_data.get("notes") or [],
         )
 
         # Set fixture counts
         room.fixtures = FixtureCounts(
-            recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200", 0)),
-            surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w", 0)),
-            flood_light_30w=int(fixtures_data.get("flood_light_30w", 0)),
-            flood_light_200w=int(fixtures_data.get("flood_light_200w", 0)),
-            downlight_led_6w=int(fixtures_data.get("downlight_led_6w", 0)),
-            vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w", 0)),
-            vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w", 0)),
-            prismatic_2x18w=int(fixtures_data.get("prismatic_2x18w", 0)),
-            bulkhead_26w=int(fixtures_data.get("bulkhead_26w", 0)),
-            bulkhead_24w=int(fixtures_data.get("bulkhead_24w", 0)),
-            fluorescent_50w_5ft=int(fixtures_data.get("fluorescent_50w_5ft", 0)),
-            pole_light_60w=int(fixtures_data.get("pole_light_60w", 0)),
+            recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200") or 0),
+            surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w") or 0),
+            flood_light_30w=int(fixtures_data.get("flood_light_30w") or 0),
+            flood_light_200w=int(fixtures_data.get("flood_light_200w") or 0),
+            downlight_led_6w=int(fixtures_data.get("downlight_led_6w") or 0),
+            vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w") or 0),
+            vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w") or 0),
+            prismatic_2x18w=int(fixtures_data.get("prismatic_2x18w") or 0),
+            bulkhead_26w=int(fixtures_data.get("bulkhead_26w") or 0),
+            bulkhead_24w=int(fixtures_data.get("bulkhead_24w") or 0),
+            fluorescent_50w_5ft=int(fixtures_data.get("fluorescent_50w_5ft") or 0),
+            pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
         )
 
         block.rooms.append(room)
@@ -500,48 +500,48 @@ def _merge_plug_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None
 
         if existing_room:
             # Merge socket/switch data
-            existing_room.fixtures.double_socket_300 = int(fixtures_data.get("double_socket_300", 0))
-            existing_room.fixtures.single_socket_300 = int(fixtures_data.get("single_socket_300", 0))
-            existing_room.fixtures.double_socket_1100 = int(fixtures_data.get("double_socket_1100", 0))
-            existing_room.fixtures.single_socket_1100 = int(fixtures_data.get("single_socket_1100", 0))
-            existing_room.fixtures.double_socket_waterproof = int(fixtures_data.get("double_socket_waterproof", 0))
-            existing_room.fixtures.double_socket_ceiling = int(fixtures_data.get("double_socket_ceiling", 0))
-            existing_room.fixtures.data_points_cat6 = int(fixtures_data.get("data_points_cat6", 0))
-            existing_room.fixtures.floor_box = int(fixtures_data.get("floor_box", 0))
-            existing_room.fixtures.switch_1lever_1way = int(fixtures_data.get("switch_1lever_1way", 0))
-            existing_room.fixtures.switch_2lever_1way = int(fixtures_data.get("switch_2lever_1way", 0))
-            existing_room.fixtures.switch_1lever_2way = int(fixtures_data.get("switch_1lever_2way", 0))
-            existing_room.fixtures.day_night_switch = int(fixtures_data.get("day_night_switch", 0))
-            existing_room.fixtures.isolator_30a = int(fixtures_data.get("isolator_30a", 0))
-            existing_room.fixtures.isolator_20a = int(fixtures_data.get("isolator_20a", 0))
-            existing_room.fixtures.master_switch = int(fixtures_data.get("master_switch", 0))
-            existing_room.has_ac = room_data.get("has_ac", False)
-            existing_room.has_geyser = room_data.get("has_geyser", False)
+            existing_room.fixtures.double_socket_300 = int(fixtures_data.get("double_socket_300") or 0)
+            existing_room.fixtures.single_socket_300 = int(fixtures_data.get("single_socket_300") or 0)
+            existing_room.fixtures.double_socket_1100 = int(fixtures_data.get("double_socket_1100") or 0)
+            existing_room.fixtures.single_socket_1100 = int(fixtures_data.get("single_socket_1100") or 0)
+            existing_room.fixtures.double_socket_waterproof = int(fixtures_data.get("double_socket_waterproof") or 0)
+            existing_room.fixtures.double_socket_ceiling = int(fixtures_data.get("double_socket_ceiling") or 0)
+            existing_room.fixtures.data_points_cat6 = int(fixtures_data.get("data_points_cat6") or 0)
+            existing_room.fixtures.floor_box = int(fixtures_data.get("floor_box") or 0)
+            existing_room.fixtures.switch_1lever_1way = int(fixtures_data.get("switch_1lever_1way") or 0)
+            existing_room.fixtures.switch_2lever_1way = int(fixtures_data.get("switch_2lever_1way") or 0)
+            existing_room.fixtures.switch_1lever_2way = int(fixtures_data.get("switch_1lever_2way") or 0)
+            existing_room.fixtures.day_night_switch = int(fixtures_data.get("day_night_switch") or 0)
+            existing_room.fixtures.isolator_30a = int(fixtures_data.get("isolator_30a") or 0)
+            existing_room.fixtures.isolator_20a = int(fixtures_data.get("isolator_20a") or 0)
+            existing_room.fixtures.master_switch = int(fixtures_data.get("master_switch") or 0)
+            existing_room.has_ac = room_data.get("has_ac") or False
+            existing_room.has_geyser = room_data.get("has_geyser") or False
         else:
             # Create new room with socket data
             room = Room(
                 name=room_name,
                 building_block=block.name,
-                has_ac=room_data.get("has_ac", False),
-                has_geyser=room_data.get("has_geyser", False),
-                confidence=_parse_confidence(room_data.get("confidence", "extracted")),
+                has_ac=room_data.get("has_ac") or False,
+                has_geyser=room_data.get("has_geyser") or False,
+                confidence=_parse_confidence(room_data.get("confidence") or "extracted"),
             )
             room.fixtures = FixtureCounts(
-                double_socket_300=int(fixtures_data.get("double_socket_300", 0)),
-                single_socket_300=int(fixtures_data.get("single_socket_300", 0)),
-                double_socket_1100=int(fixtures_data.get("double_socket_1100", 0)),
-                single_socket_1100=int(fixtures_data.get("single_socket_1100", 0)),
-                double_socket_waterproof=int(fixtures_data.get("double_socket_waterproof", 0)),
-                double_socket_ceiling=int(fixtures_data.get("double_socket_ceiling", 0)),
-                data_points_cat6=int(fixtures_data.get("data_points_cat6", 0)),
-                floor_box=int(fixtures_data.get("floor_box", 0)),
-                switch_1lever_1way=int(fixtures_data.get("switch_1lever_1way", 0)),
-                switch_2lever_1way=int(fixtures_data.get("switch_2lever_1way", 0)),
-                switch_1lever_2way=int(fixtures_data.get("switch_1lever_2way", 0)),
-                day_night_switch=int(fixtures_data.get("day_night_switch", 0)),
-                isolator_30a=int(fixtures_data.get("isolator_30a", 0)),
-                isolator_20a=int(fixtures_data.get("isolator_20a", 0)),
-                master_switch=int(fixtures_data.get("master_switch", 0)),
+                double_socket_300=int(fixtures_data.get("double_socket_300") or 0),
+                single_socket_300=int(fixtures_data.get("single_socket_300") or 0),
+                double_socket_1100=int(fixtures_data.get("double_socket_1100") or 0),
+                single_socket_1100=int(fixtures_data.get("single_socket_1100") or 0),
+                double_socket_waterproof=int(fixtures_data.get("double_socket_waterproof") or 0),
+                double_socket_ceiling=int(fixtures_data.get("double_socket_ceiling") or 0),
+                data_points_cat6=int(fixtures_data.get("data_points_cat6") or 0),
+                floor_box=int(fixtures_data.get("floor_box") or 0),
+                switch_1lever_1way=int(fixtures_data.get("switch_1lever_1way") or 0),
+                switch_2lever_1way=int(fixtures_data.get("switch_2lever_1way") or 0),
+                switch_1lever_2way=int(fixtures_data.get("switch_1lever_2way") or 0),
+                day_night_switch=int(fixtures_data.get("day_night_switch") or 0),
+                isolator_30a=int(fixtures_data.get("isolator_30a") or 0),
+                isolator_20a=int(fixtures_data.get("isolator_20a") or 0),
+                master_switch=int(fixtures_data.get("master_switch") or 0),
             )
             block.rooms.append(room)
 
@@ -549,31 +549,31 @@ def _merge_plug_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None
 def _merge_outside_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
     """Merge outside lights and site cable data into ExtractionResult."""
     # Add site cable runs
-    for run_data in data.get("site_cable_runs", []):
+    for run_data in data.get("site_cable_runs") or []:
         run = SiteCableRun(
-            from_point=run_data.get("from_point", ""),
-            to_point=run_data.get("to_point", ""),
-            cable_spec=run_data.get("cable_spec", ""),
-            cable_size_mm2=float(run_data.get("cable_size_mm2", 0)),
-            cable_cores=int(run_data.get("cable_cores", 4)),
-            cable_type=run_data.get("cable_type", "PVC SWA PVC"),
-            length_m=float(run_data.get("length_m", 0)),
-            is_underground=run_data.get("is_underground", True),
-            needs_trenching=run_data.get("needs_trenching", True),
-            confidence=_parse_confidence(run_data.get("confidence", "estimated")),
-            notes=run_data.get("notes", ""),
+            from_point=run_data.get("from_point") or "",
+            to_point=run_data.get("to_point") or "",
+            cable_spec=run_data.get("cable_spec") or "",
+            cable_size_mm2=float(run_data.get("cable_size_mm2") or 0),
+            cable_cores=int(run_data.get("cable_cores") or 4),
+            cable_type=run_data.get("cable_type") or "PVC SWA PVC",
+            length_m=float(run_data.get("length_m") or 0),
+            is_underground=run_data.get("is_underground") if run_data.get("is_underground") is not None else True,
+            needs_trenching=run_data.get("needs_trenching") if run_data.get("needs_trenching") is not None else True,
+            confidence=_parse_confidence(run_data.get("confidence") or "estimated"),
+            notes=run_data.get("notes") or "",
         )
         extraction.site_cable_runs.append(run)
 
     # Add outside lights
-    outside_data = data.get("outside_lights", {})
+    outside_data = data.get("outside_lights") or {}
     if outside_data:
         extraction.outside_lights = FixtureCounts(
-            pole_light_60w=int(outside_data.get("pole_light_60w", 0)),
-            flood_light_200w=int(outside_data.get("flood_light_200w", 0)),
-            flood_light_30w=int(outside_data.get("flood_light_30w", 0)),
-            bulkhead_26w=int(outside_data.get("bulkhead_26w", 0)),
-            bulkhead_24w=int(outside_data.get("bulkhead_24w", 0)),
+            pole_light_60w=int(outside_data.get("pole_light_60w") or 0),
+            flood_light_200w=int(outside_data.get("flood_light_200w") or 0),
+            flood_light_30w=int(outside_data.get("flood_light_30w") or 0),
+            bulkhead_26w=int(outside_data.get("bulkhead_26w") or 0),
+            bulkhead_24w=int(outside_data.get("bulkhead_24w") or 0),
         )
 
 
@@ -849,106 +849,106 @@ def _rebuild_extraction_from_dict(
     )
 
     # Rebuild building blocks
-    for block_data in data.get("building_blocks", []):
-        block = BuildingBlock(name=block_data.get("name", ""))
+    for block_data in data.get("building_blocks") or []:
+        block = BuildingBlock(name=block_data.get("name") or "")
 
         # Rebuild distribution boards
-        for db_data in block_data.get("distribution_boards", []):
+        for db_data in block_data.get("distribution_boards") or []:
             db = DistributionBoard(
-                name=db_data.get("name", ""),
-                description=db_data.get("description", ""),
-                location=db_data.get("location", ""),
+                name=db_data.get("name") or "",
+                description=db_data.get("description") or "",
+                location=db_data.get("location") or "",
                 building_block=block.name,
-                supply_from=db_data.get("supply_from", ""),
-                supply_cable=db_data.get("supply_cable", ""),
-                supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2", 0)),
-                supply_cable_length_m=float(db_data.get("supply_cable_length_m", 0)),
-                main_breaker_a=int(db_data.get("main_breaker_a", 0)),
-                earth_leakage=db_data.get("earth_leakage", False),
-                earth_leakage_rating_a=int(db_data.get("earth_leakage_rating_a", 0)),
-                surge_protection=db_data.get("surge_protection", False),
-                spare_ways=int(db_data.get("spare_ways", 0)),
-                confidence=_parse_confidence(db_data.get("confidence", "extracted")),
+                supply_from=db_data.get("supply_from") or "",
+                supply_cable=db_data.get("supply_cable") or "",
+                supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2") or 0),
+                supply_cable_length_m=float(db_data.get("supply_cable_length_m") or 0),
+                main_breaker_a=int(db_data.get("main_breaker_a") or 0),
+                earth_leakage=db_data.get("earth_leakage") or False,
+                earth_leakage_rating_a=int(db_data.get("earth_leakage_rating_a") or 0),
+                surge_protection=db_data.get("surge_protection") or False,
+                spare_ways=int(db_data.get("spare_ways") or 0),
+                confidence=_parse_confidence(db_data.get("confidence") or "extracted"),
             )
 
             # Rebuild circuits
-            for ckt_data in db_data.get("circuits", []):
+            for ckt_data in db_data.get("circuits") or []:
                 circuit = Circuit(
-                    id=ckt_data.get("id", ""),
-                    type=ckt_data.get("type", "power"),
-                    description=ckt_data.get("description", ""),
-                    wattage_w=float(ckt_data.get("wattage_w", 0)),
-                    wattage_formula=ckt_data.get("wattage_formula", ""),
-                    cable_size_mm2=float(ckt_data.get("cable_size_mm2", 2.5)),
-                    cable_cores=int(ckt_data.get("cable_cores", 3)),
-                    cable_type=ckt_data.get("cable_type", "GP WIRE"),
-                    breaker_a=int(ckt_data.get("breaker_a", 20)),
-                    breaker_poles=int(ckt_data.get("breaker_poles", 1)),
-                    num_points=int(ckt_data.get("num_points", 0)),
-                    is_spare=ckt_data.get("is_spare", False),
-                    has_isolator=ckt_data.get("has_isolator", False),
-                    isolator_rating_a=int(ckt_data.get("isolator_rating_a", 0)),
-                    has_vsd=ckt_data.get("has_vsd", False),
+                    id=ckt_data.get("id") or "",
+                    type=ckt_data.get("type") or "power",
+                    description=ckt_data.get("description") or "",
+                    wattage_w=float(ckt_data.get("wattage_w") or 0),
+                    wattage_formula=ckt_data.get("wattage_formula") or "",
+                    cable_size_mm2=float(ckt_data.get("cable_size_mm2") or 2.5),
+                    cable_cores=int(ckt_data.get("cable_cores") or 3),
+                    cable_type=ckt_data.get("cable_type") or "GP WIRE",
+                    breaker_a=int(ckt_data.get("breaker_a") or 20),
+                    breaker_poles=int(ckt_data.get("breaker_poles") or 1),
+                    num_points=int(ckt_data.get("num_points") or 0),
+                    is_spare=ckt_data.get("is_spare") or False,
+                    has_isolator=ckt_data.get("has_isolator") or False,
+                    isolator_rating_a=int(ckt_data.get("isolator_rating_a") or 0),
+                    has_vsd=ckt_data.get("has_vsd") or False,
                     feeds_board=ckt_data.get("feeds_board"),
-                    confidence=_parse_confidence(ckt_data.get("confidence", "extracted")),
+                    confidence=_parse_confidence(ckt_data.get("confidence") or "extracted"),
                 )
                 db.circuits.append(circuit)
 
             block.distribution_boards.append(db)
 
         # Rebuild rooms
-        for room_data in block_data.get("rooms", []):
-            fixtures_data = room_data.get("fixtures", {})
+        for room_data in block_data.get("rooms") or []:
+            fixtures_data = room_data.get("fixtures") or {}
             room = Room(
-                name=room_data.get("name", ""),
-                type=room_data.get("type", ""),
-                area_m2=float(room_data.get("area_m2", 0)),
+                name=room_data.get("name") or "",
+                type=room_data.get("type") or "",
+                area_m2=float(room_data.get("area_m2") or 0),
                 building_block=block.name,
-                confidence=_parse_confidence(room_data.get("confidence", "extracted")),
+                confidence=_parse_confidence(room_data.get("confidence") or "extracted"),
             )
             room.fixtures = FixtureCounts(
-                recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200", 0)),
-                surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w", 0)),
-                downlight_led_6w=int(fixtures_data.get("downlight_led_6w", 0)),
-                vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w", 0)),
-                vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w", 0)),
-                bulkhead_26w=int(fixtures_data.get("bulkhead_26w", 0)),
-                flood_light_200w=int(fixtures_data.get("flood_light_200w", 0)),
-                pole_light_60w=int(fixtures_data.get("pole_light_60w", 0)),
-                double_socket_300=int(fixtures_data.get("double_socket_300", 0)),
-                double_socket_1100=int(fixtures_data.get("double_socket_1100", 0)),
-                single_socket_300=int(fixtures_data.get("single_socket_300", 0)),
-                double_socket_waterproof=int(fixtures_data.get("double_socket_waterproof", 0)),
-                switch_1lever_1way=int(fixtures_data.get("switch_1lever_1way", 0)),
-                switch_2lever_1way=int(fixtures_data.get("switch_2lever_1way", 0)),
-                isolator_30a=int(fixtures_data.get("isolator_30a", 0)),
-                data_points_cat6=int(fixtures_data.get("data_points_cat6", 0)),
+                recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200") or 0),
+                surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w") or 0),
+                downlight_led_6w=int(fixtures_data.get("downlight_led_6w") or 0),
+                vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w") or 0),
+                vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w") or 0),
+                bulkhead_26w=int(fixtures_data.get("bulkhead_26w") or 0),
+                flood_light_200w=int(fixtures_data.get("flood_light_200w") or 0),
+                pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
+                double_socket_300=int(fixtures_data.get("double_socket_300") or 0),
+                double_socket_1100=int(fixtures_data.get("double_socket_1100") or 0),
+                single_socket_300=int(fixtures_data.get("single_socket_300") or 0),
+                double_socket_waterproof=int(fixtures_data.get("double_socket_waterproof") or 0),
+                switch_1lever_1way=int(fixtures_data.get("switch_1lever_1way") or 0),
+                switch_2lever_1way=int(fixtures_data.get("switch_2lever_1way") or 0),
+                isolator_30a=int(fixtures_data.get("isolator_30a") or 0),
+                data_points_cat6=int(fixtures_data.get("data_points_cat6") or 0),
             )
             block.rooms.append(room)
 
         extraction.building_blocks.append(block)
 
     # Rebuild site cable runs
-    for run_data in data.get("site_cable_runs", []):
+    for run_data in data.get("site_cable_runs") or []:
         run = SiteCableRun(
-            from_point=run_data.get("from_point", ""),
-            to_point=run_data.get("to_point", ""),
-            cable_spec=run_data.get("cable_spec", ""),
-            cable_size_mm2=float(run_data.get("cable_size_mm2", 0)),
-            length_m=float(run_data.get("length_m", 0)),
-            is_underground=run_data.get("is_underground", True),
-            needs_trenching=run_data.get("needs_trenching", True),
-            confidence=_parse_confidence(run_data.get("confidence", "estimated")),
+            from_point=run_data.get("from_point") or "",
+            to_point=run_data.get("to_point") or "",
+            cable_spec=run_data.get("cable_spec") or "",
+            cable_size_mm2=float(run_data.get("cable_size_mm2") or 0),
+            length_m=float(run_data.get("length_m") or 0),
+            is_underground=run_data.get("is_underground") if run_data.get("is_underground") is not None else True,
+            needs_trenching=run_data.get("needs_trenching") if run_data.get("needs_trenching") is not None else True,
+            confidence=_parse_confidence(run_data.get("confidence") or "estimated"),
         )
         extraction.site_cable_runs.append(run)
 
     # Rebuild outside lights
-    outside_data = data.get("outside_lights", {})
+    outside_data = data.get("outside_lights") or {}
     if outside_data:
         extraction.outside_lights = FixtureCounts(
-            pole_light_60w=int(outside_data.get("pole_light_60w", 0)),
-            flood_light_200w=int(outside_data.get("flood_light_200w", 0)),
-            bulkhead_26w=int(outside_data.get("bulkhead_26w", 0)),
+            pole_light_60w=int(outside_data.get("pole_light_60w") or 0),
+            flood_light_200w=int(outside_data.get("flood_light_200w") or 0),
+            bulkhead_26w=int(outside_data.get("bulkhead_26w") or 0),
         )
 
     return extraction
