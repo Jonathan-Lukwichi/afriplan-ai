@@ -110,3 +110,6 @@ When extracting data from documents:
 - Mining installations require MHSA compliance
 - Municipal submissions may require registered professional approval
 """
+
+# Alias for backward compatibility
+SYSTEM_PROMPT = SA_ELECTRICAL_SYSTEM_PROMPT

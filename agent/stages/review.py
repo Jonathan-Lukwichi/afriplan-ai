@@ -185,3 +185,75 @@ class ReviewManager:
 def create_review_manager(extraction: ExtractionResult) -> ReviewManager:
     """Factory function to create a ReviewManager."""
     return ReviewManager(extraction)
+
+
+def get_items_needing_review(extraction: ExtractionResult) -> list[dict]:
+    """
+    Get list of items that need contractor review.
+
+    Items with INFERRED or ESTIMATED confidence are flagged for review.
+
+    Returns:
+        List of dicts with item info: {type, name, confidence, block, path}
+    """
+    items = []
+
+    for block in extraction.building_blocks:
+        block_name = block.name
+
+        # Check DBs
+        for db_idx, db in enumerate(block.distribution_boards):
+            if db.confidence in (ItemConfidence.INFERRED, ItemConfidence.ESTIMATED):
+                items.append({
+                    "type": "distribution_board",
+                    "name": db.name or f"DB {db_idx + 1}",
+                    "confidence": db.confidence,
+                    "block": block_name,
+                    "path": f"blocks.{block_name}.dbs.{db_idx}",
+                })
+
+            # Check circuits
+            for ckt_idx, circuit in enumerate(db.circuits):
+                if circuit.confidence in (ItemConfidence.INFERRED, ItemConfidence.ESTIMATED):
+                    items.append({
+                        "type": "circuit",
+                        "name": circuit.description or f"Circuit {circuit.id}",
+                        "confidence": circuit.confidence,
+                        "block": block_name,
+                        "path": f"blocks.{block_name}.dbs.{db_idx}.circuits.{ckt_idx}",
+                    })
+
+        # Check rooms
+        for room_idx, room in enumerate(block.rooms):
+            if room.confidence in (ItemConfidence.INFERRED, ItemConfidence.ESTIMATED):
+                items.append({
+                    "type": "room",
+                    "name": room.name or f"Room {room_idx + 1}",
+                    "confidence": room.confidence,
+                    "block": block_name,
+                    "path": f"blocks.{block_name}.rooms.{room_idx}",
+                })
+
+        # Check heavy equipment
+        for eq_idx, equipment in enumerate(block.heavy_equipment):
+            if equipment.confidence in (ItemConfidence.INFERRED, ItemConfidence.ESTIMATED):
+                items.append({
+                    "type": "equipment",
+                    "name": equipment.name,
+                    "confidence": equipment.confidence,
+                    "block": block_name,
+                    "path": f"blocks.{block_name}.equipment.{eq_idx}",
+                })
+
+    # Check site cable runs
+    for run_idx, run in enumerate(extraction.site_cable_runs):
+        if run.confidence in (ItemConfidence.INFERRED, ItemConfidence.ESTIMATED):
+            items.append({
+                "type": "cable_run",
+                "name": f"{run.from_point} → {run.to_point}",
+                "confidence": run.confidence,
+                "block": "",
+                "path": f"site_cables.{run_idx}",
+            })
+
+    return items
