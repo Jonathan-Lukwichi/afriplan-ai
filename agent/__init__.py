@@ -1,48 +1,142 @@
 """
-AfriPlan AI Agent Package - 6-Stage Pipeline Orchestrator
+AfriPlan Electrical v4.1 — AI Agent Package
 
-This package implements the v3.0 AI architecture for intelligent document
-analysis and quotation generation.
-
-Pipeline Stages:
-1. INGEST - Document processing (PyMuPDF + Pillow)
+7-Stage Pipeline for Quantity Take-Off Acceleration:
+1. INGEST - Document preprocessing (PyMuPDF + Pillow)
 2. CLASSIFY - Fast tier routing (Haiku 4.5)
-3. DISCOVER - JSON extraction (Sonnet 4.5 -> Opus escalation)
-4. VALIDATE - SANS 10142-1 compliance
-5. PRICE - Deterministic calculation (Python only)
-6. OUTPUT - PDF/Excel generation
+3. DISCOVER - JSON extraction with confidence (Sonnet 4.5 → Opus escalation)
+4. REVIEW - Contractor review/edit interface (NEW in v4.1)
+5. VALIDATE - SANS 10142-1 compliance checks
+6. PRICE - Dual BQ generation (quantity-only + estimated)
+7. OUTPUT - Final result assembly
 
 Model Strategy:
 - Haiku 4.5: Fast classification (~R0.18/doc)
 - Sonnet 4.5: Balanced extraction (~R1.80/doc)
 - Opus 4.6: Escalation for low confidence (~R8.50/doc)
 
-Service Tiers:
-- Residential: Room-by-room, ADMD (NRS 034)
-- Commercial: Area-based W/m², 3-phase balancing
-- Maintenance: COC inspection + remedial quotations
+v4.1 Philosophy:
+- AI extracts quantities, contractor reviews/corrects, then applies own prices
+- Primary output: Quantity-only BQ (contractor fills prices)
+- Secondary output: Estimated BQ (ballpark reference only)
+- ItemConfidence: EXTRACTED (green), INFERRED (yellow), ESTIMATED (red), MANUAL (blue)
 """
 
-from agent.afriplan_agent import (
-    AfriPlanAgent,
-    PipelineResult,
-    StageResult,
-    PipelineStage,
-)
-from agent.classifier import (
-    TierClassifier,
-    ClassificationResult,
+from agent.models import (
+    # Enums
     ServiceTier,
+    ExtractionMode,
+    ItemConfidence,
+    PipelineStage,
+    BQSection,
+    CorrectionType,
+    ValidationSeverity,
+
+    # Contractor/Site
+    ContractorProfile,
+    LabourRates,
+    SiteConditions,
+
+    # Pipeline Data
+    DocumentSet,
+    ExtractionResult,
+    ValidationResult,
+    ValidationFlag,
+    PricingResult,
+    BQItem,
+    StageResult,
+    PipelineResult,
+
+    # Extraction Models
+    BuildingBlock,
+    Room,
+    DBBoard,
+    Circuit,
+    Fixture,
+    PlugPoint,
+    SwitchPoint,
+    SiteCableRun,
+    OutsideLighting,
+    SpecialSystem,
+
+    # Review/Corrections
+    CorrectionLog,
+)
+
+from agent.pipeline import (
+    AfriPlanPipeline,
+    create_pipeline,
+    process_single_document,
+    extract_quantities_only,
+)
+
+from agent.stages import (
+    ingest,
+    classify,
+    discover,
+    ReviewManager,
+    validate,
+    price,
+    generate_output,
 )
 
 __all__ = [
-    'AfriPlanAgent',
-    'PipelineResult',
-    'StageResult',
-    'PipelineStage',
-    'TierClassifier',
-    'ClassificationResult',
+    # Version
+    '__version__',
+
+    # Enums
     'ServiceTier',
+    'ExtractionMode',
+    'ItemConfidence',
+    'PipelineStage',
+    'BQSection',
+    'CorrectionType',
+    'ValidationSeverity',
+
+    # Contractor/Site
+    'ContractorProfile',
+    'LabourRates',
+    'SiteConditions',
+
+    # Pipeline Data
+    'DocumentSet',
+    'ExtractionResult',
+    'ValidationResult',
+    'ValidationFlag',
+    'PricingResult',
+    'BQItem',
+    'StageResult',
+    'PipelineResult',
+
+    # Extraction Models
+    'BuildingBlock',
+    'Room',
+    'DBBoard',
+    'Circuit',
+    'Fixture',
+    'PlugPoint',
+    'SwitchPoint',
+    'SiteCableRun',
+    'OutsideLighting',
+    'SpecialSystem',
+
+    # Review
+    'CorrectionLog',
+    'ReviewManager',
+
+    # Pipeline
+    'AfriPlanPipeline',
+    'create_pipeline',
+    'process_single_document',
+    'extract_quantities_only',
+
+    # Stage Functions
+    'ingest',
+    'classify',
+    'discover',
+    'validate',
+    'price',
+    'generate_output',
 ]
 
-__version__ = '3.0.0'
+__version__ = '4.1.0'
