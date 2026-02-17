@@ -1,6 +1,6 @@
 """
-AfriPlan Electrical v3.0 - Smart Document Upload
-6-stage AI pipeline with confidence visualization and editable extraction
+AfriPlan Electrical v4.1 - Smart Document Upload
+7-stage AI pipeline with confidence visualization and contractor review
 """
 
 import streamlit as st
@@ -15,36 +15,30 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.styles import inject_custom_css
 from utils.components import page_header, section_header
 
-# Import agent components (v3.0)
-AGENT_AVAILABLE = False
-ANALYZER_AVAILABLE = False
+# Import agent components (v4.1)
+PIPELINE_AVAILABLE = False
 
 try:
     from agent import (
-        AfriPlanAgent,
+        AfriPlanPipeline,
+        create_pipeline,
         PipelineResult,
         StageResult,
         PipelineStage,
         ServiceTier,
+        ExtractionResult,
     )
-    AGENT_AVAILABLE = True
+    PIPELINE_AVAILABLE = True
 except ImportError as e:
-    AGENT_IMPORT_ERROR = str(e)
+    PIPELINE_IMPORT_ERROR = str(e)
 
-# Fallback to legacy analyzer
-try:
-    from utils.document_analyzer import (
-        DocumentAnalyzer,
-        ProjectTier,
-        AnalysisResult,
-        get_tier_page_path,
-        get_tier_display_info,
-        ANTHROPIC_AVAILABLE,
-        PDF_AVAILABLE
-    )
-    ANALYZER_AVAILABLE = True
-except ImportError as e:
-    ANALYZER_IMPORT_ERROR = str(e)
+# Tier display info (inline, no legacy dependency)
+TIER_DISPLAY = {
+    ServiceTier.RESIDENTIAL: {"icon": "🏡", "name": "Residential", "color": "#22C55E", "description": "Houses, flats, domestic installations"},
+    ServiceTier.COMMERCIAL: {"icon": "🏢", "name": "Commercial", "color": "#3B82F6", "description": "Offices, retail, hospitality"},
+    ServiceTier.MAINTENANCE: {"icon": "🔧", "name": "Maintenance", "color": "#F59E0B", "description": "COC inspections, repairs"},
+    ServiceTier.UNKNOWN: {"icon": "❓", "name": "Unknown", "color": "#64748b", "description": "Classification needed"},
+}
 
 # Apply custom styling
 inject_custom_css()
@@ -52,18 +46,19 @@ inject_custom_css()
 # Page Header
 page_header(
     title="Smart Document Upload",
-    subtitle="v3.0 AI Pipeline - 6-stage analysis"
+    subtitle="v4.1 AI Pipeline - 7-stage analysis"
 )
 
 
-# Pipeline stage configuration
+# Pipeline stage configuration (v4.1 - 7 stages)
 STAGE_CONFIG = {
     "INGEST": {"icon": "📄", "name": "Ingest", "desc": "Document processing"},
     "CLASSIFY": {"icon": "🏷️", "name": "Classify", "desc": "Tier detection"},
     "DISCOVER": {"icon": "🔍", "name": "Discover", "desc": "Data extraction"},
+    "REVIEW": {"icon": "✏️", "name": "Review", "desc": "Contractor edit"},
     "VALIDATE": {"icon": "✅", "name": "Validate", "desc": "SANS 10142 check"},
-    "PRICE": {"icon": "💰", "name": "Price", "desc": "Cost calculation"},
-    "OUTPUT": {"icon": "📊", "name": "Output", "desc": "Quote generation"},
+    "PRICE": {"icon": "💰", "name": "Price", "desc": "BQ generation"},
+    "OUTPUT": {"icon": "📊", "name": "Output", "desc": "Final result"},
 }
 
 # Confidence colors
@@ -214,27 +209,23 @@ def render_validation_report(validation_flags: list):
                 st.info(f"**{flag.get('rule_name', '')}**: {flag.get('message', '')}")
 
 
-# Initialize agent/analyzer with caching
+# Initialize v4.1 pipeline with caching
 @st.cache_resource
-def get_agent():
-    """Get cached AfriPlan agent instance."""
-    if AGENT_AVAILABLE:
-        return AfriPlanAgent()
-    return None
-
-
-@st.cache_resource
-def get_analyzer():
-    """Get cached legacy document analyzer instance."""
-    if ANALYZER_AVAILABLE:
-        return DocumentAnalyzer()
+def get_pipeline():
+    """Get cached AfriPlan v4.1 pipeline instance."""
+    if PIPELINE_AVAILABLE:
+        try:
+            return create_pipeline()
+        except Exception as e:
+            st.warning(f"Pipeline initialization failed: {e}")
+            return None
     return None
 
 
 # Check availability
-if not AGENT_AVAILABLE and not ANALYZER_AVAILABLE:
-    st.error("""
-    **Document Analysis Unavailable**
+if not PIPELINE_AVAILABLE:
+    st.error(f"""
+    **v4.1 Pipeline Unavailable**
 
     Required modules could not be loaded.
 
@@ -245,40 +236,34 @@ if not AGENT_AVAILABLE and not ANALYZER_AVAILABLE:
     """)
     st.stop()
 
-agent = get_agent()
-analyzer = get_analyzer()
-
-# Determine API availability
-api_available = False
-if agent and agent.available:
-    api_available = True
-elif analyzer and analyzer.available:
-    api_available = True
+pipeline = get_pipeline()
+pipeline_available = pipeline is not None
 
 
 # Sidebar with info
 with st.sidebar:
-    st.markdown("### v3.0 AI Pipeline")
+    st.markdown("### v4.1 AI Pipeline")
     st.markdown("""
     Upload documents for automatic:
     - **Classification** - Tier detection
-    - **Extraction** - Project details
+    - **Extraction** - Quantity take-off
+    - **Review** - You verify & correct
     - **Validation** - SANS 10142 compliance
-    - **Pricing** - Cost estimation
+    - **Pricing** - Dual BQ generation
     """)
 
     st.markdown("---")
     st.markdown("### Pipeline Status")
 
-    if agent and agent.available:
-        st.success("Full Pipeline Active")
-        st.caption("6-stage processing available")
+    if pipeline and pipeline_available:
+        st.success("v4.1 Pipeline Active")
+        st.caption("7-stage processing available")
 
         # API test button
         if st.button("🧪 Test API", key="test_api"):
             with st.spinner("Testing API connection..."):
                 try:
-                    test_response = agent.client.messages.create(
+                    test_response = pipeline.client.messages.create(
                         model="claude-3-5-haiku-20241022",
                         max_tokens=50,
                         messages=[{"role": "user", "content": "Reply with just 'OK'"}]
@@ -286,9 +271,6 @@ with st.sidebar:
                     st.success(f"API working! Response: {test_response.content[0].text}")
                 except Exception as e:
                     st.error(f"API Error: {str(e)}")
-    elif analyzer and analyzer.available:
-        st.warning("Legacy Mode")
-        st.caption("Basic analysis only")
     else:
         st.error("API Not Configured")
         st.caption("Add ANTHROPIC_API_KEY")
@@ -314,7 +296,7 @@ with tab1:
     section_header("Upload Document", "PDF, PNG, or JPG files")
 
     # API status banner
-    if api_available:
+    if pipeline_available:
         st.markdown("""
         <div style="background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,197,94,0.05));
                     border: 1px solid rgba(34,197,94,0.3); border-radius: 12px; padding: 1rem;
@@ -323,10 +305,10 @@ with tab1:
                 <span style="font-size: 1.5rem;">🤖</span>
                 <div>
                     <div style="font-family: 'Rajdhani', sans-serif; font-weight: 600; color: #22C55E;">
-                        v3.0 AI Pipeline Ready
+                        v4.1 AI Pipeline Ready
                     </div>
                     <div style="font-size: 12px; color: #94a3b8;">
-                        6-stage processing with confidence scoring
+                        7-stage processing with contractor review
                     </div>
                 </div>
             </div>
@@ -419,89 +401,55 @@ with tab1:
             progress_placeholder = st.empty()
             status_placeholder = st.empty()
 
-            # Use new agent if available, otherwise legacy
-            if agent and agent.available:
-                # New 6-stage pipeline
+            if pipeline_available:
+                # v4.1 7-stage pipeline (stages 1-3: INGEST, CLASSIFY, DISCOVER)
                 with status_placeholder:
-                    st.info("Starting 6-stage AI pipeline...")
+                    st.info("Starting v4.1 AI pipeline (stages 1-3)...")
 
-                # Run pipeline with progress updates
-                result = agent.process_document(
-                    uploaded_file.getvalue(),
-                    uploaded_file.type,
-                    uploaded_file.name
-                )
+                try:
+                    # Create fresh pipeline instance for this run
+                    run_pipeline = create_pipeline()
 
-                # Store result in session state
-                st.session_state.pipeline_result = result
-                st.session_state.uploaded_filename = uploaded_file.name
+                    # Process document (runs INGEST → CLASSIFY → DISCOVER)
+                    extraction, confidence = run_pipeline.process_documents([
+                        (uploaded_file.getvalue(), uploaded_file.name, uploaded_file.type)
+                    ])
 
-                # Convert to legacy format for compatibility
-                tier_map = {
-                    ServiceTier.RESIDENTIAL: ProjectTier.RESIDENTIAL,
-                    ServiceTier.COMMERCIAL: ProjectTier.COMMERCIAL,
-                    ServiceTier.MAINTENANCE: ProjectTier.MAINTENANCE,
-                }
-                legacy_tier = tier_map.get(result.final_tier, ProjectTier.UNKNOWN)
+                    # Store results in session state for v4.1 flow
+                    st.session_state.pipeline = run_pipeline  # Keep pipeline for later stages
+                    st.session_state.extraction = extraction
+                    st.session_state.extraction_confidence = confidence
+                    st.session_state.detected_tier = run_pipeline.tier
+                    st.session_state.uploaded_filename = uploaded_file.name
+                    st.session_state.stages_completed = run_pipeline.stages
 
-                st.session_state.analysis_result = AnalysisResult(
-                    tier=legacy_tier,
-                    confidence=result.overall_confidence,
-                    subtype=result.extracted_data.get("subtype"),
-                    extracted_data=result.extracted_data,
-                    reasoning=result.extracted_data.get("notes", []),
-                    warnings=result.extracted_data.get("warnings", [])
-                )
+                    with status_placeholder:
+                        tier_info = TIER_DISPLAY.get(run_pipeline.tier, TIER_DISPLAY[ServiceTier.UNKNOWN])
+                        if confidence >= 0.70:
+                            st.success(f"Extraction complete! {tier_info['icon']} {tier_info['name']} ({confidence*100:.0f}% confidence)")
+                        elif confidence >= 0.40:
+                            st.warning(f"Extraction complete with medium confidence: {confidence*100:.0f}%")
+                        else:
+                            st.error(f"Extraction complete with low confidence: {confidence*100:.0f}%")
 
-                with status_placeholder:
-                    if result.overall_confidence >= 0.70:
-                        st.success(f"Pipeline complete! Confidence: {result.overall_confidence*100:.0f}%")
-                    elif result.overall_confidence >= 0.40:
-                        st.warning(f"Pipeline complete with medium confidence: {result.overall_confidence*100:.0f}%")
-                    else:
-                        st.error(f"Pipeline complete with low confidence: {result.overall_confidence*100:.0f}%")
+                            # Show diagnostic info for low confidence
+                            with st.expander("🔧 Diagnostic Info", expanded=True):
+                                st.markdown("**Stage Results:**")
+                                for stage in run_pipeline.stages:
+                                    status_icon = "✅" if stage.success else "❌"
+                                    st.markdown(f"- {stage.stage.name}: {status_icon} (conf: {stage.confidence*100:.0f}%)")
+                                    if stage.errors:
+                                        for err in stage.errors:
+                                            st.error(f"  Error: {err}")
 
-                        # Show diagnostic info for low confidence
-                        with st.expander("🔧 Diagnostic Info", expanded=True):
-                            st.markdown("**Stage Results:**")
-                            for stage in result.stages:
-                                status = "✅" if stage.success else "❌"
-                                st.markdown(f"- {stage.stage.name}: {status} (conf: {stage.confidence*100:.0f}%)")
-                                if stage.errors:
-                                    for err in stage.errors:
-                                        st.error(f"  Error: {err}")
-                                if stage.warnings:
-                                    for warn in stage.warnings:
-                                        st.warning(f"  Warning: {warn}")
+                    st.info("Check the **Pipeline** and **Extraction** tabs, then continue to **Review & Edit**.")
 
-                            if result.errors:
-                                st.markdown("**Pipeline Errors:**")
-                                for err in result.errors:
-                                    st.error(err)
-
-                st.info("Check **Pipeline**, **Extraction**, and **Validation** tabs for details.")
-
-            elif analyzer and analyzer.available:
-                # Legacy single-call analysis
-                with status_placeholder:
-                    st.info("Running legacy analysis...")
-
-                result = analyzer.analyze_document(
-                    uploaded_file.getvalue(),
-                    uploaded_file.type,
-                    uploaded_file.name
-                )
-
-                st.session_state.analysis_result = result
-                st.session_state.uploaded_filename = uploaded_file.name
-                st.session_state.pipeline_result = None  # No pipeline result
-
-                with status_placeholder:
-                    tier_info = get_tier_display_info(result.tier)
-                    st.success(f"Analysis complete: {tier_info['icon']} {tier_info['name']}")
+                except Exception as e:
+                    with status_placeholder:
+                        st.error(f"Pipeline error: {str(e)}")
 
             else:
-                st.error("No analysis method available. Please configure API key.")
+                st.error("Pipeline not available. Please configure ANTHROPIC_API_KEY.")
     else:
         st.markdown("""
         <div style="background: linear-gradient(135deg, rgba(17,24,39,0.5), rgba(15,23,42,0.3));
@@ -519,22 +467,22 @@ with tab1:
 
 
 with tab2:
-    section_header("Pipeline Progress", "6-stage AI processing")
+    section_header("Pipeline Progress", "7-stage AI processing")
 
-    if "pipeline_result" in st.session_state and st.session_state.pipeline_result:
-        result = st.session_state.pipeline_result
+    if "stages_completed" in st.session_state and st.session_state.stages_completed:
+        stages = st.session_state.stages_completed
+        confidence = st.session_state.get("extraction_confidence", 0.0)
 
         # Pipeline visualization
-        render_pipeline_progress(result)
+        render_pipeline_progress(current_stage="DISCOVER")  # Show stages 1-3 complete
 
         st.markdown("---")
-        st.markdown("### Stage Details")
+        st.markdown("### Stage Details (1-3 of 7)")
 
-        for stage_result in result.stages:
+        for stage_result in stages:
             stage_name = stage_result.stage.name
             config = STAGE_CONFIG.get(stage_name, {"icon": "❓", "name": stage_name})
 
-            status_color = "#22C55E" if stage_result.success else "#EF4444"
             status_icon = "✓" if stage_result.success else "✗"
 
             with st.expander(f"{config['icon']} {config['name']} - {status_icon}", expanded=False):
@@ -562,41 +510,37 @@ with tab2:
                     if stage_name == "CLASSIFY":
                         tier = stage_result.data.get("tier", "unknown")
                         st.info(f"Detected Tier: **{tier.upper()}**")
-                    elif stage_name == "VALIDATE":
-                        passed = stage_result.data.get("passed", 0)
-                        failed = stage_result.data.get("failed", 0)
-                        st.info(f"Checks: {passed} passed, {failed} failed")
 
-        # Total cost
+        # Total cost so far
         st.markdown("---")
-        total_cost = sum(getattr(s, 'cost_zar', 0) or 0 for s in result.stages)
+        total_cost = sum(getattr(s, 'cost_zar', 0) or 0 for s in stages)
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Total Pipeline Cost", f"R{total_cost:.2f}")
+            st.metric("Pipeline Cost (so far)", f"R{total_cost:.2f}")
         with col2:
-            st.metric("Overall Confidence", f"{result.overall_confidence*100:.0f}%")
+            st.metric("Extraction Confidence", f"{confidence*100:.0f}%")
 
-    elif "analysis_result" in st.session_state:
-        st.info("Legacy analysis mode - no pipeline details available.")
-        render_pipeline_progress()
+        st.info("Stages 4-7 (REVIEW, VALIDATE, PRICE, OUTPUT) run after you review the extraction.")
+
     else:
         st.info("Upload and analyze a document to see pipeline progress.")
         render_pipeline_progress()
 
 
 with tab3:
-    section_header("Extracted Data", "Review and edit AI extraction")
+    section_header("Extraction Preview", "View AI extraction summary")
 
-    if "analysis_result" not in st.session_state:
+    if "extraction" not in st.session_state or st.session_state.extraction is None:
         st.info("Upload and analyze a document to see extraction results.")
     else:
-        result = st.session_state.analysis_result
-        extracted = result.extracted_data or {}
+        extraction: ExtractionResult = st.session_state.extraction
+        confidence = st.session_state.get("extraction_confidence", 0.0)
+        tier = st.session_state.get("detected_tier", ServiceTier.UNKNOWN)
+        tier_info = TIER_DISPLAY.get(tier, TIER_DISPLAY[ServiceTier.UNKNOWN])
 
         # Confidence summary
         col1, col2, col3 = st.columns(3)
         with col1:
-            tier_info = get_tier_display_info(result.tier)
             st.markdown(f"""
             <div style="background: rgba(17,24,39,0.6); border-radius: 10px; padding: 1rem; text-align: center;">
                 <div style="font-size: 2rem;">{tier_info['icon']}</div>
@@ -607,220 +551,104 @@ with tab3:
             st.markdown(f"""
             <div style="background: rgba(17,24,39,0.6); border-radius: 10px; padding: 1rem; text-align: center;">
                 <div style="font-size: 1.5rem; font-weight: 700;
-                            color: {'#22C55E' if result.confidence >= 0.7 else '#F59E0B' if result.confidence >= 0.4 else '#EF4444'};">
-                    {result.confidence*100:.0f}%
+                            color: {'#22C55E' if confidence >= 0.7 else '#F59E0B' if confidence >= 0.4 else '#EF4444'};">
+                    {confidence*100:.0f}%
                 </div>
                 <div style="color: #94a3b8; font-size: 12px;">Confidence</div>
             </div>
             """, unsafe_allow_html=True)
         with col3:
-            if "pipeline_result" in st.session_state and st.session_state.pipeline_result:
-                pr = st.session_state.pipeline_result
-                discover_stage = next((s for s in pr.stages if s.stage.name == "DISCOVER"), None)
-                if discover_stage and discover_stage.model_used:
-                    st.markdown(render_model_indicator(discover_stage.model_used), unsafe_allow_html=True)
+            stages = st.session_state.get("stages_completed", [])
+            discover_stage = next((s for s in stages if s.stage.name == "DISCOVER"), None)
+            if discover_stage and discover_stage.model_used:
+                st.markdown(render_model_indicator(discover_stage.model_used), unsafe_allow_html=True)
 
         st.markdown("---")
 
-        # Editable extraction sections
-        st.markdown("### Edit Extracted Data")
-        st.caption("Correct any AI extraction errors before continuing")
+        # Summary metrics
+        st.markdown("### Extraction Summary")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Building Blocks", len(extraction.building_blocks))
+        with col2:
+            st.metric("Distribution Boards", extraction.total_dbs)
+        with col3:
+            st.metric("Rooms", len(extraction.all_rooms))
+        with col4:
+            st.metric("Site Cables", len(extraction.site_cable_runs))
 
-        # Project details
-        with st.expander("📋 Project Details", expanded=True):
-            edit_col1, edit_col2 = st.columns(2)
-            with edit_col1:
-                project_name = st.text_input(
-                    "Project Name",
-                    value=extracted.get("project_name", ""),
-                    key="edit_project_name"
-                )
+        # Building blocks preview
+        if extraction.building_blocks:
+            with st.expander("🏢 Building Blocks Preview", expanded=True):
+                for block in extraction.building_blocks:
+                    st.markdown(f"**{block.name}** — {len(block.rooms)} rooms, {block.total_dbs} DBs, {block.total_points} points")
 
-                # For maintenance/COC
-                if result.tier == ProjectTier.MAINTENANCE:
-                    property_type = st.selectbox(
-                        "Property Type",
-                        options=["house", "flat", "townhouse", "complex_unit", "commercial"],
-                        index=0 if not extracted.get("property", {}).get("type") else
-                              ["house", "flat", "townhouse", "complex_unit", "commercial"].index(
-                                  extracted.get("property", {}).get("type", "house")
-                              )
-                    )
+        # DBs preview
+        if any(block.distribution_boards for block in extraction.building_blocks):
+            with st.expander("⚡ Distribution Boards Preview", expanded=False):
+                for block in extraction.building_blocks:
+                    for db in block.distribution_boards:
+                        st.markdown(f"**{db.name}** — {db.total_ways} ways, Main {db.main_breaker_a}A")
 
-            with edit_col2:
-                total_area = st.number_input(
-                    "Total Area (m²)",
-                    value=float(extracted.get("total_area_m2", 0) or extracted.get("gfa_m2", 0) or 0),
-                    min_value=0.0,
-                    key="edit_total_area"
-                )
+        # Rooms preview
+        if extraction.all_rooms:
+            with st.expander("🚿 Rooms Preview", expanded=False):
+                for block in extraction.building_blocks:
+                    if block.rooms:
+                        st.markdown(f"**{block.name}:**")
+                        for room in block.rooms[:5]:  # Show first 5
+                            st.markdown(f"  • {room.name}: {room.fixtures.total_lights} lights, {room.fixtures.total_sockets} sockets")
+                        if len(block.rooms) > 5:
+                            st.caption(f"  ... and {len(block.rooms) - 5} more rooms")
 
-        # Rooms (for residential)
-        if "rooms" in extracted and extracted["rooms"]:
-            with st.expander("🏠 Rooms", expanded=True):
-                rooms_df = []
-                for room in extracted["rooms"]:
-                    rooms_df.append({
-                        "Name": room.get("name", "Unknown"),
-                        "Type": room.get("type", "Unknown"),
-                        "Area (m²)": room.get("area_m2") or 16,
-                        "Lights": room.get("lights", 2),
-                        "Sockets": room.get("sockets", 4)
-                    })
-
-                edited_rooms = st.data_editor(
-                    rooms_df,
-                    use_container_width=True,
-                    num_rows="dynamic",
-                    key="edit_rooms"
-                )
-
-                # Store edited rooms back
-                if edited_rooms:
-                    st.session_state.edited_rooms = edited_rooms
-
-        # Areas (for commercial)
-        if "areas" in extracted and extracted["areas"]:
-            with st.expander("🏢 Areas", expanded=True):
-                areas_df = []
-                for area in extracted["areas"]:
-                    areas_df.append({
-                        "Name": area.get("name", "Unknown"),
-                        "Type": area.get("type", "Unknown"),
-                        "Area (m²)": area.get("area_m2", 0),
-                        "Power (W/m²)": area.get("power_density_wm2", 50)
-                    })
-
-                edited_areas = st.data_editor(
-                    areas_df,
-                    use_container_width=True,
-                    num_rows="dynamic",
-                    key="edit_areas"
-                )
-
-                if edited_areas:
-                    st.session_state.edited_areas = edited_areas
-
-        # Defects (for maintenance)
-        if "defects" in extracted and extracted["defects"]:
-            with st.expander("⚠️ Detected Defects", expanded=True):
-                defects_df = []
-                for defect in extracted["defects"]:
-                    defects_df.append({
-                        "Code": defect.get("code", "unknown"),
-                        "Description": defect.get("description", ""),
-                        "Severity": defect.get("severity", "medium"),
-                        "Qty": defect.get("qty", 1)
-                    })
-
-                edited_defects = st.data_editor(
-                    defects_df,
-                    use_container_width=True,
-                    num_rows="dynamic",
-                    key="edit_defects"
-                )
-
-                if edited_defects:
-                    st.session_state.edited_defects = edited_defects
-
-        # Electrical details
-        if "electrical_details" in extracted:
-            with st.expander("⚡ Electrical Details", expanded=False):
-                elec = extracted["electrical_details"]
-                st.json(elec)
-
-        # Raw JSON (for debugging)
-        with st.expander("🔧 Raw JSON Data", expanded=False):
-            st.json(extracted)
+        st.markdown("---")
+        st.info("**To edit quantities**, click 'Continue to Review' in the next tab. The Review page has detailed editing controls.")
 
 
 with tab4:
-    section_header("SANS 10142 Validation", "Compliance check results")
+    section_header("SANS 10142 Validation", "Stage 5 - runs after review")
 
-    if "pipeline_result" in st.session_state and st.session_state.pipeline_result:
-        result = st.session_state.pipeline_result
+    st.info("""
+    **v4.1 Pipeline Flow:**
 
-        # Find validation stage
-        validate_stage = next((s for s in result.stages if s.stage.name == "VALIDATE"), None)
+    In v4.1, SANS 10142 validation happens **after** you review and correct the AI extraction.
 
-        if validate_stage and validate_stage.data:
-            validation_data = validate_stage.data
+    **Current stage:** DISCOVER complete → **REVIEW** next
 
-            # Summary metrics
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                passed = validation_data.get("passed", 0)
-                st.metric("Passed", passed, delta_color="off")
-            with col2:
-                failed = validation_data.get("failed", 0)
-                st.metric("Failed", failed, delta_color="inverse" if failed > 0 else "off")
-            with col3:
-                warnings = validation_data.get("warnings", 0)
-                st.metric("Warnings", warnings)
-            with col4:
-                score = validation_data.get("compliance_score", 100)
-                st.metric("Score", f"{score}%")
+    The validation stage will check:
+    - Max 10 lights/plugs per circuit
+    - Mandatory ELCB (30mA)
+    - Dedicated circuits for stove, geyser, aircon
+    - Voltage drop limits (< 5%)
+    - 15% spare DB ways
 
-            st.markdown("---")
-
-            # Validation flags
-            flags = validation_data.get("flags", [])
-            if flags:
-                render_validation_report(flags)
-            else:
-                st.success("All SANS 10142-1 checks passed")
-
-            # Auto-corrections applied
-            corrections = validation_data.get("corrections_applied", [])
-            if corrections:
-                st.markdown("### Auto-Corrections Applied")
-                for correction in corrections:
-                    st.info(f"Added: {correction}")
-        else:
-            st.info("No validation data available.")
-
-    elif "analysis_result" in st.session_state:
-        st.info("Legacy analysis - run new pipeline for SANS 10142 validation.")
-
-        # Basic warnings from legacy analysis
-        result = st.session_state.analysis_result
-        if result.warnings:
-            st.markdown("### Warnings from Analysis")
-            for warning in result.warnings:
-                st.warning(warning)
-    else:
-        st.info("Upload and analyze a document to see validation results.")
+    Click "Continue to Review" to proceed.
+    """)
 
 
 with tab5:
-    section_header("Continue to Quotation", "Proceed with extracted data")
+    section_header("Continue to Review", "v4.1 workflow - Stage 4")
 
-    if "analysis_result" not in st.session_state:
+    if "extraction" not in st.session_state or st.session_state.extraction is None:
         st.info("Upload and analyze a document first.")
     else:
-        result = st.session_state.analysis_result
-        tier_info = get_tier_display_info(result.tier)
+        extraction: ExtractionResult = st.session_state.extraction
+        confidence = st.session_state.get("extraction_confidence", 0.0)
+        tier = st.session_state.get("detected_tier", ServiceTier.UNKNOWN)
+        tier_info = TIER_DISPLAY.get(tier, TIER_DISPLAY[ServiceTier.UNKNOWN])
 
         # Handle uncertain classification
-        if result.tier == ProjectTier.UNKNOWN or result.confidence < 0.3:
+        if tier == ServiceTier.UNKNOWN or confidence < 0.3:
             st.warning("**Classification Uncertain** - Please select manually:")
 
             manual_tier = st.selectbox(
                 "Select Project Tier",
-                options=["residential", "commercial", "maintenance"],
-                format_func=lambda x: f"{get_tier_display_info(ProjectTier(x))['icon']} {x.title()}"
+                options=[ServiceTier.RESIDENTIAL, ServiceTier.COMMERCIAL, ServiceTier.MAINTENANCE],
+                format_func=lambda x: f"{TIER_DISPLAY[x]['icon']} {TIER_DISPLAY[x]['name']}"
             )
-
-            result = AnalysisResult(
-                tier=ProjectTier(manual_tier),
-                confidence=1.0,
-                subtype=None,
-                extracted_data=result.extracted_data,
-                reasoning="Manually selected",
-                warnings=[]
-            )
-            st.session_state.analysis_result = result
-            tier_info = get_tier_display_info(result.tier)
+            st.session_state.detected_tier = manual_tier
+            tier = manual_tier
+            tier_info = TIER_DISPLAY[tier]
 
         # Project summary card
         st.markdown(f"""
@@ -838,118 +666,50 @@ with tab5:
         </div>
         """, unsafe_allow_html=True)
 
-        # Confidence badge
-        col1, col2 = st.columns(2)
+        # Confidence badge and metrics
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown(f"**Confidence:** {get_confidence_badge(result.confidence)}", unsafe_allow_html=True)
+            st.markdown(f"**Confidence:** {get_confidence_badge(confidence)}", unsafe_allow_html=True)
         with col2:
-            if "pipeline_result" in st.session_state and st.session_state.pipeline_result:
-                total_cost = sum(getattr(s, 'cost_zar', 0) or 0 for s in st.session_state.pipeline_result.stages)
-                st.markdown(f"**Pipeline Cost:** R{total_cost:.2f}")
+            stages = st.session_state.get("stages_completed", [])
+            total_cost = sum(getattr(s, 'cost_zar', 0) or 0 for s in stages)
+            st.markdown(f"**Pipeline Cost:** R{total_cost:.2f}")
+        with col3:
+            st.markdown(f"**Items:** {len(extraction.building_blocks)} blocks, {extraction.total_dbs} DBs")
 
         st.markdown("---")
 
-        # Data transfer options
-        st.markdown("### Data Transfer")
-
-        transfer_data = st.checkbox(
-            "Pre-populate extracted data",
-            value=True,
-            help="Transfer rooms, areas, and details to quotation page"
-        )
-
-        include_validation = st.checkbox(
-            "Include validation corrections",
-            value=True,
-            help="Apply SANS 10142 auto-corrections"
-        )
+        # v4.1 workflow explanation
+        st.markdown("### v4.1 Workflow")
+        st.markdown("""
+        1. ✅ **INGEST** - Document processed
+        2. ✅ **CLASSIFY** - Tier detected
+        3. ✅ **DISCOVER** - Quantities extracted
+        4. ⏳ **REVIEW** - You review & correct ← **Next step**
+        5. ⏳ **VALIDATE** - SANS 10142 compliance
+        6. ⏳ **PRICE** - Dual BQ generation
+        7. ⏳ **OUTPUT** - Final result
+        """)
 
         st.markdown("---")
 
         # Navigation
         if st.button(
-            f"✅ Continue to {tier_info['name']} Quotation",
+            "✏️ Continue to Review & Edit",
             type="primary",
             use_container_width=True
         ):
-            # Store data in session state
+            # Data is already in session state (extraction, pipeline, etc.)
             st.session_state.from_smart_upload = True
-            st.session_state.detected_tier = result.tier.value
-            st.session_state.detected_subtype = result.subtype
-            st.session_state.ai_confidence = result.confidence
-
-            if transfer_data:
-                # Use edited data if available
-                extracted = result.extracted_data.copy()
-
-                if "edited_rooms" in st.session_state:
-                    extracted["rooms"] = [
-                        {
-                            "name": r["Name"],
-                            "type": r["Type"],
-                            "area_m2": r["Area (m²)"],
-                            "lights": r.get("Lights", 2),
-                            "sockets": r.get("Sockets", 4)
-                        }
-                        for r in st.session_state.edited_rooms
-                    ]
-
-                if "edited_areas" in st.session_state:
-                    extracted["areas"] = [
-                        {
-                            "name": a["Name"],
-                            "type": a["Type"],
-                            "area_m2": a["Area (m²)"],
-                            "power_density_wm2": a.get("Power (W/m²)", 50)
-                        }
-                        for a in st.session_state.edited_areas
-                    ]
-
-                if "edited_defects" in st.session_state:
-                    extracted["defects"] = [
-                        {
-                            "code": d["Code"],
-                            "description": d["Description"],
-                            "severity": d["Severity"],
-                            "qty": d["Qty"]
-                        }
-                        for d in st.session_state.edited_defects
-                    ]
-
-                st.session_state.extracted_data = extracted
-
-                # Pre-populate tier-specific session state
-                if result.tier == ProjectTier.RESIDENTIAL and "rooms" in extracted:
-                    rooms = []
-                    for r in extracted["rooms"]:
-                        area = r.get("area_m2", 16) or 16
-                        rooms.append({
-                            "name": r.get("name", "Room"),
-                            "type": r.get("type", "Living Room"),
-                            "w": (area ** 0.5),
-                            "h": (area ** 0.5)
-                        })
-                    if rooms:
-                        st.session_state.residential_rooms = rooms
-
-            # Store validation report if available
-            if include_validation and "pipeline_result" in st.session_state:
-                pr = st.session_state.pipeline_result
-                validate_stage = next((s for s in pr.stages if s.stage.name == "VALIDATE"), None)
-                if validate_stage:
-                    st.session_state.validation_report = validate_stage.data
-
-            # Navigate
-            target_page = get_tier_page_path(result.tier)
-            st.switch_page(target_page)
+            st.switch_page("pages/6_Review.py")
 
         st.markdown("---")
 
         col1, col2 = st.columns(2)
         with col1:
             if st.button("🔄 Analyze Another", use_container_width=True):
-                for key in ["analysis_result", "pipeline_result", "uploaded_filename",
-                           "from_smart_upload", "edited_rooms", "edited_areas", "edited_defects"]:
+                for key in ["extraction", "pipeline", "stages_completed", "extraction_confidence",
+                           "detected_tier", "uploaded_filename", "from_smart_upload"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()

@@ -37,13 +37,7 @@ smart_upload = st.Page(
     icon="📤"
 )
 
-# v4.1: New workflow pages
-profile = st.Page(
-    "pages/5_Profile.py",
-    title="Contractor Profile",
-    icon="👤"
-)
-
+# v4.1 Workflow pages
 review = st.Page(
     "pages/6_Review.py",
     title="Review & Edit",
@@ -62,30 +56,17 @@ results = st.Page(
     icon="📊"
 )
 
-# Legacy tier pages (kept for backwards compatibility)
-residential = st.Page(
-    "pages/2_Residential.py",
-    title="Residential",
-    icon="🏡"
+# Settings
+profile = st.Page(
+    "pages/5_Profile.py",
+    title="Contractor Profile",
+    icon="👤"
 )
 
-commercial = st.Page(
-    "pages/3_Commercial.py",
-    title="Commercial",
-    icon="🏢"
-)
-
-maintenance = st.Page(
-    "pages/4_Maintenance.py",
-    title="Maintenance",
-    icon="🔧"
-)
-
-# Navigation sections
+# Navigation sections (v4.1 - no legacy pages)
 pg = st.navigation({
     "AI Workflow": [welcome, smart_upload, review, site_conditions, results],
     "Settings": [profile],
-    "Legacy": [residential, commercial, maintenance],
 })
 
 # Run the selected page
