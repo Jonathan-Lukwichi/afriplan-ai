@@ -7,7 +7,7 @@ AfriPlan Electrical v4.1 — Pipeline Stages Package
 from .ingest import ingest
 from .classify import classify
 from .discover import discover
-from .review import ReviewManager
+from .review import ReviewManager, create_review_manager, get_items_needing_review
 from .validate import validate
 from .price import price
 from .output import generate_output
@@ -17,6 +17,8 @@ __all__ = [
     "classify",
     "discover",
     "ReviewManager",
+    "create_review_manager",
+    "get_items_needing_review",
     "validate",
     "price",
     "generate_output",
