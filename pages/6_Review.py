@@ -252,11 +252,13 @@ def _render_distribution_boards(extraction: ExtractionResult, review_manager: Re
                         label_visibility="collapsed"
                     )
 
+                    # Clamp wattage to valid range (commercial can have high values)
+                    wattage_val = min(int(circuit.wattage_w), 500000)
                     new_watts = cols[5].number_input(
                         "W",
-                        value=int(circuit.wattage_w),
+                        value=wattage_val,
                         min_value=0,
-                        max_value=50000,
+                        max_value=500000,
                         step=100,
                         key=f"ckt_watts_{block.name}_{db.name}_{ckt_idx}",
                         label_visibility="collapsed"
