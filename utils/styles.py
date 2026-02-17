@@ -757,6 +757,20 @@ CUSTOM_CSS = """
         padding: 1rem 0.5rem !important;
     }
 
+    /* Section headers (AI Workflow, Settings, Legacy) */
+    [data-testid="stSidebarNav"] > ul > li > div:first-child {
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 3px !important;
+        color: #00D4FF !important;
+        padding: 16px 12px 8px !important;
+        margin-top: 8px !important;
+        text-shadow: 0 0 10px rgba(0, 212, 255, 0.4) !important;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.2) !important;
+    }
+
     /* Each navigation link card */
     [data-testid="stSidebarNavLink"] {
         background: linear-gradient(135deg,
@@ -764,14 +778,17 @@ CUSTOM_CSS = """
             rgba(0, 150, 255, 0.03)) !important;
         border: 1px solid rgba(0, 212, 255, 0.4) !important;
         border-radius: 12px !important;
-        margin: 8px 0 !important;
-        padding: 4px !important;
+        margin: 6px 4px !important;
+        padding: 12px 16px !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         box-shadow:
             0 0 15px rgba(0, 212, 255, 0.15),
             inset 0 1px 0 rgba(0, 212, 255, 0.1) !important;
         position: relative;
         overflow: hidden;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
     }
 
     /* Top accent line on cards */
@@ -814,17 +831,28 @@ CUSTOM_CSS = """
             inset 0 0 25px rgba(0, 212, 255, 0.08) !important;
     }
 
+    /* Icon/Emoji styling */
+    [data-testid="stSidebarNavLink"] svg,
+    [data-testid="stSidebarNavLink"] > span:first-child {
+        font-size: 20px !important;
+        line-height: 1 !important;
+        flex-shrink: 0 !important;
+        width: 24px !important;
+        text-align: center !important;
+    }
+
     /* Navigation link text */
     [data-testid="stSidebarNavLink"] span {
         font-family: 'Rajdhani', sans-serif !important;
         font-weight: 600 !important;
-        font-size: 14px !important;
+        font-size: 13px !important;
         text-transform: uppercase !important;
-        letter-spacing: 2px !important;
+        letter-spacing: 1.5px !important;
         color: #00D4FF !important;
         text-shadow: 0 0 10px rgba(0, 212, 255, 0.5) !important;
-        padding: 12px 16px !important;
-        display: block !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 
     /* Active page text - brighter */

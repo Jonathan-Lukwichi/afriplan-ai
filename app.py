@@ -65,19 +65,19 @@ results = st.Page(
 # Legacy tier pages (kept for backwards compatibility)
 residential = st.Page(
     "pages/2_Residential.py",
-    title="Residential (Legacy)",
+    title="Residential",
     icon="🏡"
 )
 
 commercial = st.Page(
     "pages/3_Commercial.py",
-    title="Commercial (Legacy)",
+    title="Commercial",
     icon="🏢"
 )
 
 maintenance = st.Page(
     "pages/4_Maintenance.py",
-    title="Maintenance (Legacy)",
+    title="Maintenance",
     icon="🔧"
 )
 
