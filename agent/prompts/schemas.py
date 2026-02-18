@@ -300,6 +300,105 @@ PLUGS_LAYOUT_SCHEMA = """{
   }
 }"""
 
+# Schema for combined layout extraction - pages with BOTH lights AND sockets/switches
+# This handles South African drawings where lighting and power layouts are on the same page
+COMBINED_LAYOUT_SCHEMA = """{
+  "building_block": "NewMark Office Building",
+  "rooms": [
+    {
+      "name": "Suite 1 - Open Plan",
+      "room_number": 1,
+      "type": "office_open_plan",
+      "confidence": "extracted",
+      "area_m2": 120,
+      "floor": "Ground",
+      "is_wet_area": false,
+      "fixtures": {
+        "recessed_led_600x1200": 16,
+        "recessed_led_600x1200_confidence": "extracted",
+        "downlight_led_6w": 0,
+        "vapor_proof_2x24w": 0,
+        "surface_mount_led_18w": 0,
+        "bulkhead_26w": 0,
+        "double_socket_300": 12,
+        "double_socket_300_confidence": "extracted",
+        "double_socket_1100": 4,
+        "double_socket_1100_confidence": "extracted",
+        "single_socket_300": 0,
+        "double_socket_waterproof": 0,
+        "data_points_cat6": 16,
+        "data_points_cat6_confidence": "extracted",
+        "floor_box": 2,
+        "switch_1lever_1way": 4,
+        "switch_1lever_1way_confidence": "inferred",
+        "switch_2lever_1way": 0,
+        "switch_1lever_2way": 0,
+        "day_night_switch": 0,
+        "isolator_30a": 0,
+        "isolator_20a": 0
+      },
+      "circuit_refs": ["DB-S1 L1", "DB-S1 L2", "DB-S1 P1", "DB-S1 P2"]
+    },
+    {
+      "name": "Male Ablution",
+      "room_number": 2,
+      "type": "ablution",
+      "confidence": "extracted",
+      "area_m2": 25,
+      "floor": "Ground",
+      "is_wet_area": true,
+      "fixtures": {
+        "vapor_proof_2x24w": 4,
+        "vapor_proof_2x24w_confidence": "extracted",
+        "double_socket_waterproof": 1,
+        "double_socket_waterproof_confidence": "extracted",
+        "switch_1lever_1way": 1,
+        "switch_1lever_1way_confidence": "extracted"
+      },
+      "circuit_refs": ["DB-AB1 L1", "DB-AB1 P1"]
+    }
+  ],
+  "legend": {
+    "block_name": "NewMark Office Building",
+    "lights": [
+      {
+        "symbol_id": "LT-REC",
+        "category": "light",
+        "description": "600x1200 Recessed LED Panel 3x18W",
+        "short_name": "600x1200 Recessed LED",
+        "wattage_w": 54,
+        "ip_rating": "IP20"
+      },
+      {
+        "symbol_id": "LT-VP24",
+        "category": "light",
+        "description": "2x24W Double Vapor Proof LED",
+        "short_name": "Vapor Proof 2x24W",
+        "wattage_w": 48,
+        "ip_rating": "IP65"
+      }
+    ],
+    "sockets": [
+      {
+        "symbol_id": "PS-DS300",
+        "category": "socket",
+        "description": "16A Double Switched Socket @300mm",
+        "short_name": "Double Socket @300",
+        "mounting_height_mm": 300
+      }
+    ],
+    "switches": [
+      {
+        "symbol_id": "SW-1L1W",
+        "category": "switch",
+        "description": "1-Lever 1-Way Switch @1200mm",
+        "short_name": "1L 1W Switch",
+        "mounting_height_mm": 1200
+      }
+    ]
+  }
+}"""
+
 # Schema for outside lights / site infrastructure extraction
 OUTSIDE_LIGHTS_SCHEMA = """{
   "site_cable_runs": [
@@ -493,6 +592,7 @@ def get_schema_for_page_type(page_type: str) -> str:
         "SLD": SLD_SCHEMA,
         "LAYOUT_LIGHTING": LIGHTING_LAYOUT_SCHEMA,
         "LAYOUT_PLUGS": PLUGS_LAYOUT_SCHEMA,
+        "LAYOUT_COMBINED": COMBINED_LAYOUT_SCHEMA,
         "OUTSIDE_LIGHTS": OUTSIDE_LIGHTS_SCHEMA,
         "RESIDENTIAL": RESIDENTIAL_SCHEMA,
         "MAINTENANCE": MAINTENANCE_SCHEMA,
@@ -506,6 +606,7 @@ ALL_SCHEMAS = {
     "sld": SLD_SCHEMA,
     "lighting": LIGHTING_LAYOUT_SCHEMA,
     "plugs": PLUGS_LAYOUT_SCHEMA,
+    "combined_layout": COMBINED_LAYOUT_SCHEMA,
     "outside_lights": OUTSIDE_LIGHTS_SCHEMA,
     "residential": RESIDENTIAL_SCHEMA,
     "maintenance": MAINTENANCE_SCHEMA,

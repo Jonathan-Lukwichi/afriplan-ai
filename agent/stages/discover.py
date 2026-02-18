@@ -20,7 +20,7 @@ from agent.models import (
 from agent.utils import parse_json_safely, Timer, estimate_cost_zar
 from agent.prompts.schemas import (
     SLD_SCHEMA, LIGHTING_LAYOUT_SCHEMA, PLUGS_LAYOUT_SCHEMA,
-    OUTSIDE_LIGHTS_SCHEMA, CONFIDENCE_INSTRUCTION
+    COMBINED_LAYOUT_SCHEMA, OUTSIDE_LIGHTS_SCHEMA, CONFIDENCE_INSTRUCTION
 )
 from agent.prompts.system_prompt import SYSTEM_PROMPT
 from agent.prompts.sld_prompt import get_sld_extraction_prompt
@@ -82,6 +82,7 @@ def discover(
         sld_pages = doc_set.pages_by_type(PageType.SLD)
         lighting_pages = doc_set.pages_by_type(PageType.LAYOUT_LIGHTING)
         plug_pages = doc_set.pages_by_type(PageType.LAYOUT_PLUGS)
+        combined_pages = doc_set.pages_by_type(PageType.LAYOUT_COMBINED)
         outside_pages = doc_set.pages_by_type(PageType.OUTSIDE_LIGHTS)
 
         extraction.pages_processed = len(doc_set.all_pages)
@@ -118,6 +119,19 @@ def discover(
                 extraction.pages_with_data += len(plug_pages)
             except Exception as e:
                 errors.append(f"Plug extraction failed: {str(e)}")
+
+        # Extract from combined layout pages (has both lights AND sockets/switches)
+        if combined_pages and client:
+            try:
+                combined_data, tokens, cost = _extract_combined_layout_data(
+                    combined_pages, client, extraction_model
+                )
+                total_tokens += tokens
+                total_cost += cost
+                _merge_combined_data(extraction, combined_data)
+                extraction.pages_with_data += len(combined_pages)
+            except Exception as e:
+                errors.append(f"Combined layout extraction failed: {str(e)}")
 
         # Extract from outside lights pages
         if outside_pages and client:
@@ -337,6 +351,239 @@ Return JSON matching this schema:
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
+
+
+def _extract_combined_layout_data(
+    pages: List,
+    client: object,
+    model: str = DISCOVER_MODEL,
+) -> Tuple[Dict[str, Any], int, float]:
+    """
+    Extract both lighting AND socket/switch data from combined layout pages.
+
+    Combined layout pages are common in South African electrical drawings where
+    both the lighting layout and power/plug layout are shown on the same page.
+    This function extracts ALL fixture types in a single pass.
+    """
+    prompt = f"""{SYSTEM_PROMPT}
+
+{CONFIDENCE_INSTRUCTION}
+
+## IMPORTANT: COMBINED LAYOUT DRAWING
+
+This drawing contains BOTH lighting fixtures AND power points (sockets/switches) on the SAME page.
+You must extract ALL of the following in a single pass:
+
+### LIGHTING FIXTURES to count:
+- Recessed LED panels (600x1200, 600x600)
+- Surface mount LEDs
+- Downlights
+- Vapor proof fittings (for wet areas)
+- Bulkheads
+- Flood lights
+
+### POWER POINTS to count:
+- Double sockets @300mm (floor level)
+- Double sockets @1100mm (work surface level)
+- Single sockets
+- Waterproof sockets
+- Data points (CAT6)
+- Floor boxes
+
+### SWITCHES to count:
+- 1-lever 1-way switches
+- 2-lever 1-way switches
+- 1-lever 2-way switches
+- Day/night switches
+- Isolators (20A, 30A)
+- Master switches
+
+### EXTRACTION RULES:
+1. Check the LEGEND carefully - it defines all symbols used on this drawing
+2. Count EACH room separately - look for room names, suite numbers, or area labels
+3. Match symbols to legend, then count per room
+4. Mark as "extracted" if you can see and count the symbols
+5. Mark as "inferred" if you calculated from other data
+6. Mark as "estimated" ONLY if the area is unclear and you had to guess
+
+Return JSON matching this schema:
+{COMBINED_LAYOUT_SCHEMA}
+"""
+
+    content = [{"type": "text", "text": prompt}]
+    for page in pages[:5]:  # Limit to 5 pages
+        if page.image_base64:
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": page.image_base64,
+                }
+            })
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=8192,
+        messages=[{"role": "user", "content": content}]
+    )
+
+    response_text = response.content[0].text
+    tokens = response.usage.input_tokens + response.usage.output_tokens
+    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
+
+    parsed = parse_json_safely(response_text) or {}
+    return parsed, tokens, cost
+
+
+def _merge_combined_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
+    """
+    Merge combined layout extraction data into ExtractionResult.
+
+    This handles rooms that have BOTH lighting and socket/switch data extracted
+    in a single pass from combined layout pages.
+    """
+    block_name = data.get("building_block", "")
+
+    # Find building block
+    block = None
+    for b in extraction.building_blocks:
+        if b.name.lower() == block_name.lower() or not block_name:
+            block = b
+            break
+    if not block and extraction.building_blocks:
+        block = extraction.building_blocks[0]
+
+    if not block:
+        block = BuildingBlock(name=block_name or "Main Building")
+        extraction.building_blocks.append(block)
+
+    # Process rooms with combined lighting + power data
+    for room_data in data.get("rooms", []):
+        room_name = room_data.get("name", "")
+        fixtures_data = room_data.get("fixtures", {})
+
+        # Check if room already exists
+        existing_room = None
+        for r in block.rooms:
+            if r.name.lower() == room_name.lower():
+                existing_room = r
+                break
+
+        if existing_room:
+            # Merge ALL fixture data into existing room
+            # Lighting fixtures
+            if fixtures_data.get("recessed_led_600x1200"):
+                existing_room.fixtures.recessed_led_600x1200 = int(fixtures_data.get("recessed_led_600x1200") or 0)
+            if fixtures_data.get("surface_mount_led_18w"):
+                existing_room.fixtures.surface_mount_led_18w = int(fixtures_data.get("surface_mount_led_18w") or 0)
+            if fixtures_data.get("downlight_led_6w"):
+                existing_room.fixtures.downlight_led_6w = int(fixtures_data.get("downlight_led_6w") or 0)
+            if fixtures_data.get("vapor_proof_2x24w"):
+                existing_room.fixtures.vapor_proof_2x24w = int(fixtures_data.get("vapor_proof_2x24w") or 0)
+            if fixtures_data.get("vapor_proof_2x18w"):
+                existing_room.fixtures.vapor_proof_2x18w = int(fixtures_data.get("vapor_proof_2x18w") or 0)
+            if fixtures_data.get("bulkhead_26w"):
+                existing_room.fixtures.bulkhead_26w = int(fixtures_data.get("bulkhead_26w") or 0)
+            if fixtures_data.get("bulkhead_24w"):
+                existing_room.fixtures.bulkhead_24w = int(fixtures_data.get("bulkhead_24w") or 0)
+            if fixtures_data.get("flood_light_30w"):
+                existing_room.fixtures.flood_light_30w = int(fixtures_data.get("flood_light_30w") or 0)
+            if fixtures_data.get("flood_light_200w"):
+                existing_room.fixtures.flood_light_200w = int(fixtures_data.get("flood_light_200w") or 0)
+
+            # Sockets
+            if fixtures_data.get("double_socket_300"):
+                existing_room.fixtures.double_socket_300 = int(fixtures_data.get("double_socket_300") or 0)
+            if fixtures_data.get("single_socket_300"):
+                existing_room.fixtures.single_socket_300 = int(fixtures_data.get("single_socket_300") or 0)
+            if fixtures_data.get("double_socket_1100"):
+                existing_room.fixtures.double_socket_1100 = int(fixtures_data.get("double_socket_1100") or 0)
+            if fixtures_data.get("single_socket_1100"):
+                existing_room.fixtures.single_socket_1100 = int(fixtures_data.get("single_socket_1100") or 0)
+            if fixtures_data.get("double_socket_waterproof"):
+                existing_room.fixtures.double_socket_waterproof = int(fixtures_data.get("double_socket_waterproof") or 0)
+            if fixtures_data.get("double_socket_ceiling"):
+                existing_room.fixtures.double_socket_ceiling = int(fixtures_data.get("double_socket_ceiling") or 0)
+            if fixtures_data.get("data_points_cat6"):
+                existing_room.fixtures.data_points_cat6 = int(fixtures_data.get("data_points_cat6") or 0)
+            if fixtures_data.get("floor_box"):
+                existing_room.fixtures.floor_box = int(fixtures_data.get("floor_box") or 0)
+
+            # Switches
+            if fixtures_data.get("switch_1lever_1way"):
+                existing_room.fixtures.switch_1lever_1way = int(fixtures_data.get("switch_1lever_1way") or 0)
+            if fixtures_data.get("switch_2lever_1way"):
+                existing_room.fixtures.switch_2lever_1way = int(fixtures_data.get("switch_2lever_1way") or 0)
+            if fixtures_data.get("switch_1lever_2way"):
+                existing_room.fixtures.switch_1lever_2way = int(fixtures_data.get("switch_1lever_2way") or 0)
+            if fixtures_data.get("day_night_switch"):
+                existing_room.fixtures.day_night_switch = int(fixtures_data.get("day_night_switch") or 0)
+            if fixtures_data.get("isolator_30a"):
+                existing_room.fixtures.isolator_30a = int(fixtures_data.get("isolator_30a") or 0)
+            if fixtures_data.get("isolator_20a"):
+                existing_room.fixtures.isolator_20a = int(fixtures_data.get("isolator_20a") or 0)
+            if fixtures_data.get("master_switch"):
+                existing_room.fixtures.master_switch = int(fixtures_data.get("master_switch") or 0)
+
+            # Update room properties
+            existing_room.is_wet_area = room_data.get("is_wet_area") or existing_room.is_wet_area
+            existing_room.has_ac = room_data.get("has_ac") or existing_room.has_ac
+            existing_room.has_geyser = room_data.get("has_geyser") or existing_room.has_geyser
+            if room_data.get("circuit_refs"):
+                existing_room.circuit_refs = list(set(existing_room.circuit_refs + room_data.get("circuit_refs", [])))
+        else:
+            # Create new room with ALL fixture data
+            room = Room(
+                name=room_name,
+                room_number=int(room_data.get("room_number") or 0),
+                type=room_data.get("type") or "",
+                area_m2=float(room_data.get("area_m2") or 0),
+                floor=room_data.get("floor") or "",
+                building_block=block.name,
+                circuit_refs=room_data.get("circuit_refs") or [],
+                is_wet_area=room_data.get("is_wet_area") or False,
+                has_ac=room_data.get("has_ac") or False,
+                has_geyser=room_data.get("has_geyser") or False,
+                confidence=_parse_confidence(room_data.get("confidence") or "extracted"),
+                notes=room_data.get("notes") or [],
+            )
+
+            # Set ALL fixture counts from combined extraction
+            room.fixtures = FixtureCounts(
+                # Lighting
+                recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200") or 0),
+                surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w") or 0),
+                downlight_led_6w=int(fixtures_data.get("downlight_led_6w") or 0),
+                vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w") or 0),
+                vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w") or 0),
+                bulkhead_26w=int(fixtures_data.get("bulkhead_26w") or 0),
+                bulkhead_24w=int(fixtures_data.get("bulkhead_24w") or 0),
+                prismatic_2x18w=int(fixtures_data.get("prismatic_2x18w") or 0),
+                flood_light_30w=int(fixtures_data.get("flood_light_30w") or 0),
+                flood_light_200w=int(fixtures_data.get("flood_light_200w") or 0),
+                fluorescent_50w_5ft=int(fixtures_data.get("fluorescent_50w_5ft") or 0),
+                pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
+                # Sockets
+                double_socket_300=int(fixtures_data.get("double_socket_300") or 0),
+                single_socket_300=int(fixtures_data.get("single_socket_300") or 0),
+                double_socket_1100=int(fixtures_data.get("double_socket_1100") or 0),
+                single_socket_1100=int(fixtures_data.get("single_socket_1100") or 0),
+                double_socket_waterproof=int(fixtures_data.get("double_socket_waterproof") or 0),
+                double_socket_ceiling=int(fixtures_data.get("double_socket_ceiling") or 0),
+                data_points_cat6=int(fixtures_data.get("data_points_cat6") or 0),
+                floor_box=int(fixtures_data.get("floor_box") or 0),
+                # Switches
+                switch_1lever_1way=int(fixtures_data.get("switch_1lever_1way") or 0),
+                switch_2lever_1way=int(fixtures_data.get("switch_2lever_1way") or 0),
+                switch_1lever_2way=int(fixtures_data.get("switch_1lever_2way") or 0),
+                day_night_switch=int(fixtures_data.get("day_night_switch") or 0),
+                isolator_30a=int(fixtures_data.get("isolator_30a") or 0),
+                isolator_20a=int(fixtures_data.get("isolator_20a") or 0),
+                master_switch=int(fixtures_data.get("master_switch") or 0),
+            )
+
+            block.rooms.append(room)
 
 
 def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:

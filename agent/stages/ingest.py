@@ -203,6 +203,9 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
     """
     Categorize pages based on filename patterns and text content.
     Updates page types and document set counters.
+
+    v4.1.2: Improved detection for combined layout drawings that contain
+    both lighting and socket/switch symbols on the same page.
     """
     for doc in doc_set.documents:
         filename_lower = doc.filename.lower()
@@ -210,38 +213,128 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
         for page in doc.pages:
             text_lower = page.text_content.lower()
 
-            # Classify based on filename and content
+            # Score-based classification for better accuracy
+            scores = {
+                "register": 0,
+                "sld": 0,
+                "lighting": 0,
+                "plugs": 0,
+                "combined": 0,
+                "outside": 0,
+            }
+
+            # Filename-based scoring (high weight)
             if any(k in filename_lower for k in ["register", "transmittal", "index"]):
+                scores["register"] += 10
+            if any(k in filename_lower for k in ["sld", "schematic", "single line"]):
+                scores["sld"] += 10
+            if any(k in filename_lower for k in ["lighting", "light"]) and "plug" not in filename_lower:
+                scores["lighting"] += 10
+            if any(k in filename_lower for k in ["plug", "power", "socket"]):
+                scores["plugs"] += 10
+            if any(k in filename_lower for k in ["outside", "external", "site", "perimeter"]):
+                scores["outside"] += 10
+
+            # Text content-based scoring
+            # SLD indicators
+            if any(k in text_lower for k in ["circuit no", "wattage", "wire size", "no of point"]):
+                scores["sld"] += 5
+            if any(k in text_lower for k in ["distribution board", "mcb", "elcb", "breaker"]):
+                scores["sld"] += 3
+            if "db-" in text_lower:
+                scores["sld"] += 2
+
+            # Lighting indicators
+            if any(k in text_lower for k in ["led panel", "led light", "luminaire", "lux"]):
+                scores["lighting"] += 4
+            if any(k in text_lower for k in ["flood light", "downlight", "bulkhead"]):
+                scores["lighting"] += 3
+            if any(k in text_lower for k in ["600 x 1200", "600x1200", "recessed"]):
+                scores["lighting"] += 3
+
+            # Plug/socket indicators
+            if any(k in text_lower for k in ["socket outlet", "power point", "switched socket"]):
+                scores["plugs"] += 4
+            if any(k in text_lower for k in ["16a double", "16a single"]):
+                scores["plugs"] += 3
+            if any(k in text_lower for k in ["@300mm", "@1100mm", "@1200mm", "above ffl"]):
+                scores["plugs"] += 2
+
+            # Switch indicators (usually with plugs)
+            if any(k in text_lower for k in ["lever", "1 way switch", "2 way switch"]):
+                scores["plugs"] += 2
+            if any(k in text_lower for k in ["isolator switch", "day/night", "day night"]):
+                scores["plugs"] += 2
+
+            # Combined layout indicators (has BOTH lights and plugs/switches)
+            if any(k in text_lower for k in ["legend"]):
+                # Legend with both light and socket descriptions = combined
+                has_light_legend = any(k in text_lower for k in ["led", "light", "flood", "luminaire"])
+                has_socket_legend = any(k in text_lower for k in ["socket", "switch", "isolator"])
+                if has_light_legend and has_socket_legend:
+                    scores["combined"] += 8
+
+            # Room/area indicators suggest layout drawings
+            room_names = ["suite", "office", "kitchen", "bathroom", "toilet", "wc",
+                         "reception", "foyer", "lounge", "boardroom", "store",
+                         "kitchenette", "balcony", "parking"]
+            room_count = sum(1 for r in room_names if r in text_lower)
+            if room_count >= 2:
+                scores["combined"] += room_count
+                scores["lighting"] += room_count // 2
+                scores["plugs"] += room_count // 2
+
+            # Area measurements (m2, m²) suggest layout drawings
+            if "m2" in text_lower or "m²" in text_lower:
+                scores["combined"] += 3
+                scores["lighting"] += 1
+                scores["plugs"] += 1
+
+            # Register indicators
+            if any(k in text_lower for k in ["drawing no", "drawing name", "sent date", "rev no"]):
+                scores["register"] += 5
+
+            # Determine page type based on highest score
+            max_score = max(scores.values())
+
+            if max_score == 0:
+                # No clear indicators - check if it looks like a drawing at all
+                page.page_type = PageType.UNKNOWN
+                doc_set.num_other_pages += 1
+            elif scores["register"] == max_score and scores["register"] >= 5:
                 page.page_type = PageType.REGISTER
                 doc_set.num_register_pages += 1
-            elif any(k in filename_lower for k in ["sld", "schematic", "single line"]):
+            elif scores["sld"] == max_score and scores["sld"] >= 3:
                 page.page_type = PageType.SLD
                 doc_set.num_sld_pages += 1
-            elif any(k in filename_lower for k in ["lighting", "light"]) and "plug" not in filename_lower:
+            elif scores["combined"] == max_score and scores["combined"] >= 5:
+                # Combined layout with both lighting and plugs
+                page.page_type = PageType.LAYOUT_COMBINED
+                doc_set.num_lighting_pages += 1  # Count for both
+                doc_set.num_plugs_pages += 1
+            elif scores["lighting"] > scores["plugs"] and scores["lighting"] >= 3:
                 page.page_type = PageType.LAYOUT_LIGHTING
                 doc_set.num_lighting_pages += 1
-            elif any(k in filename_lower for k in ["plug", "power", "socket"]):
+            elif scores["plugs"] >= 3:
                 page.page_type = PageType.LAYOUT_PLUGS
                 doc_set.num_plugs_pages += 1
-            elif any(k in filename_lower for k in ["outside", "external", "site", "perimeter"]):
+            elif scores["outside"] >= 3:
                 page.page_type = PageType.OUTSIDE_LIGHTS
                 doc_set.num_outside_light_pages += 1
-            elif any(k in text_lower for k in ["distribution board", "db-", "mcb", "elcb"]):
-                page.page_type = PageType.SLD
-                doc_set.num_sld_pages += 1
-            elif any(k in text_lower for k in ["light fitting", "luminaire", "lux"]):
-                page.page_type = PageType.LAYOUT_LIGHTING
+            elif room_count >= 1 or "m2" in text_lower:
+                # Has room names or areas but no clear electrical indicators
+                # Treat as combined layout (AI will figure out what's there)
+                page.page_type = PageType.LAYOUT_COMBINED
                 doc_set.num_lighting_pages += 1
-            elif any(k in text_lower for k in ["socket outlet", "power point"]):
-                page.page_type = PageType.LAYOUT_PLUGS
                 doc_set.num_plugs_pages += 1
             else:
+                page.page_type = PageType.UNKNOWN
                 doc_set.num_other_pages += 1
 
             # Try to detect building block from text
             block_patterns = [
                 "newmark", "pool block", "ablution", "community hall",
-                "guard house", "retail", "office"
+                "guard house", "retail", "office", "suite"
             ]
             for pattern in block_patterns:
                 if pattern in text_lower:
