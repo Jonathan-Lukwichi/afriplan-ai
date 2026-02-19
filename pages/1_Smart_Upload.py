@@ -247,13 +247,17 @@ def render_validation_report(validation_flags: list):
                 st.info(f"**{flag.get('rule_name', '')}**: {flag.get('message', '')}")
 
 
-# Initialize v4.1 pipeline with caching
+# Initialize v4.1 pipeline with caching based on API key
+def get_pipeline_key():
+    """Generate a cache key based on current API config."""
+    return f"{LLM_PROVIDER}_{LLM_API_KEY[:10] if LLM_API_KEY else 'none'}"
+
 @st.cache_resource
-def get_pipeline():
+def get_pipeline(_cache_key: str):
     """Get cached AfriPlan v4.1 pipeline instance."""
-    if PIPELINE_AVAILABLE:
+    if PIPELINE_AVAILABLE and LLM_API_KEY:
         try:
-            return create_pipeline()
+            return create_pipeline(api_key=LLM_API_KEY, provider=LLM_PROVIDER)
         except Exception as e:
             st.warning(f"Pipeline initialization failed: {e}")
             return None
@@ -274,7 +278,7 @@ if not PIPELINE_AVAILABLE:
     """)
     st.stop()
 
-pipeline = get_pipeline()
+pipeline = get_pipeline(get_pipeline_key())
 pipeline_available = pipeline is not None
 
 
@@ -298,6 +302,11 @@ with st.sidebar:
         st.success(f"v4.1 Pipeline Active ({provider_label})")
         st.caption("7-stage processing available")
 
+        # Show current API key (masked)
+        if LLM_API_KEY:
+            masked_key = f"{LLM_API_KEY[:8]}...{LLM_API_KEY[-4:]}"
+            st.caption(f"Key: {masked_key}")
+
         # API test button
         if st.button("🧪 Test API", key="test_api"):
             with st.spinner("Testing API connection..."):
@@ -317,6 +326,11 @@ with st.sidebar:
                         st.success(f"Claude API working! Response: {test_response.content[0].text}")
                 except Exception as e:
                     st.error(f"API Error: {str(e)}")
+
+        # Clear cache button
+        if st.button("🔄 Clear Cache", key="clear_cache"):
+            st.cache_resource.clear()
+            st.rerun()
     else:
         st.error("API Not Configured")
         st.caption("Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY")
