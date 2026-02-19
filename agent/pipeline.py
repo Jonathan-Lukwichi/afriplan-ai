@@ -5,6 +5,7 @@ Orchestrates the 7-stage pipeline:
 INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
 
 Supports multiple LLM providers:
+- xAI Grok ($25 free credits/month with vision!)
 - Google Gemini (FREE tier available)
 - Anthropic Claude (paid)
 """
@@ -29,12 +30,17 @@ from agent.utils import Timer
 # Provider detection
 def _get_llm_provider():
     """Detect and return the appropriate LLM provider."""
-    # Check for Gemini first (free!)
+    # Check for Grok first ($25 free credits/month!)
+    grok_key = os.environ.get("XAI_API_KEY")
+    if grok_key:
+        return "grok", grok_key
+
+    # Check for Gemini (free tier)
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         return "gemini", gemini_key
 
-    # Fall back to Claude
+    # Fall back to Claude (paid)
     claude_key = os.environ.get("ANTHROPIC_API_KEY")
     if claude_key:
         return "claude", claude_key
@@ -55,14 +61,17 @@ class AfriPlanPipeline:
     6. PRICE: Generate dual BQ
     7. OUTPUT: Assemble final result
 
-    Supports both Google Gemini (free) and Claude (paid) as LLM providers.
+    Supports multiple LLM providers:
+    - xAI Grok ($25 free credits/month with vision!)
+    - Google Gemini (free tier)
+    - Anthropic Claude (paid)
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         contractor_profile: Optional[ContractorProfile] = None,
-        provider: Optional[str] = None,  # "gemini" or "claude"
+        provider: Optional[str] = None,  # "grok", "gemini", or "claude"
     ):
         """
         Initialize the pipeline.
@@ -70,7 +79,7 @@ class AfriPlanPipeline:
         Args:
             api_key: API key. If None, uses environment variables.
             contractor_profile: Contractor's saved preferences.
-            provider: LLM provider ("gemini" or "claude"). Auto-detects if None.
+            provider: LLM provider ("grok", "gemini", or "claude"). Auto-detects if None.
         """
         self.provider = provider
         self.api_key = api_key
@@ -84,7 +93,9 @@ class AfriPlanPipeline:
                 self.api_key = detected_key
 
         # Initialize the appropriate client
-        if self.provider == "gemini":
+        if self.provider == "grok":
+            self._init_grok_client()
+        elif self.provider == "gemini":
             self._init_gemini_client()
         elif self.provider == "claude":
             self._init_claude_client()
@@ -94,6 +105,19 @@ class AfriPlanPipeline:
 
         self.contractor_profile = contractor_profile
         self.stages: List[StageResult] = []
+
+    def _init_grok_client(self):
+        """Initialize xAI Grok client (OpenAI-compatible API)."""
+        try:
+            from openai import OpenAI
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url="https://api.x.ai/v1",
+            )
+        except ImportError:
+            raise ImportError(
+                "openai not installed. Run: pip install openai"
+            )
 
     def _init_gemini_client(self):
         """Initialize Google Gemini client."""
@@ -304,7 +328,7 @@ class AfriPlanPipeline:
 def create_pipeline(
     api_key: Optional[str] = None,
     contractor_profile: Optional[ContractorProfile] = None,
-    provider: Optional[str] = None,  # "gemini" or "claude"
+    provider: Optional[str] = None,  # "grok", "gemini", or "claude"
 ) -> AfriPlanPipeline:
     """
     Factory function to create a pipeline instance.
@@ -312,7 +336,7 @@ def create_pipeline(
     Args:
         api_key: API key (for specified provider)
         contractor_profile: Contractor preferences
-        provider: LLM provider ("gemini" or "claude"). Auto-detects if None.
+        provider: LLM provider ("grok", "gemini", or "claude"). Auto-detects if None.
 
     Returns:
         AfriPlanPipeline instance

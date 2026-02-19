@@ -5,7 +5,8 @@ Determines the service tier (Residential/Commercial/Industrial/Maintenance/Mixed
 and identifies building blocks present in the documents.
 
 Supports multiple LLM providers:
-- Google Gemini (gemini-1.5-flash) - FREE
+- xAI Grok (grok-2-vision) - $25 free credits/month
+- Google Gemini (gemini-2.0-flash) - FREE
 - Anthropic Claude (claude-haiku-4-5) - paid
 """
 
@@ -23,6 +24,7 @@ from agent.prompts.schemas import CLASSIFY_SCHEMA, CONFIDENCE_INSTRUCTION
 CLASSIFY_MODELS = {
     "claude": "claude-haiku-4-5-20251001",
     "gemini": "gemini-2.0-flash",  # Current recommended model
+    "grok": "grok-2-vision-1212",  # Grok with vision support
 }
 CLASSIFY_MODEL = CLASSIFY_MODELS["claude"]  # Default for backwards compatibility
 
@@ -51,16 +53,16 @@ Example response:
 
 def classify(
     doc_set: DocumentSet,
-    client: Optional[object] = None,  # Anthropic or Gemini client
-    provider: str = "claude",  # "claude" or "gemini"
+    client: Optional[object] = None,  # Anthropic, Gemini, or Grok client
+    provider: str = "claude",  # "claude", "gemini", or "grok"
 ) -> Tuple[ServiceTier, ExtractionMode, List[str], float, StageResult]:
     """
     CLASSIFY stage: Determine project tier and extraction mode.
 
     Args:
         doc_set: Processed documents from INGEST stage
-        client: API client (Anthropic or Gemini)
-        provider: LLM provider name ("claude" or "gemini")
+        client: API client (Anthropic, Gemini, or Grok)
+        provider: LLM provider name ("claude", "gemini", or "grok")
 
     Returns:
         Tuple of (tier, mode, building_blocks, confidence, StageResult)
@@ -92,7 +94,18 @@ def classify(
             try:
                 prompt_text = f"{CLASSIFY_PROMPT}\n\nDocument content:\n{combined_text}"
 
-                if provider == "gemini":
+                if provider == "grok":
+                    # Grok API call (OpenAI-compatible)
+                    response = client.chat.completions.create(
+                        model="grok-2-vision-1212",
+                        max_tokens=1024,
+                        temperature=0.1,
+                        messages=[{"role": "user", "content": prompt_text}]
+                    )
+                    response_text = response.choices[0].message.content
+                    tokens_used = response.usage.total_tokens if response.usage else 0
+                    cost_zar = 0.0  # Grok has free credits!
+                elif provider == "gemini":
                     # Gemini API call
                     model = client.GenerativeModel("gemini-2.0-flash")
                     response = model.generate_content(

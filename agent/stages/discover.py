@@ -8,7 +8,8 @@ Extracts structured electrical data from drawings including:
 - Site cable runs from outside lights drawings
 
 Supports multiple LLM providers:
-- Google Gemini (gemini-1.5-flash/pro) - FREE
+- xAI Grok (grok-2-vision) - $25 free credits/month
+- Google Gemini (gemini-2.0-flash/pro) - FREE
 - Anthropic Claude (sonnet/opus) - paid
 """
 
@@ -35,10 +36,12 @@ from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prom
 DISCOVER_MODELS = {
     "claude": "claude-sonnet-4-20250514",
     "gemini": "gemini-2.0-flash",  # Current recommended fast model
+    "grok": "grok-2-vision-1212",  # Grok with vision support
 }
 ESCALATION_MODELS = {
     "claude": "claude-opus-4-20250514",
     "gemini": "gemini-1.5-pro-latest",  # Pro for higher accuracy
+    "grok": "grok-2-vision-1212",  # Grok's best vision model
 }
 DISCOVER_MODEL = DISCOVER_MODELS["claude"]  # Default for backwards compatibility
 ESCALATION_MODEL = ESCALATION_MODELS["claude"]
@@ -62,10 +65,10 @@ def _call_vision_llm(
     max_tokens: int = 8192,
 ) -> Tuple[str, int, float]:
     """
-    Call the LLM with vision capabilities (works with both Gemini and Claude).
+    Call the LLM with vision capabilities (works with Grok, Gemini, and Claude).
 
     Args:
-        client: API client (Anthropic or Gemini)
+        client: API client (Anthropic, Gemini, or Grok/OpenAI)
         pages: List of page objects with image_base64
         prompt: The prompt text
         model: Model name to use
@@ -76,7 +79,31 @@ def _call_vision_llm(
     """
     global _current_provider
 
-    if _current_provider == "gemini":
+    if _current_provider == "grok":
+        # Grok API call with vision (OpenAI-compatible)
+        content = [{"type": "text", "text": prompt}]
+
+        for page in pages:
+            if page.image_base64:
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{page.image_base64}",
+                    }
+                })
+
+        response = client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=0.1,
+            messages=[{"role": "user", "content": content}]
+        )
+
+        response_text = response.choices[0].message.content
+        tokens_used = response.usage.total_tokens if response.usage else 0
+        return response_text, tokens_used, 0.0  # Grok has free credits!
+
+    elif _current_provider == "gemini":
         # Gemini API call with vision
         import PIL.Image
         import io
@@ -139,7 +166,7 @@ def discover(
     building_blocks: List[str],
     client: Optional[object] = None,
     use_opus_directly: bool = False,
-    provider: str = "claude",  # "claude" or "gemini"
+    provider: str = "claude",  # "claude", "gemini", or "grok"
 ) -> Tuple[ExtractionResult, StageResult]:
     """
     DISCOVER stage: Extract structured data from documents.
@@ -149,9 +176,9 @@ def discover(
         tier: Classification tier from CLASSIFY stage
         mode: Extraction mode (AS_BUILT, ESTIMATION, etc.)
         building_blocks: List of building block names
-        client: API client (Anthropic or Gemini)
+        client: API client (Anthropic, Gemini, or Grok)
         use_opus_directly: If True, use higher-tier model for initial extraction
-        provider: LLM provider ("claude" or "gemini")
+        provider: LLM provider ("claude", "gemini", or "grok")
 
     Returns:
         Tuple of (ExtractionResult, StageResult)
@@ -172,7 +199,9 @@ def discover(
             extraction_model = DISCOVER_MODELS.get(provider, DISCOVER_MODEL)
         model_used = extraction_model
 
-        if provider == "gemini":
+        if provider == "grok":
+            warnings.append("Using xAI Grok ($25 free credits)")
+        elif provider == "gemini":
             warnings.append("Using Google Gemini (FREE tier)")
 
         extraction = ExtractionResult(
