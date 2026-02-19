@@ -215,9 +215,9 @@ def render_model_indicator(model_used: str) -> str:
         "gemini-1.5-pro-latest": ("Gemini Pro", "#34A853", "FREE"),
         # Grok models
         "grok-2-vision-1212": ("Grok Vision", "#1DA1F2", "$25 FREE"),
-        # Groq models (Llama)
-        "llama-3.3-70b-versatile": ("Llama 3.3 70B", "#FF6B35", "100% FREE"),
-        "llama-3.2-90b-vision-preview": ("Llama Vision 90B", "#FF6B35", "100% FREE"),
+        # Groq models (Llama 4)
+        "meta-llama/llama-4-scout-17b-16e-instruct": ("Llama 4 Scout", "#FF6B35", "100% FREE"),
+        "meta-llama/llama-4-maverick-17b-128e-instruct": ("Llama 4 Maverick", "#FF6B35", "100% FREE"),
     }
 
     name, color, tier = model_map.get(model_used, ("Unknown", "#64748b", "N/A"))
@@ -478,10 +478,10 @@ with tab1:
 
     # Accuracy mode selection (provider-aware labels)
     if LLM_PROVIDER == "groq":
-        mode_options = ["Standard (Llama Vision)", "Maximum Accuracy (Llama Vision)"]
-        mode_help = "Llama Vision is fast and accurate. 100% FREE with Groq!"
-        high_accuracy_label = "Maximum Accuracy (Llama Vision)"
-        high_accuracy_info = "🎯 **Maximum Accuracy Mode** - Uses Llama 3.2 Vision 90B with extended analysis. 100% FREE!"
+        mode_options = ["Standard (Llama 4 Scout)", "Maximum Accuracy (Llama 4 Maverick)"]
+        mode_help = "Llama 4 Scout is fast. Maverick is more accurate. Both 100% FREE!"
+        high_accuracy_label = "Maximum Accuracy (Llama 4 Maverick)"
+        high_accuracy_info = "🎯 **Maximum Accuracy Mode** - Uses Llama 4 Maverick (128 experts) for maximum extraction accuracy. 100% FREE!"
     elif LLM_PROVIDER == "grok":
         mode_options = ["Standard (Grok Vision)", "Maximum Accuracy (Grok Vision)"]
         mode_help = "Grok Vision is fast and accurate. Uses your $25 free monthly credits."

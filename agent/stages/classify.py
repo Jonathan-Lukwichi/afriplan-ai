@@ -5,7 +5,7 @@ Determines the service tier (Residential/Commercial/Industrial/Maintenance/Mixed
 and identifies building blocks present in the documents.
 
 Supports multiple LLM providers:
-- Groq (llama-3.3-70b-versatile) - 100% FREE!
+- Groq (Llama 4 Scout) - 100% FREE!
 - xAI Grok (grok-2-vision) - $25 free credits/month
 - Google Gemini (gemini-2.0-flash) - FREE
 - Anthropic Claude (claude-haiku-4-5) - paid
@@ -26,7 +26,7 @@ CLASSIFY_MODELS = {
     "claude": "claude-haiku-4-5-20251001",
     "gemini": "gemini-2.0-flash",  # Current recommended model
     "grok": "grok-2-vision-1212",  # Grok with vision support
-    "groq": "llama-3.3-70b-versatile",  # Groq with Llama - 100% FREE!
+    "groq": "meta-llama/llama-4-scout-17b-16e-instruct",  # Llama 4 Scout - 100% FREE!
 }
 CLASSIFY_MODEL = CLASSIFY_MODELS["claude"]  # Default for backwards compatibility
 
@@ -97,9 +97,9 @@ def classify(
                 prompt_text = f"{CLASSIFY_PROMPT}\n\nDocument content:\n{combined_text}"
 
                 if provider == "groq":
-                    # Groq API call (OpenAI-compatible with Llama)
+                    # Groq API call (OpenAI-compatible with Llama 4)
                     response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
+                        model=model_used,  # Uses Llama 4 Scout
                         max_tokens=1024,
                         temperature=0.1,
                         messages=[{"role": "user", "content": prompt_text}]

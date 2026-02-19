@@ -8,7 +8,7 @@ Extracts structured electrical data from drawings including:
 - Site cable runs from outside lights drawings
 
 Supports multiple LLM providers:
-- Groq (llama-3.2-90b-vision-preview) - 100% FREE with vision!
+- Groq (Llama 4 Scout/Maverick) - 100% FREE with vision!
 - xAI Grok (grok-2-vision) - $25 free credits/month
 - Google Gemini (gemini-2.0-flash/pro) - FREE
 - Anthropic Claude (sonnet/opus) - paid
@@ -38,13 +38,13 @@ DISCOVER_MODELS = {
     "claude": "claude-sonnet-4-20250514",
     "gemini": "gemini-2.0-flash",  # Current recommended fast model
     "grok": "grok-2-vision-1212",  # Grok with vision support
-    "groq": "llama-3.2-90b-vision-preview",  # Groq with Llama Vision - 100% FREE!
+    "groq": "meta-llama/llama-4-scout-17b-16e-instruct",  # Llama 4 Scout - 100% FREE!
 }
 ESCALATION_MODELS = {
     "claude": "claude-opus-4-20250514",
     "gemini": "gemini-1.5-pro-latest",  # Pro for higher accuracy
     "grok": "grok-2-vision-1212",  # Grok's best vision model
-    "groq": "llama-3.2-90b-vision-preview",  # Groq's best vision model
+    "groq": "meta-llama/llama-4-maverick-17b-128e-instruct",  # Llama 4 Maverick - 100% FREE!
 }
 DISCOVER_MODEL = DISCOVER_MODELS["claude"]  # Default for backwards compatibility
 ESCALATION_MODEL = ESCALATION_MODELS["claude"]
