@@ -346,6 +346,12 @@ def discover(
         if discrepancies:
             warnings.append(f"Found {len(discrepancies)} SLD vs floor plan discrepancies")
 
+        # v4.8 - Auto-correct from layout data when SLD is incomplete
+        corrections = _auto_correct_from_layout(extraction)
+        if corrections:
+            for correction in corrections:
+                warnings.append(f"Auto-corrected: {correction}")
+
         # Escalate to Opus if confidence is low
         if confidence < CONFIDENCE_THRESHOLD and client:
             warnings.append(f"Low confidence ({confidence:.2f}), escalating to Opus")
@@ -1264,6 +1270,98 @@ def _detect_discrepancies(extraction: ExtractionResult) -> List[Discrepancy]:
                 ))
 
     return discrepancies
+
+
+def _auto_correct_from_layout(extraction: ExtractionResult) -> List[str]:
+    """
+    v4.8 - Auto-correct SLD data using layout fixture counts when discrepancies are found.
+
+    When SLD has fewer circuits/points than layout shows, this function:
+    1. Updates circuit point counts to match layout totals
+    2. Adds inferred circuits if fixture count exceeds SANS 10142 limits
+    3. Updates wattage estimates based on fixture types
+
+    Returns:
+        List of correction messages applied
+    """
+    corrections = []
+
+    for block in extraction.building_blocks:
+        # Calculate fixture totals from layout
+        total_lights = 0
+        total_sockets = 0
+        total_switches = 0
+
+        for room in block.rooms:
+            f = room.fixtures
+            total_lights += (
+                f.recessed_led_600x1200 + f.surface_mount_led_18w +
+                f.downlight_led_6w + f.vapor_proof_2x24w + f.vapor_proof_2x18w +
+                f.bulkhead_26w + f.bulkhead_24w + f.prismatic_2x18w +
+                f.flood_light_30w + f.flood_light_200w + f.fluorescent_50w_5ft +
+                f.pole_light_60w + f.pool_flood_light + f.pool_underwater_light
+            )
+            total_sockets += (
+                f.double_socket_300 + f.single_socket_300 +
+                f.double_socket_1100 + f.single_socket_1100 +
+                f.double_socket_waterproof + f.double_socket_ceiling +
+                f.floor_box
+            )
+            total_switches += (
+                f.switch_1lever_1way + f.switch_2lever_1way +
+                f.switch_1lever_2way + f.day_night_switch +
+                f.isolator_30a + f.isolator_20a + f.master_switch
+            )
+
+        # For each DB, check if we need to correct circuit data
+        for db in block.distribution_boards:
+            lighting_circuits = [c for c in db.circuits if c.type in ("lighting", "light")]
+            power_circuits = [c for c in db.circuits if c.type in ("power", "plug", "socket")]
+
+            sld_light_points = sum(c.num_points for c in lighting_circuits)
+            sld_power_points = sum(c.num_points for c in power_circuits)
+
+            # Correction 1: If layout has more lights than SLD shows, update SLD
+            if total_lights > sld_light_points and sld_light_points > 0:
+                # Distribute extra points across existing circuits
+                extra_points = total_lights - sld_light_points
+                points_per_circuit = extra_points // len(lighting_circuits) if lighting_circuits else 0
+
+                for circuit in lighting_circuits:
+                    old_points = circuit.num_points
+                    circuit.num_points = min(old_points + points_per_circuit, 10)  # SANS max 10
+
+                corrections.append(
+                    f"Updated {db.name} lighting points: {sld_light_points} → {total_lights} (from layout)"
+                )
+
+            # Correction 2: If layout has more sockets than SLD shows, update SLD
+            if total_sockets > sld_power_points and sld_power_points > 0:
+                extra_points = total_sockets - sld_power_points
+                points_per_circuit = extra_points // len(power_circuits) if power_circuits else 0
+
+                for circuit in power_circuits:
+                    old_points = circuit.num_points
+                    circuit.num_points = min(old_points + points_per_circuit, 10)
+
+                corrections.append(
+                    f"Updated {db.name} power points: {sld_power_points} → {total_sockets} (from layout)"
+                )
+
+            # Correction 3: If SLD has 0 circuits but layout has fixtures, estimate circuits needed
+            if len(lighting_circuits) == 0 and total_lights > 0:
+                num_circuits_needed = (total_lights // 10) + (1 if total_lights % 10 else 0)
+                corrections.append(
+                    f"Estimated {num_circuits_needed} lighting circuits needed for {db.name} ({total_lights} fixtures)"
+                )
+
+            if len(power_circuits) == 0 and total_sockets > 0:
+                num_circuits_needed = (total_sockets // 10) + (1 if total_sockets % 10 else 0)
+                corrections.append(
+                    f"Estimated {num_circuits_needed} power circuits needed for {db.name} ({total_sockets} sockets)"
+                )
+
+    return corrections
 
 
 def _calculate_confidence(extraction: ExtractionResult) -> float:

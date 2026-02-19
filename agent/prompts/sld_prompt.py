@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.5 - SLD Extraction Prompt
+AfriPlan Electrical v4.8 - SLD Extraction Prompt
 
 THE MOST CRITICAL PROMPT - Extracts distribution boards and circuits from
 Single Line Diagram (SLD) pages. This is where all electrical data comes from.
@@ -24,6 +24,12 @@ v4.5 Enhancements (Universal Electrical Project Schema):
 - Overload relay detection for motor circuits
 - Expanded equipment types (meter, UPS, generator, solar, EV charger, etc.)
 - Power source extraction with kVA ratings
+
+v4.8 Enhancements (Visual Table Parsing):
+- EXPLICIT instructions for VISUAL reading of graphical tables
+- Circuit schedules are often VECTOR GRAPHICS, not text - must read visually
+- Enhanced table cell parsing instructions
+- Row-by-row visual scanning methodology
 """
 
 from typing import List, TYPE_CHECKING
@@ -56,6 +62,46 @@ def get_prompt(pages: List["PageInfo"], building_block: str = "") -> str:
 You are analyzing electrical Single Line Diagram (SLD) drawings. Your task is to
 extract ALL distribution boards and their complete circuit schedules.
 
+## ⚠️ CRITICAL: VISUAL PARSING REQUIRED (v4.8)
+
+**IMPORTANT**: The circuit schedule on SLD drawings is typically a GRAPHICAL TABLE
+rendered as vector graphics, NOT searchable text. You MUST READ THE IMAGE VISUALLY
+like reading a photograph of a table.
+
+### How to Read the Circuit Schedule Table VISUALLY:
+
+1. **LOCATE THE TABLE**: Look at the BOTTOM portion of the SLD drawing for a
+   rectangular table with grid lines. It typically has 4-8 rows and multiple columns.
+
+2. **IDENTIFY THE ROWS** (read top to bottom):
+   - Row 1: "CIRCUIT NO" or "CKT" → Values like L1, L2, P1, P2, AC1, SPARE
+   - Row 2: "WATTAGE" → Values like 3680W, 198W, 54W, or formulas like "5x48W"
+   - Row 3: "WIRE SIZE" or "CABLE" → Values like 1.5mm², 2.5mm², 4mm²
+   - Row 4: "NO OF POINT" or "POINTS" → Values like 3, 4, 8, 10
+   - Row 5: "BREAKER" → Values like 10A, 16A, 20A, 32A
+
+3. **READ EACH COLUMN**: Each column after the row labels represents ONE CIRCUIT.
+   Scan left to right and extract values from each cell visually.
+
+4. **COUNT ALL COLUMNS**: Count the total number of circuit columns. A typical
+   DB might have 6, 8, 12, or 24 circuit columns. Extract EVERY one.
+
+### Visual Parsing Example:
+
+If you see a table that LOOKS LIKE this in the image:
+
+   ┌──────────┬──────┬──────┬──────┬──────┬───────┐
+   │CIRCUIT NO│  P1  │  P2  │  L1  │  L2  │ SPARE │
+   ├──────────┼──────┼──────┼──────┼──────┼───────┤
+   │ WATTAGE  │3680W │3680W │ 54W  │198W  │   -   │
+   ├──────────┼──────┼──────┼──────┼──────┼───────┤
+   │WIRE SIZE │2.5mm²│2.5mm²│1.5mm²│1.5mm²│   -   │
+   ├──────────┼──────┼──────┼──────┼──────┼───────┤
+   │NO OF POINT│  4  │  3  │  9   │  8   │   -   │
+   └──────────┴──────┴──────┴──────┴──────┴───────┘
+
+You would extract 5 circuits: P1, P2, L1, L2, and 1 SPARE.
+
 ## CRITICAL READING INSTRUCTIONS
 
 ### Read BOTH the Diagram AND the Schedule Table
@@ -70,7 +116,7 @@ Every SLD page typically has:
    - No Of Point / Points
    - Breaker Size (in Amps)
 
-**ALWAYS read the schedule table** - it contains exact values that may not be visible in the diagram.
+**ALWAYS read the schedule table VISUALLY** - the values are in the IMAGE, not in text.
 
 ### Multiple DBs Per Page
 
@@ -339,10 +385,47 @@ Respond with ONLY valid JSON matching this schema (no markdown, no explanation):
 
 {SLD_SCHEMA}
 
-## CRITICAL: SCHEDULE TABLE PARSING
+## CRITICAL: SCHEDULE TABLE PARSING (v4.8 Enhanced Visual Reading)
 
 The schedule table at the BOTTOM of the SLD drawing is the PRIMARY data source.
-It typically looks like this:
+**You MUST visually scan the entire table and read every cell.**
+
+### Step-by-Step Visual Scanning Process:
+
+**STEP 1: FIND THE DB NAME**
+Look at the TITLE BLOCK (usually top-right or bottom-right corner) for:
+- "DB-GF", "DB-CA", "DB-S1", "DB-S2", "DB-S3", "DB-S4", "DB-1", "DB-2"
+- Or full names like "GROUND FLOOR DB", "SUITE 1 DB", "COMMON AREA DB"
+
+**STEP 2: FIND THE MAIN BREAKER RATING**
+Look at the TOP of the single-line diagram for a large number like:
+- "100A", "250A", "63A" - this is the main breaker
+- Look for "MCCB" or "MCB" label near it
+
+**STEP 3: COUNT THE CIRCUIT COLUMNS**
+Visually count how many circuit columns are in the schedule table.
+- Small DB: 6-8 circuits
+- Medium DB: 12-18 circuits
+- Large DB: 24+ circuits
+
+**STEP 4: READ EACH CELL**
+For each circuit column, read these values from the graphical table:
+
+| Row Label | What to Read | Example Values |
+|-----------|--------------|----------------|
+| CIRCUIT NO | Circuit ID | P1, P2, L1, L2, AC1, SPARE |
+| WATTAGE | Power in Watts | 3680W, 198W, 5x48W, 54W |
+| WIRE SIZE | Cable mm² | 1.5mm², 2.5mm², 4mm², 6mm² |
+| NO OF POINT | Point count | 3, 4, 8, 10, 1 |
+| BREAKER | Amp rating | 10A, 16A, 20A, 32A |
+
+**STEP 5: LOOK FOR MULTIPLE DBs**
+Some pages show 2-3 DBs. Look for:
+- Multiple schedule tables (one per DB)
+- Multiple title blocks
+- Labels like "DB-GF", "DB-CA", "DB-S1" in different areas
+
+### Visual Table Example:
 
 ```
 ┌────────────┬──────┬──────┬──────┬───────┬──────┬──────┬──────┬───────┐
@@ -356,7 +439,17 @@ It typically looks like this:
 └────────────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┴───────┘
 ```
 
-READ EVERY COLUMN! Each column = one circuit.
+**From this visual table, extract 8 circuits:**
+1. P1: 3680W, 2.5mm², 4 points (power)
+2. P2: 3680W, 2.5mm², 3 points (power)
+3. P3: 3680W, 2.5mm², 2 points (power)
+4. L1: 30W, 1.5mm², 6 points (lighting)
+5. L2: 198W, 1.5mm², 8 points (lighting)
+6. L3: 60W, 1.5mm², 6 points (lighting)
+7. AC-1: 1650W, 2.5mm², 1 point (air_con)
+8. SPARE: 1 spare way
+
+READ EVERY COLUMN! Each column = one circuit. DO NOT SKIP ANY.
 
 ## NEVER FABRICATE
 
@@ -365,18 +458,52 @@ If you cannot clearly read a value:
 - Add note: "VALUE NOT READABLE - VERIFY"
 - Do NOT invent values like "60kW HVAC" or fake DB names
 
+## SUB-MAIN CABLE EXTRACTION (v4.8 - Critical for Pricing)
+
+**ALWAYS look for feeder cables between distribution boards!**
+
+### Where to Find Sub-Main Cable Information:
+
+1. **On the Single-Line Diagram**: Look for cable labels on lines connecting DBs:
+   - "4Cx16mm² PVC SWA PVC" = 4-core 16mm² armoured cable
+   - "3Cx10mm² + E" = 3-core 10mm² with earth
+   - "2x(4Cx25mm²)" = 2 parallel runs of 4-core 25mm²
+
+2. **On Cable Schedule**: Some drawings have a separate cable schedule table
+
+3. **Near DB Supply**: Look for text like "SUPPLY FROM: DB-GF via 4Cx16mm²"
+
+### Sub-Main Cable Patterns:
+
+| From → To | Typical Size | Cable Type |
+|-----------|--------------|------------|
+| Kiosk → Main DB | 50mm² - 95mm² | 4C PVC SWA PVC |
+| Main DB → Sub-DB | 16mm² - 35mm² | 4C PVC SWA PVC |
+| Sub-DB → Suite DB | 6mm² - 16mm² | 4C PVC SWA PVC |
+
+### Extract for Each Sub-Main:
+- `from_db`: Source DB (e.g., "DB-GF")
+- `to_db`: Destination DB (e.g., "DB-S1")
+- `cable_size_mm2`: Cable size (e.g., 16)
+- `cable_cores`: Number of cores (e.g., 4)
+- `cable_type`: Cable type (e.g., "PVC SWA PVC")
+- `cable_length_m`: Length if shown (often not shown - mark as "estimate")
+- `breaker_a`: Breaker rating at source DB
+
 ## IMPORTANT REMINDERS
 
-1. Extract EVERY circuit from the schedule table - don't skip any
-2. If a page has 2 DBs, extract BOTH
-3. Note spare ways (empty positions) in the schedule
-4. Capture the supply chain (what feeds what)
-5. Note any ELCB/RCD or surge protection devices
-6. Read cable sizes carefully - they're critical for pricing
+1. **VISUALLY SCAN** the entire image - circuit data is in GRAPHICS, not text
+2. Extract EVERY circuit from the schedule table - don't skip any columns
+3. If a page has 2 DBs, extract BOTH completely
+4. Note spare ways (empty positions) in the schedule
+5. Capture the supply chain (what feeds what) - look for cable labels
+6. Note any ELCB/RCD or surge protection devices
 7. If wattage shows "---" or is blank, mark as "estimated" with note
 8. Always include confidence level for each extracted value
 9. DB names MUST match exactly what's on the drawing (e.g., "DB-CA", "DB-S1")
 10. Read main breaker rating from the diagram header
+11. **COUNT ALL CIRCUIT COLUMNS** - typical DB has 6-24 circuits
+12. **LOOK FOR FEEDER CABLES** - cable specs on lines connecting DBs
 
 ## v4.5 ADDITIONAL REMINDERS
 

@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.4 - Lighting Layout Extraction Prompt
+AfriPlan Electrical v4.8 - Lighting Layout Extraction Prompt
 
 Extracts rooms with light fixtures from lighting layout drawings.
 
@@ -8,12 +8,19 @@ v4.4 additions (Wedela Lighting & Plugs PDF):
 - legend_totals extraction for validation
 - Enhanced symbol detection
 
+v4.8 additions (Multi-Pass Visual Extraction):
+- 3-PASS EXTRACTION: Legend → Rooms → Symbols
+- Visual symbol counting methodology
+- Room boundary detection from floor plan
+- Circuit label matching per room
+
 CRITICAL RULES:
 1. READ THE LEGEND FIRST - Every symbol type is defined in the legend
-2. COUNT EVERY SYMBOL - Do not estimate, count actual instances
-3. MATCH CIRCUIT LABELS - Each fixture has a circuit label (e.g., "L2 DB-S3")
-4. NEVER FABRICATE - If count is unclear, mark as "estimated"
-5. EXTRACT LEGEND TOTALS - The QTYS column provides validation cross-check
+2. IDENTIFY ALL ROOMS - Scan for room labels and boundaries
+3. COUNT EVERY SYMBOL PER ROOM - Do not estimate, count actual instances
+4. MATCH CIRCUIT LABELS - Each fixture has a circuit label (e.g., "L2 DB-S3")
+5. NEVER FABRICATE - If count is unclear, mark as "estimated"
+6. EXTRACT LEGEND TOTALS - The QTYS column provides validation cross-check
 """
 
 from typing import List, TYPE_CHECKING
@@ -45,6 +52,39 @@ def get_prompt(pages: List["PageInfo"], building_block: str = "") -> str:
 
 You are analyzing electrical lighting layout drawings. Extract all rooms with
 their light fixtures, circuit references, and any legend/key information.
+
+## ⚠️ MULTI-PASS EXTRACTION METHOD (v4.8)
+
+**You MUST follow this 3-pass process for accurate extraction:**
+
+### PASS 1: EXTRACT THE LEGEND (Do This First!)
+
+1. Locate the LEGEND/KEY box on the drawing (usually bottom-left or right side)
+2. For EACH row in the legend, extract:
+   - Symbol shape/appearance
+   - Description (e.g., "600 x 1200 Recessed 3 x 18W LED")
+   - Wattage (e.g., 54W, 30W)
+   - QTYS column if present (total count for validation)
+3. Create a mental mapping: Symbol → Fixture Type → Wattage
+
+### PASS 2: IDENTIFY ALL ROOMS
+
+1. Scan the ENTIRE floor plan for room labels
+2. Look for text labels like: "SUITE 1", "OFFICE", "WC", "KITCHEN", "STORE"
+3. Note room boundaries (walls shown as thick lines)
+4. List ALL rooms you can identify before counting fixtures
+5. Include areas like: CORRIDOR, FOYER, BALCONY, PARKING
+
+### PASS 3: COUNT FIXTURES PER ROOM
+
+For EACH room identified in Pass 2:
+1. Look at the room boundaries
+2. Count EVERY light symbol inside that room
+3. Match each symbol to the legend definition
+4. Note the circuit label if visible (e.g., "L1 DB-S3")
+5. Record the count for each fixture type
+
+**CRITICAL: Do not skip any rooms! Do not estimate counts!**
 
 ## CRITICAL: READ THE LEGEND FIRST
 
@@ -161,12 +201,42 @@ SYMBOL | DESCRIPTION
 
 Every legend item MUST appear in your extraction. Missing legend items = INCOMPLETE extraction.
 
-## COUNTING RULES
+## COUNTING RULES (v4.8 - Visual Counting Methodology)
 
+### How to Count Light Symbols Accurately:
+
+1. **FOCUS ON ONE ROOM AT A TIME**
+   - Mentally outline the room boundaries
+   - Scan left-to-right, top-to-bottom inside the room
+   - Count each symbol as you encounter it
+
+2. **USE TALLY MARKS** (mentally)
+   - For each symbol type, keep a running count
+   - Rectangle symbols: ||||  (4)
+   - Circle symbols:    ||||| ||| (8)
+
+3. **DOUBLE-CHECK YOUR COUNT**
+   - Count again from a different direction
+   - Total should match both counts
+
+4. **VERIFICATION**: If legend shows "QTYS: 49" for LED panels,
+   your total across all rooms should equal 49
+
+### Visual Counting Example:
+
+If SUITE 1 contains:
+- 4 rectangle symbols (LED panels)
+- 2 circle symbols (downlights)
+- 1 circle with rays (flood light)
+
+Report: led_panel_3x18w: 4, led_downlight_6w: 2, flood_30w: 1
+
+### Rules:
 1. COUNT visible symbols on the drawing - do NOT estimate
 2. If a room shows 8 light symbols, report qty=8, not an estimate
 3. Mark confidence as "extracted" when you physically counted the symbols
 4. Mark confidence as "estimated" ONLY if the count is truly unclear
+5. **TOTAL CHECK**: Sum of all room counts should equal legend QTYS totals
 
 ## CIRCUIT LABEL MATCHING
 

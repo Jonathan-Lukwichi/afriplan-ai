@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.4 - Plugs/Power Layout Extraction Prompt
+AfriPlan Electrical v4.8 - Plugs/Power Layout Extraction Prompt
 
 Extracts rooms with socket outlets and switches from power layout drawings.
 Handles both dedicated power layouts and combined lighting+power drawings.
@@ -9,13 +9,21 @@ v4.4 additions (Wedela Lighting & Plugs PDF):
 - Enhanced symbol table for waterproof sockets, ceiling sockets
 - Master switch (MS) identification
 
+v4.8 additions (Multi-Pass Visual Extraction):
+- 3-PASS EXTRACTION: Legend → Rooms → Symbols
+- Visual symbol counting methodology
+- Room boundary detection from floor plan
+- Circuit label matching per room
+- Socket/switch distinction by visual characteristics
+
 CRITICAL RULES:
 1. READ THE LEGEND FIRST - Every symbol type is defined in the legend
-2. COUNT EVERY SYMBOL - Do not estimate, count actual instances
-3. DISTINGUISH SOCKET HEIGHTS - 300mm vs 1100mm is critical
-4. IDENTIFY WET AREA SOCKETS - IP-rated for bathrooms/kitchens
-5. CAPTURE DATA POINTS - CAT6 outlets are common in offices
-6. EXTRACT LEGEND TOTALS - QTYS column provides validation cross-check
+2. IDENTIFY ALL ROOMS - Scan for room labels and boundaries
+3. COUNT EVERY SYMBOL PER ROOM - Do not estimate, count actual instances
+4. DISTINGUISH SOCKET HEIGHTS - 300mm vs 1100mm is critical
+5. IDENTIFY WET AREA SOCKETS - IP-rated for bathrooms/kitchens
+6. CAPTURE DATA POINTS - CAT6 outlets are common in offices
+7. EXTRACT LEGEND TOTALS - QTYS column provides validation cross-check
 """
 
 from typing import List, Optional, TYPE_CHECKING
@@ -67,6 +75,42 @@ The following legend has been extracted from the drawing. Use these definitions:
 
 You are analyzing electrical power layout drawings. Extract all rooms with
 their socket outlets, switches, data points, and circuit references.
+
+## ⚠️ MULTI-PASS EXTRACTION METHOD (v4.8)
+
+**You MUST follow this 3-pass process for accurate extraction:**
+
+### PASS 1: EXTRACT THE LEGEND (Do This First!)
+
+1. Locate the LEGEND/KEY box on the drawing
+2. For EACH row in the legend, extract:
+   - Symbol shape/appearance
+   - Description (e.g., "16A Double Switched Socket @300mm")
+   - Height notation (300mm, 1100mm, 1200mm, 2000mm)
+   - QTYS column if present
+3. Create mapping: Symbol → Socket/Switch Type → Height
+
+### PASS 2: IDENTIFY ALL ROOMS
+
+1. Scan the ENTIRE floor plan for room labels
+2. Look for text labels like: "SUITE 1", "OFFICE", "WC", "KITCHEN", "STORE"
+3. Note room boundaries (walls shown as thick lines)
+4. List ALL rooms you can identify before counting fixtures
+5. Include: CORRIDOR, FOYER, BALCONY, PARKING, BATHROOM
+
+### PASS 3: COUNT SOCKETS AND SWITCHES PER ROOM
+
+For EACH room identified in Pass 2:
+1. Look at the room boundaries
+2. Count EVERY socket symbol inside that room
+3. Count EVERY switch symbol inside that room (usually near doors)
+4. Match each symbol to the legend definition
+5. Note the circuit label if visible (e.g., "P1 DB-S3")
+6. Record count for each socket/switch type
+
+**CRITICAL DISTINCTION:**
+- SOCKETS: Larger squares, power outlet symbols, @300mm/@1100mm height
+- SWITCHES: Smaller rectangles near doors, @1200mm height
 
 ## CRITICAL: READ THE LEGEND FIRST
 
@@ -193,12 +237,42 @@ Respond with ONLY valid JSON matching this schema (no markdown, no explanation):
 
 {PLUGS_LAYOUT_SCHEMA}
 
-## COUNTING RULES
+## COUNTING RULES (v4.8 - Visual Counting Methodology)
 
+### How to Count Socket/Switch Symbols Accurately:
+
+1. **FOCUS ON ONE ROOM AT A TIME**
+   - Mentally outline the room boundaries
+   - Scan left-to-right, top-to-bottom inside the room
+   - Count each symbol as you encounter it
+
+2. **DISTINGUISH SOCKETS FROM SWITCHES**
+   - SOCKETS: Larger symbols (rectangles, squares), away from doors
+   - SWITCHES: Smaller symbols, typically near doors/entrances
+   - Check height annotations: @300mm/@1100mm = socket, @1200mm = switch
+
+3. **DOUBLE-CHECK YOUR COUNT**
+   - Count sockets first, then switches
+   - Verify by counting in reverse direction
+
+4. **VERIFICATION**: If legend shows "QTYS: 24" for double sockets,
+   your total across all rooms should equal 24
+
+### Visual Counting Example:
+
+If KITCHEN contains:
+- 4 double socket symbols @1100mm (counter level)
+- 2 double socket symbols @300mm (floor level)
+- 2 switch symbols near door @1200mm
+
+Report: double_socket_1100: 4, double_socket_300: 2, switch_2lever_1way: 2
+
+### Rules:
 1. **COUNT** visible symbols on the drawing - do NOT estimate
 2. If a room shows 6 socket symbols, report qty=6, not an estimate
 3. Mark confidence as "extracted" when you physically counted the symbols
 4. Mark confidence as "estimated" ONLY if the count is truly unclear
+5. **TOTAL CHECK**: Sum of all room counts should equal legend QTYS totals
 
 ## SOCKET vs SWITCH DISTINCTION
 
