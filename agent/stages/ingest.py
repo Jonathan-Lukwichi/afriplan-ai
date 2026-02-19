@@ -7,6 +7,11 @@ Uses PyMuPDF (fitz) for PDF rendering and Pillow for image processing.
 v4.7: Enhanced page classification with:
 - Drawing register parsing (maps TJM-SLD-001 -> SLD type)
 - Cable specification keywords (mm², 4c, swa) for graphics-heavy SLDs
+
+v4.9: Enhanced layout page detection:
+- Floor plan indicator detection (room names, scales, FFL)
+- Minimal text fallback (graphics-heavy layouts default to LAYOUT_COMBINED)
+- Pages after page 1 with minimal text are processed as layouts via vision
 """
 
 import io
@@ -357,6 +362,111 @@ def _detect_sld_from_cable_specs(text_lower: str) -> int:
     return score
 
 
+def _detect_layout_from_floor_plan(text_lower: str) -> Tuple[int, int]:
+    """
+    v4.9: Detect layout pages (lighting/plugs) from floor plan indicators.
+
+    SA electrical floor plans often have:
+    - Room names (SUITE 1, OFFICE, KITCHEN)
+    - Floor indicators (GROUND FLOOR, FIRST FLOOR)
+    - Scale indicators (1:50, 1:100)
+    - Drawing types (FLOOR PLAN, LAYOUT)
+
+    Returns:
+        Tuple of (lighting_score, plugs_score)
+    """
+    lighting_score = 0
+    plugs_score = 0
+
+    # Floor plan indicators (general - applies to both)
+    floor_plan_keywords = [
+        "floor plan", "layout", "plan view",
+        "ground floor", "first floor", "gf", "ff",
+        "1:50", "1:100", "1:200",  # Common scales
+        "ffl",  # Finished Floor Level
+    ]
+    has_floor_plan = any(k in text_lower for k in floor_plan_keywords)
+    if has_floor_plan:
+        lighting_score += 3
+        plugs_score += 3
+
+    # Room names are strong indicators of layout drawings
+    room_names = [
+        "suite", "office", "kitchen", "bathroom", "toilet", "wc",
+        "reception", "foyer", "lounge", "boardroom", "store",
+        "kitchenette", "balcony", "parking", "corridor", "passage",
+        "bedroom", "living", "dining", "scullery", "laundry",
+        "meeting", "conference", "open plan", "server room",
+        "plant room", "electrical room", "db room",
+    ]
+    room_count = sum(1 for r in room_names if r in text_lower)
+    if room_count >= 3:
+        lighting_score += 5
+        plugs_score += 5
+    elif room_count >= 1:
+        lighting_score += 2
+        plugs_score += 2
+
+    # Specific lighting indicators
+    lighting_keywords = [
+        "light", "luminaire", "led", "lux", "lamp",
+        "downlight", "bulkhead", "flood", "panel",
+        "recessed", "surface mount", "pendant",
+        "emergency", "exit sign",
+    ]
+    light_count = sum(1 for k in lighting_keywords if k in text_lower)
+    if light_count >= 2:
+        lighting_score += 4
+    elif light_count >= 1:
+        lighting_score += 2
+
+    # Specific socket/plug indicators
+    socket_keywords = [
+        "socket", "plug", "outlet", "point",
+        "switch", "lever", "isolator",
+        "double", "single", "waterproof",
+        "@300", "@1100", "@1200",  # Height notations
+        "300mm", "1100mm", "1200mm",
+        "data point", "cat6", "cat5",
+    ]
+    socket_count = sum(1 for k in socket_keywords if k in text_lower)
+    if socket_count >= 2:
+        plugs_score += 4
+    elif socket_count >= 1:
+        plugs_score += 2
+
+    # Legend presence (common on both types)
+    if "legend" in text_lower or "key" in text_lower or "symbol" in text_lower:
+        lighting_score += 2
+        plugs_score += 2
+
+    # Area measurements (m², m2) indicate layout drawings
+    if "m2" in text_lower or "m²" in text_lower or re.search(r'\d+\s*sqm', text_lower):
+        lighting_score += 2
+        plugs_score += 2
+
+    # Drawing title patterns
+    title_patterns = [
+        r'electrical\s*layout',
+        r'lighting\s*layout',
+        r'power\s*layout',
+        r'plugs?\s*layout',
+        r'socket\s*layout',
+    ]
+    for pattern in title_patterns:
+        if re.search(pattern, text_lower):
+            if "light" in pattern:
+                lighting_score += 5
+            elif "power" in pattern or "plug" in pattern or "socket" in pattern:
+                plugs_score += 5
+            else:
+                lighting_score += 3
+                plugs_score += 3
+            break
+
+    return lighting_score, plugs_score
+
+
 def _categorize_pages(doc_set: DocumentSet) -> None:
     """
     Categorize pages based on filename patterns and text content.
@@ -413,6 +523,14 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
             # FIX 2: Cable specification detection (graphics-heavy SLDs)
             cable_spec_score = _detect_sld_from_cable_specs(text_lower)
             scores["sld"] += cable_spec_score
+
+            # FIX 3 (v4.9): Floor plan layout detection
+            layout_lighting_score, layout_plugs_score = _detect_layout_from_floor_plan(text_lower)
+            scores["lighting"] += layout_lighting_score
+            scores["plugs"] += layout_plugs_score
+            # If both have good scores, it's likely a combined layout
+            if layout_lighting_score >= 4 and layout_plugs_score >= 4:
+                scores["combined"] += (layout_lighting_score + layout_plugs_score) // 2
 
             # Text content-based scoring
             # SLD indicators (enhanced v4.2)
@@ -486,10 +604,22 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
             # Determine page type based on highest score
             max_score = max(scores.values())
 
+            # v4.9: Calculate text density - minimal text may indicate graphics-heavy layout
+            text_length = len(text_lower)
+            is_minimal_text = text_length < 200  # Very little extractable text
+            is_not_first_page = page.page_number > 1
+
             if max_score == 0:
-                # No clear indicators - check if it looks like a drawing at all
-                page.page_type = PageType.UNKNOWN
-                doc_set.num_other_pages += 1
+                # No clear indicators
+                if is_minimal_text and is_not_first_page:
+                    # v4.9: Pages with minimal text after page 1 are likely
+                    # graphics-heavy layout drawings - let AI extract via vision
+                    page.page_type = PageType.LAYOUT_COMBINED
+                    doc_set.num_lighting_pages += 1
+                    doc_set.num_plugs_pages += 1
+                else:
+                    page.page_type = PageType.UNKNOWN
+                    doc_set.num_other_pages += 1
             elif scores["register"] == max_score and scores["register"] >= 5:
                 page.page_type = PageType.REGISTER
                 doc_set.num_register_pages += 1
@@ -513,6 +643,12 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
             elif room_count >= 1 or "m2" in text_lower:
                 # Has room names or areas but no clear electrical indicators
                 # Treat as combined layout (AI will figure out what's there)
+                page.page_type = PageType.LAYOUT_COMBINED
+                doc_set.num_lighting_pages += 1
+                doc_set.num_plugs_pages += 1
+            elif is_minimal_text and is_not_first_page and scores["sld"] < 2:
+                # v4.9: Pages after page 1 with minimal text and low SLD score
+                # are likely floor plan layouts - process with vision
                 page.page_type = PageType.LAYOUT_COMBINED
                 doc_set.num_lighting_pages += 1
                 doc_set.num_plugs_pages += 1

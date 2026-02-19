@@ -28,6 +28,11 @@ v4.6 additions (Professional Excel BOQ):
 - Identifies SPARE circuits that may need allocation
 - Populates ExtractionResult.discrepancies for Discrepancy Register sheet
 
+v4.9 additions (Robust Fixture Extraction):
+- FALLBACK mechanism: UNKNOWN pages after page 1 processed as combined layouts
+- Ensures fixture extraction even when page classification fails
+- Works with graphics-heavy floor plans where text extraction is minimal
+
 Supports multiple LLM providers:
 - Groq (Llama 4 Scout/Maverick) - 100% FREE with vision!
 - xAI Grok (grok-2-vision) - $25 free credits/month
@@ -336,6 +341,26 @@ def discover(
                 extraction.pages_with_data += len(outside_pages)
             except Exception as e:
                 errors.append(f"Outside lights extraction failed: {str(e)}")
+
+        # v4.9 FALLBACK: Process UNKNOWN pages as combined layouts
+        # This ensures fixture extraction even if classification failed
+        unknown_pages = doc_set.pages_by_type(PageType.UNKNOWN)
+        # Exclude page 1 (often register/cover) from fallback processing
+        unknown_layout_pages = [p for p in unknown_pages if p.page_number > 1]
+
+        if unknown_layout_pages and client and not combined_pages and not lighting_pages and not plug_pages:
+            # Only use fallback if no layout pages were classified
+            warnings.append(f"v4.9 FALLBACK: Processing {len(unknown_layout_pages)} UNKNOWN pages as combined layouts")
+            try:
+                fallback_data, tokens, cost = _extract_combined_layout_data(
+                    unknown_layout_pages, client, extraction_model
+                )
+                total_tokens += tokens
+                total_cost += cost
+                _merge_combined_data(extraction, fallback_data)
+                extraction.pages_with_data += len(unknown_layout_pages)
+            except Exception as e:
+                errors.append(f"Fallback layout extraction failed: {str(e)}")
 
         # Calculate overall confidence
         confidence = _calculate_confidence(extraction)
