@@ -759,7 +759,9 @@ def _generate_db_description(db: DistributionBoard, metadata=None) -> str:
     """
     # Build header
     voltage = db.voltage_v or 400
-    phases_str = f"{db.phases or 3}Ph+N+E"
+    # db.phase is a PhaseConfig enum ("1PH" or "3PH")
+    phase_value = db.phase.value if hasattr(db.phase, 'value') else str(db.phase)
+    phases_str = f"{phase_value}+N+E"
     rating = db.main_breaker_a or 100
 
     lines = [
