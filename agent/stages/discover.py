@@ -702,7 +702,7 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
             confidence=_parse_confidence(db_data.get("confidence", "extracted")),
         )
 
-        # Add circuits
+        # Add circuits (v4.3 enhanced with VSD/starter/day-night fields)
         for ckt_data in db_data.get("circuits", []):
             circuit = Circuit(
                 id=ckt_data.get("id") or "",
@@ -722,12 +722,21 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
                 has_vsd=ckt_data.get("has_vsd") or False,
                 feeds_board=ckt_data.get("feeds_board"),
                 confidence=_parse_confidence(ckt_data.get("confidence") or "extracted"),
+                # v4.3 - VSD and starter fields
+                vsd_rating_kw=float(ckt_data.get("vsd_rating_kw") or 0),
+                starter_type=ckt_data.get("starter_type") or "",
+                # v4.3 - Day/night switch fields
+                has_day_night=ckt_data.get("has_day_night") or False,
+                has_bypass=ckt_data.get("has_bypass") or False,
+                controlled_circuits=ckt_data.get("controlled_circuits") or [],
+                # v4.3 - ISO circuit equipment type
+                equipment_type=ckt_data.get("equipment_type") or "",
             )
             db.circuits.append(circuit)
 
         block.distribution_boards.append(db)
 
-    # Add heavy equipment
+    # Add heavy equipment (v4.3 enhanced with circuit_ref, starter_type, vsd_rating_kw)
     for eq_data in data.get("heavy_equipment", []):
         equipment = HeavyEquipment(
             name=eq_data.get("name") or "",
@@ -743,6 +752,10 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
             building_block=block.name,
             qty=int(eq_data.get("qty") or 1),
             confidence=_parse_confidence(eq_data.get("confidence") or "extracted"),
+            # v4.3 - Circuit reference and starter type
+            circuit_ref=eq_data.get("circuit_ref") or "",
+            starter_type=eq_data.get("starter_type") or "",
+            vsd_rating_kw=float(eq_data.get("vsd_rating_kw") or 0),
         )
         block.heavy_equipment.append(equipment)
 
@@ -1199,7 +1212,7 @@ def _rebuild_extraction_from_dict(
                 confidence=_parse_confidence(db_data.get("confidence") or "extracted"),
             )
 
-            # Rebuild circuits
+            # Rebuild circuits (v4.3 enhanced)
             for ckt_data in db_data.get("circuits") or []:
                 circuit = Circuit(
                     id=ckt_data.get("id") or "",
@@ -1219,6 +1232,13 @@ def _rebuild_extraction_from_dict(
                     has_vsd=ckt_data.get("has_vsd") or False,
                     feeds_board=ckt_data.get("feeds_board"),
                     confidence=_parse_confidence(ckt_data.get("confidence") or "extracted"),
+                    # v4.3 fields
+                    vsd_rating_kw=float(ckt_data.get("vsd_rating_kw") or 0),
+                    starter_type=ckt_data.get("starter_type") or "",
+                    has_day_night=ckt_data.get("has_day_night") or False,
+                    has_bypass=ckt_data.get("has_bypass") or False,
+                    controlled_circuits=ckt_data.get("controlled_circuits") or [],
+                    equipment_type=ckt_data.get("equipment_type") or "",
                 )
                 db.circuits.append(circuit)
 

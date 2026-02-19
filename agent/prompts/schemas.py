@@ -1,11 +1,18 @@
 """
-AfriPlan Electrical v4.1 — JSON Schemas for AI Extraction
+AfriPlan Electrical v4.3 — JSON Schemas for AI Extraction
 
 Contains example JSON structures that guide Claude's structured output.
+
 v4.1 addition: Every extracted value includes a confidence field:
 - "extracted": read directly from the drawing
 - "inferred": calculated from other values
 - "estimated": using a default or guessing
+
+v4.3 additions:
+- VSD rating (kW) and starter type for pump/motor circuits
+- Day/night switch detection with bypass
+- ISO (isolator) circuit type support
+- Circuit reference linking to heavy_equipment
 """
 
 # Confidence instruction to add to all prompts
@@ -129,7 +136,7 @@ SLD_SCHEMA = """{
         },
         {
           "id": "PP1",
-          "type": "pump",
+          "type": "pool_pump",
           "description": "Pool Pump 1 (2.2kW)",
           "wattage_w": 2200,
           "confidence": "extracted",
@@ -139,8 +146,42 @@ SLD_SCHEMA = """{
           "breaker_a": 32,
           "breaker_poles": 3,
           "has_vsd": true,
+          "vsd_rating_kw": 2.2,
+          "starter_type": "vsd",
           "has_isolator": true,
           "isolator_rating_a": 30
+        },
+        {
+          "id": "ISO1",
+          "type": "isolator",
+          "description": "Geyser Isolator (2kW)",
+          "wattage_w": 2000,
+          "confidence": "extracted",
+          "cable_size_mm2": 2.5,
+          "cable_cores": 3,
+          "cable_type": "GP WIRE",
+          "breaker_a": 20,
+          "breaker_poles": 2,
+          "has_isolator": true,
+          "isolator_rating_a": 20,
+          "equipment_type": "geyser"
+        },
+        {
+          "id": "L1",
+          "type": "lighting",
+          "description": "External Lights - Day/Night",
+          "wattage_w": 480,
+          "wattage_formula": "8x60W",
+          "confidence": "extracted",
+          "cable_size_mm2": 1.5,
+          "cable_cores": 3,
+          "cable_type": "GP WIRE",
+          "breaker_a": 10,
+          "breaker_poles": 1,
+          "num_points": 8,
+          "has_day_night": true,
+          "has_bypass": true,
+          "controlled_circuits": ["L1", "L2"]
         },
         {
           "id": "SP1",
@@ -163,8 +204,42 @@ SLD_SCHEMA = """{
       "cable_type": "PVC SWA PVC",
       "breaker_a": 32,
       "has_vsd": true,
+      "vsd_rating_kw": 2.2,
+      "starter_type": "vsd",
       "isolator_a": 30,
       "fed_from_db": "DB-PFA",
+      "circuit_ref": "PP1",
+      "qty": 1
+    },
+    {
+      "name": "Heat Pump 1",
+      "type": "heat_pump",
+      "rating_kw": 7.5,
+      "confidence": "extracted",
+      "cable_size_mm2": 6,
+      "cable_type": "PVC SWA PVC",
+      "breaker_a": 40,
+      "has_vsd": true,
+      "vsd_rating_kw": 7.5,
+      "starter_type": "vsd",
+      "isolator_a": 40,
+      "fed_from_db": "DB-HPS1",
+      "circuit_ref": "HP1",
+      "qty": 1
+    },
+    {
+      "name": "HVAC System",
+      "type": "hvac",
+      "rating_kw": 60,
+      "confidence": "extracted",
+      "cable_size_mm2": 25,
+      "cable_type": "PVC SWA PVC",
+      "breaker_a": 100,
+      "has_vsd": false,
+      "starter_type": "star_delta",
+      "isolator_a": 125,
+      "fed_from_db": "DB-1",
+      "circuit_ref": "HVAC",
       "qty": 1
     }
   ]
@@ -539,7 +614,7 @@ MAINTENANCE_SCHEMA = """{
   }
 }"""
 
-# Schema for heavy equipment extraction from SLDs
+# Schema for heavy equipment extraction from SLDs (v4.3 enhanced)
 HEAVY_EQUIPMENT_SCHEMA = """{
   "equipment": [
     {
@@ -548,18 +623,76 @@ HEAVY_EQUIPMENT_SCHEMA = """{
       "rating_kw": 2.2,
       "confidence": "extracted",
       "has_vsd": true,
-      "circuit_ref": "DB-PFA PUMP1",
+      "vsd_rating_kw": 2.2,
+      "starter_type": "vsd",
+      "isolator_a": 30,
+      "circuit_ref": "PP1",
+      "fed_from_db": "DB-PPS1",
       "building_block": "Pool Block",
+      "cable_size_mm2": 4,
+      "cable_type": "PVC SWA PVC",
       "qty": 1
     },
     {
       "type": "heat_pump",
-      "name": "Pool Heat Pump",
-      "rating_kw": 12.5,
+      "name": "Pool Heat Pump 1",
+      "rating_kw": 7.5,
+      "confidence": "extracted",
+      "has_vsd": true,
+      "vsd_rating_kw": 7.5,
+      "starter_type": "vsd",
+      "isolator_a": 40,
+      "circuit_ref": "HP1",
+      "fed_from_db": "DB-HPS1",
+      "building_block": "Pool Block",
+      "cable_size_mm2": 6,
+      "cable_type": "PVC SWA PVC",
+      "qty": 1
+    },
+    {
+      "type": "circulation_pump",
+      "name": "Circulation Pump 1",
+      "rating_kw": 1.5,
+      "confidence": "extracted",
+      "has_vsd": true,
+      "vsd_rating_kw": 1.5,
+      "starter_type": "vsd",
+      "isolator_a": 20,
+      "circuit_ref": "CP1",
+      "fed_from_db": "DB-PFA",
+      "building_block": "Pool Block",
+      "cable_size_mm2": 2.5,
+      "cable_type": "PVC SWA PVC",
+      "qty": 1
+    },
+    {
+      "type": "hvac",
+      "name": "HVAC System",
+      "rating_kw": 60,
       "confidence": "extracted",
       "has_vsd": false,
-      "circuit_ref": "DB-PFA HP1",
-      "building_block": "Pool Block",
+      "starter_type": "star_delta",
+      "isolator_a": 125,
+      "circuit_ref": "HVAC",
+      "fed_from_db": "DB-1",
+      "building_block": "Community Hall",
+      "cable_size_mm2": 25,
+      "cable_type": "PVC SWA PVC",
+      "qty": 1
+    },
+    {
+      "type": "borehole_pump",
+      "name": "Borehole Pump",
+      "rating_kw": 4.0,
+      "confidence": "extracted",
+      "has_vsd": false,
+      "starter_type": "dol",
+      "isolator_a": 32,
+      "circuit_ref": "BH1",
+      "fed_from_db": "DB-EXT",
+      "building_block": "External",
+      "cable_size_mm2": 4,
+      "cable_type": "PVC SWA PVC",
       "qty": 1
     }
   ]

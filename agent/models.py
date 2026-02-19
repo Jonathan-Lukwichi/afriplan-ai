@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.1 — Data Models
+AfriPlan Electrical v4.3 — Data Models
 SINGLE SOURCE OF TRUTH for all data shapes.
 
 v4.1 philosophy change from v4.0:
@@ -14,6 +14,13 @@ v4.1 additions:
 - 7-stage pipeline: INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
 - Confidence flags per extracted item (green/yellow/red in UI)
 - All v4.0 models retained (multi-building, 12 lights, heavy equipment, etc.)
+
+v4.3 additions (Universal SLD Extraction):
+- Circuit: vsd_rating_kw, starter_type, has_day_night, has_bypass, controlled_circuits
+- HeavyEquipment: circuit_ref, starter_type, vsd_rating_kw
+- Support for ISO, PP, HP, CP, HVAC, RWB, D/N circuit types
+- Pump station extraction (pool pumps, heat pumps with VSD)
+- Day/night switch detection with bypass
 """
 
 from __future__ import annotations
@@ -394,6 +401,18 @@ class Circuit(BaseModel):
     confidence: ItemConfidence = ItemConfidence.EXTRACTED   # NEW: per-item confidence
     page_source: str = ""
 
+    # v4.3 - VSD and starter fields for pump/motor circuits
+    vsd_rating_kw: float = 0.0               # VSD power rating in kW
+    starter_type: str = ""                   # "vsd", "dol", "star_delta", "soft_starter"
+
+    # v4.3 - Day/night switch control
+    has_day_night: bool = False              # Circuit has day/night switch
+    has_bypass: bool = False                 # Day/night has bypass switch
+    controlled_circuits: List[str] = Field(default_factory=list)  # IDs of circuits controlled
+
+    # v4.3 - ISO circuit equipment type
+    equipment_type: str = ""                 # For ISO circuits: "geyser", "ac", "pump", etc.
+
 
 class DistributionBoard(BaseModel):
     name: str = ""
@@ -549,7 +568,7 @@ class Room(BaseModel):
 
 class HeavyEquipment(BaseModel):
     name: str = ""
-    type: str = ""
+    type: str = ""                           # pool_pump, heat_pump, circulation_pump, hvac, borehole_pump, geyser, ac
     rating_kw: float = 0.0
     cable_size_mm2: float = 4.0
     cable_type: str = "PVC SWA PVC"
@@ -563,6 +582,11 @@ class HeavyEquipment(BaseModel):
     qty: int = 1
     confidence: ItemConfidence = ItemConfidence.EXTRACTED
     notes: str = ""
+
+    # v4.3 - Circuit reference and starter type
+    circuit_ref: str = ""                    # Circuit ID linking back to DB (e.g., "PP1", "HP3")
+    starter_type: str = ""                   # "vsd", "dol", "star_delta", "soft_starter"
+    vsd_rating_kw: float = 0.0               # VSD power rating (when has_vsd=True)
 
 
 class CableContainment(BaseModel):

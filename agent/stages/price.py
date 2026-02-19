@@ -232,35 +232,63 @@ def price(
                             building_block=block.name,
                         ))
 
-            # Section G: Air Conditioning Electrical (v4.2 - dedicated AC section)
+            # Section G: Air Conditioning & Pumps Electrical (v4.3 - expanded for pump equipment)
+            # Types that go to Section G
+            section_g_types = (
+                "ac", "air_con", "aircon", "hvac", "split_unit",
+                "pool_pump", "heat_pump", "circulation_pump", "borehole_pump"
+            )
+
             for equip in block.heavy_equipment:
-                if equip.type.lower() in ("ac", "air_con", "aircon", "hvac", "split_unit"):
+                if equip.type.lower() in section_g_types:
                     item_no += 1
+                    # Build label with VSD and starter type info (v4.3)
                     vsd_label = " with VSD" if equip.has_vsd else ""
+                    starter_label = f" ({equip.starter_type})" if equip.starter_type and equip.starter_type != "vsd" else ""
+                    vsd_kw = f" {equip.vsd_rating_kw}kW" if equip.vsd_rating_kw else ""
+
                     quantity_items.append(BQLineItem(
                         item_no=item_no,
                         section=BQSection.AC_ELECTRICAL,
-                        description=f"{equip.name} electrical connection ({equip.rating_kw}kW{vsd_label})",
+                        description=f"{equip.name} electrical connection ({equip.rating_kw}kW{vsd_label}{starter_label})",
                         unit="each",
                         qty=equip.qty,
                         source=equip.confidence,
                         building_block=block.name,
+                        notes=f"Circuit ref: {equip.circuit_ref}" if equip.circuit_ref else "",
                     ))
-                    # Add isolator for AC
+
+                    # Add isolator for each equipment
+                    isolator_rating = equip.isolator_a if equip.isolator_a else 32
                     item_no += 1
                     quantity_items.append(BQLineItem(
                         item_no=item_no,
                         section=BQSection.AC_ELECTRICAL,
-                        description=f"AC Isolator 32A for {equip.name}",
+                        description=f"Isolator {isolator_rating}A for {equip.name}",
                         unit="each",
                         qty=equip.qty,
                         source=equip.confidence,
                         building_block=block.name,
                     ))
 
-            # Other heavy equipment (pumps, geysers, motors) → Cables section
+                    # Add VSD unit if present (v4.3)
+                    if equip.has_vsd:
+                        item_no += 1
+                        vsd_rating = equip.vsd_rating_kw if equip.vsd_rating_kw else equip.rating_kw
+                        quantity_items.append(BQLineItem(
+                            item_no=item_no,
+                            section=BQSection.AC_ELECTRICAL,
+                            description=f"VSD {vsd_rating}kW for {equip.name}",
+                            unit="each",
+                            qty=equip.qty,
+                            source=equip.confidence,
+                            building_block=block.name,
+                        ))
+
+            # Other heavy equipment (geysers, motors) → Cables section
+            non_section_g_types = ("geyser", "motor", "stove", "oven")
             for equip in block.heavy_equipment:
-                if equip.type.lower() not in ("ac", "air_con", "aircon", "hvac", "split_unit"):
+                if equip.type.lower() in non_section_g_types:
                     item_no += 1
                     vsd_label = " with VSD" if equip.has_vsd else ""
                     quantity_items.append(BQLineItem(
@@ -273,6 +301,24 @@ def price(
                         building_block=block.name,
                         notes="Includes cable, breaker, and connection",
                     ))
+
+            # Section E: Day/night switches from circuit data (v4.3)
+            for db in block.distribution_boards:
+                day_night_circuits = [c for c in db.circuits if c.has_day_night]
+                if day_night_circuits:
+                    for circuit in day_night_circuits:
+                        item_no += 1
+                        bypass_label = " with bypass" if circuit.has_bypass else ""
+                        controlled = f" (controls: {', '.join(circuit.controlled_circuits)})" if circuit.controlled_circuits else ""
+                        quantity_items.append(BQLineItem(
+                            item_no=item_no,
+                            section=BQSection.SWITCHES,
+                            description=f"Day/Night Switch{bypass_label} — {db.name} {circuit.id}{controlled}",
+                            unit="each",
+                            qty=1,
+                            source=circuit.confidence,
+                            building_block=block.name,
+                        ))
 
         # Section H: External & Solar (v4.2 - site cable runs)
         for run in extraction.site_cable_runs:
@@ -488,13 +534,19 @@ def price(
 
 
 def _estimate_cable_length(circuit) -> float:
-    """Default cable length estimates when not on drawing."""
+    """Default cable length estimates when not on drawing (v4.3 enhanced)."""
     if circuit.type in ("sub_board_feed",):
         return 15.0  # Same floor default
     if circuit.type in ("lighting", "power"):
         return 8.0   # Average circuit run
-    if circuit.type in ("ac", "geyser", "pump"):
+    if circuit.type in ("ac", "geyser", "pump", "hvac"):
         return 12.0  # Dedicated circuit
+    # v4.3 - pump types
+    if circuit.type in ("pool_pump", "heat_pump", "circulation_pump", "borehole_pump"):
+        return 25.0  # Pumps often in plant rooms, longer runs
+    # v4.3 - isolator circuits
+    if circuit.type in ("isolator",):
+        return 10.0  # Typically equipment nearby
     return 10.0
 
 
@@ -535,9 +587,36 @@ def _get_default_price(item: BQLineItem, contractor: Optional[ContractorProfile]
         "2-Lever 1-Way Switch @1200mm": 95.0,
         "1-Lever 2-Way Switch @1200mm": 85.0,
         "Day/Night Switch @2000mm": 450.0,
+        "Day/Night Switch": 450.0,
+        "Day/Night Switch with bypass": 650.0,
         "30A Isolator Switch @2000mm": 320.0,
         "20A Isolator Switch @2000mm": 280.0,
         "Master Switch": 550.0,
+
+        # Isolators (v4.3)
+        "Isolator 20A": 280.0,
+        "Isolator 30A": 320.0,
+        "Isolator 32A": 350.0,
+        "Isolator 40A": 420.0,
+        "Isolator 63A": 580.0,
+        "Isolator 100A": 850.0,
+        "Isolator 125A": 1100.0,
+
+        # VSD units (v4.3)
+        "VSD 1.5kW": 3800.0,
+        "VSD 2.2kW": 4500.0,
+        "VSD 3kW": 5200.0,
+        "VSD 4kW": 6200.0,
+        "VSD 5.5kW": 7500.0,
+        "VSD 7.5kW": 9500.0,
+        "VSD 11kW": 12500.0,
+        "VSD 15kW": 16000.0,
+
+        # Pump equipment connections (v4.3)
+        "Pool Pump": 2800.0,
+        "Heat Pump": 3500.0,
+        "Circulation Pump": 2200.0,
+        "Borehole Pump": 3200.0,
 
         # Labour rates
         "circuit": 450.0,
