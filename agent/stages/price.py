@@ -174,8 +174,8 @@ def price(
                                   if c.type in ("power", "socket") and c.type != "sub_board_feed"]
                 for circuit in power_circuits:
                     cable_size = circuit.cable_size_mm2 or 2.5
-                    points = circuit.points or 1
-                    wattage = circuit.load_w or 3680
+                    points = circuit.num_points or 1
+                    wattage = circuit.wattage_w or 3680
 
                     quantity_items.append(BQLineItem(
                         item_no=next_item_no(BQSection.FINAL_CABLES),
@@ -197,8 +197,8 @@ def price(
                                      if c.type in ("lighting", "light") and c.type != "sub_board_feed"]
                 for circuit in lighting_circuits:
                     cable_size = circuit.cable_size_mm2 or 1.5
-                    points = circuit.points or 1
-                    wattage = circuit.load_w or 100
+                    points = circuit.num_points or 1
+                    wattage = circuit.wattage_w or 100
 
                     quantity_items.append(BQLineItem(
                         item_no=next_item_no(BQSection.FINAL_CABLES),
@@ -220,7 +220,7 @@ def price(
                                if c.type in ("ac", "aircon", "hvac") and c.type != "sub_board_feed"]
                 for circuit in ac_circuits:
                     cable_size = circuit.cable_size_mm2 or 2.5
-                    wattage = circuit.load_w or 1650
+                    wattage = circuit.wattage_w or 1650
 
                     quantity_items.append(BQLineItem(
                         item_no=next_item_no(BQSection.FINAL_CABLES),
@@ -791,9 +791,9 @@ def _generate_db_description(db: DistributionBoard, metadata=None) -> str:
             cable_info = f"{circuit.cable_size_mm2}mm²" if circuit.cable_size_mm2 else ""
             lines.append(f"- Q{breaker_num}: {breaker_a}A {breaker_type} -> {circuit.description} ({cable_info})")
         else:
-            load_info = f"{circuit.load_w:.0f}W" if circuit.load_w else ""
+            load_info = f"{circuit.wattage_w:.0f}W" if circuit.wattage_w else ""
             cable_info = f"{circuit.cable_size_mm2}mm²" if circuit.cable_size_mm2 else ""
-            points_info = f"{circuit.points}pts" if circuit.points else ""
+            points_info = f"{circuit.num_points}pts" if circuit.num_points else ""
             details = ", ".join(filter(None, [load_info, cable_info, points_info]))
             lines.append(f"- Q{breaker_num}: {breaker_a}A -> {circuit.id} ({details})")
 
