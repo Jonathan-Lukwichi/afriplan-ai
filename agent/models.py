@@ -930,6 +930,22 @@ class BuildingBlock(BaseModel):
         return sum(r.fixtures.total_points for r in self.rooms)
 
 
+class Discrepancy(BaseModel):
+    """
+    v4.6 - Track SLD vs floor plan discrepancy for BOQ Discrepancy Register.
+
+    When extraction finds conflicts between SLD schedules and floor plan layouts,
+    these are tracked here for transparency in the BOQ output.
+    """
+    distribution_board: str = ""          # e.g., "DB-S1 (Suite 1)"
+    sld_shows: str = ""                   # e.g., "P1(3pts), P2(4pts), 2x SPARE"
+    floor_plan_shows: str = ""            # e.g., "P1, P2, P3, AC1"
+    discrepancy: str = ""                 # e.g., "P3 circuit on floor plan but SPARE on SLD"
+    impact_on_boq: str = ""               # e.g., "Added P3 cable run (Item 4.8)"
+    action_required: str = ""             # e.g., "Designer to confirm P3 circuit"
+    drawing_refs: List[str] = Field(default_factory=list)  # Source drawings
+
+
 class ExtractionResult(BaseModel):
     extraction_mode: ExtractionMode = ExtractionMode.ESTIMATION
     metadata: ProjectMetadata = Field(default_factory=ProjectMetadata)
@@ -938,6 +954,9 @@ class ExtractionResult(BaseModel):
     site_cable_runs: List[SiteCableRun] = Field(default_factory=list)
     underground_sleeves: List[UndergroundSleeve] = Field(default_factory=list)
     outside_lights: Optional[FixtureCounts] = None
+
+    # v4.6 - Discrepancy tracking for BOQ
+    discrepancies: List[Discrepancy] = Field(default_factory=list)
 
     # NEW: track review state
     review_completed: bool = False
@@ -1068,36 +1087,64 @@ class ValidationResult(BaseModel):
 
 class BQSection(str, Enum):
     """
-    v4.2 BoQ Sections (11 sections A-K) per specification.
+    v4.6 BoQ Sections (14 sections) - SA industry standard format.
 
-    Changes from v4.1:
-    - Removed SUPPLY (merged into DISTRIBUTION)
-    - Split SOCKETS into SWITCHES (E) and SOCKETS (F)
-    - Removed EQUIPMENT (AC now has dedicated section G)
-    - Removed DEDICATED (merged into relevant sections)
-    - Added EXTERNAL (H) for external/solar work
-    - Added EARTHING (I) for earthing & bonding
-    - Removed COMPLIANCE (now part of relevant sections)
-    - SITE_WORKS → TESTING (J)
-    - LABOUR/PROVISIONAL → PRELIMS (K)
+    Based on professional BOQ reference files (Wedela Electrical BOQ).
+    This format matches what contractors expect for tendering.
+
+    Changes from v4.2 (11 sections A-K):
+    - Now uses numbered sections (SECTION 1, 2, etc.) matching industry standard
+    - Split incoming supply from distribution
+    - Split sub-main cables from final circuit cables
+    - Added dedicated Data & Communications section
+    - Added Fire Safety Provisions section
+    - Renamed sections to match tender document conventions
     """
-    DISTRIBUTION = "A - Distribution Boards & Protection"
-    CABLES = "B - Cables & Wiring"
-    CONTAINMENT = "C - Cable Containment"
-    LIGHTS = "D - Lighting"
-    SWITCHES = "E - Switches & Controls"
-    SOCKETS = "F - Power Sockets"
-    AC_ELECTRICAL = "G - Air Conditioning Electrical"
-    EXTERNAL = "H - External & Solar"
-    EARTHING = "I - Earthing & Bonding"
-    TESTING = "J - Testing & Commissioning"
-    PRELIMS = "K - Preliminaries & General"
+    INCOMING = "SECTION 1: MAIN INCOMING SUPPLY & METERING"
+    DISTRIBUTION = "SECTION 2: DISTRIBUTION BOARDS"
+    SUBMAIN_CABLES = "SECTION 3: SUB-MAIN DISTRIBUTION CABLES"
+    FINAL_CABLES = "SECTION 4: FINAL SUB-CIRCUIT CABLES"
+    LIGHTING = "SECTION 5: LIGHTING INSTALLATION"
+    POWER_OUTLETS = "SECTION 6: POWER OUTLETS INSTALLATION"
+    DATA_COMMS = "SECTION 7: DATA & COMMUNICATIONS"
+    CONTAINMENT = "SECTION 8: CABLE CONTAINMENT"
+    UNDERGROUND = "SECTION 9: UNDERGROUND WORKS & SLEEVES"
+    SOLAR_PV = "SECTION 10: SOLAR PV ELECTRICAL PROVISIONS"
+    EARTHING = "SECTION 11: EARTHING & BONDING"
+    FIRE_SAFETY = "SECTION 12: FIRE SAFETY PROVISIONS"
+    TESTING = "SECTION 13: TESTING, COMMISSIONING & DOCUMENTATION"
+    PRELIMS = "SECTION 14: PRELIMINARY & GENERAL"
+
+    @property
+    def section_number(self) -> int:
+        """Get the section number (1-14)."""
+        mapping = {
+            BQSection.INCOMING: 1,
+            BQSection.DISTRIBUTION: 2,
+            BQSection.SUBMAIN_CABLES: 3,
+            BQSection.FINAL_CABLES: 4,
+            BQSection.LIGHTING: 5,
+            BQSection.POWER_OUTLETS: 6,
+            BQSection.DATA_COMMS: 7,
+            BQSection.CONTAINMENT: 8,
+            BQSection.UNDERGROUND: 9,
+            BQSection.SOLAR_PV: 10,
+            BQSection.EARTHING: 11,
+            BQSection.FIRE_SAFETY: 12,
+            BQSection.TESTING: 13,
+            BQSection.PRELIMS: 14,
+        }
+        return mapping.get(self, 0)
 
 
 class BQLineItem(BaseModel):
-    """A single BQ line. unit_price and total may be 0.0 in quantity-only mode."""
+    """
+    A single BQ line. unit_price and total may be 0.0 in quantity-only mode.
+
+    v4.6: Added professional BOQ fields for industry-standard output.
+    """
     item_no: int = 0
-    section: BQSection = BQSection.CABLES
+    section: BQSection = BQSection.FINAL_CABLES
     category: str = ""
     description: str = ""
     unit: str = "each"
@@ -1108,6 +1155,20 @@ class BQLineItem(BaseModel):
     building_block: str = ""
     notes: str = ""
     is_rate_only: bool = False            # True = contractor must supply rate
+
+    # v4.6 - Professional BOQ fields
+    drawing_ref: str = ""                 # e.g., "TJM-SLD-001, TJM-GF-01-PLUGS"
+    subsection: str = ""                  # e.g., "2A - Main Distribution Board (DB-GF)"
+    locations: List[str] = Field(default_factory=list)  # For aggregated items
+    circuit_details: str = ""             # e.g., "(3 points, 3660W)"
+    is_discrepancy: bool = False          # Flag if from discrepancy resolution
+    discrepancy_note: str = ""            # e.g., "Floor plan shows P3 circuit (SLD shows SPARE)"
+
+    @property
+    def item_number_str(self) -> str:
+        """Get hierarchical item number like 1.1, 2.3, 4.15."""
+        section_num = self.section.section_number
+        return f"{section_num}.{self.item_no}"
 
 
 class BlockPricingSummary(BaseModel):

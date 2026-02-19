@@ -22,6 +22,12 @@ v4.5 additions (Universal Electrical Project Schema):
 - Expanded equipment types (generator, UPS, solar, EV charger, etc.)
 - Supply point with rating_kva, voltage specs
 
+v4.6 additions (Professional Excel BOQ):
+- Discrepancy tracking between SLD schedules and floor plan layouts
+- Detects circuit point count vs fixture count mismatches
+- Identifies SPARE circuits that may need allocation
+- Populates ExtractionResult.discrepancies for Discrepancy Register sheet
+
 Supports multiple LLM providers:
 - Groq (Llama 4 Scout/Maverick) - 100% FREE with vision!
 - xAI Grok (grok-2-vision) - $25 free credits/month
@@ -38,7 +44,8 @@ from agent.models import (
     StageResult, PipelineStage, PageType, ItemConfidence,
     BuildingBlock, DistributionBoard, Circuit, Room, FixtureCounts,
     HeavyEquipment, SiteCableRun, ProjectMetadata, SupplyPoint,
-    SystemParameters  # v4.5
+    SystemParameters,  # v4.5
+    Discrepancy,  # v4.6 - SLD vs floor plan conflict tracking
 )
 from agent.utils import parse_json_safely, Timer, estimate_cost_zar
 from agent.prompts.schemas import (
@@ -333,6 +340,12 @@ def discover(
         # Calculate overall confidence
         confidence = _calculate_confidence(extraction)
 
+        # v4.6 - Detect discrepancies between SLD and layout data
+        discrepancies = _detect_discrepancies(extraction)
+        extraction.discrepancies = discrepancies
+        if discrepancies:
+            warnings.append(f"Found {len(discrepancies)} SLD vs floor plan discrepancies")
+
         # Escalate to Opus if confidence is low
         if confidence < CONFIDENCE_THRESHOLD and client:
             warnings.append(f"Low confidence ({confidence:.2f}), escalating to Opus")
@@ -357,6 +370,7 @@ def discover(
                 "distribution_boards": len(extraction.all_distribution_boards),
                 "rooms": len(extraction.all_rooms),
                 "site_cable_runs": len(extraction.site_cable_runs),
+                "discrepancies": len(extraction.discrepancies),  # v4.6
             },
             model_used=model_used,
             tokens_used=total_tokens,
@@ -1083,6 +1097,173 @@ def _validate_against_legend(extraction_data: Dict[str, Any]) -> List[str]:
             )
 
     return warnings
+
+
+def _detect_discrepancies(extraction: ExtractionResult) -> List[Discrepancy]:
+    """
+    v4.6 - Detect discrepancies between SLD schedules and floor plan layouts.
+
+    Compares:
+    1. Circuit point counts vs actual fixture counts from layouts
+    2. Circuits marked SPARE in SLD but fixtures present in layouts
+    3. Fixtures in layouts but no corresponding circuit in SLD
+    4. Power vs lighting circuit/fixture mismatches
+
+    Args:
+        extraction: ExtractionResult with both SLD and layout data merged
+
+    Returns:
+        List of Discrepancy objects describing each conflict
+    """
+    discrepancies = []
+
+    for block in extraction.building_blocks:
+        # Build lookup of circuits by type and DB
+        circuit_lookup = {}  # {db_name: {circuit_id: Circuit}}
+        for db in block.distribution_boards:
+            circuit_lookup[db.name] = {}
+            for circuit in db.circuits:
+                circuit_lookup[db.name][circuit.id] = circuit
+
+        # Build lookup of room fixture counts
+        room_fixtures = {}  # {room_name: FixtureCounts}
+        for room in block.rooms:
+            room_fixtures[room.name] = room.fixtures
+
+        # Check each DB for discrepancies
+        for db in block.distribution_boards:
+            # Track circuits for this DB
+            lighting_circuits = []
+            power_circuits = []
+            spare_circuits = []
+
+            for circuit in db.circuits:
+                if circuit.is_spare:
+                    spare_circuits.append(circuit)
+                elif circuit.type in ("lighting", "light", "L"):
+                    lighting_circuits.append(circuit)
+                elif circuit.type in ("power", "plug", "socket", "P"):
+                    power_circuits.append(circuit)
+
+            # Calculate total fixtures from rooms in this building block
+            total_light_fixtures = 0
+            total_socket_fixtures = 0
+            total_switch_fixtures = 0
+
+            for room in block.rooms:
+                f = room.fixtures
+                # Count lighting fixtures
+                total_light_fixtures += (
+                    f.recessed_led_600x1200 + f.surface_mount_led_18w +
+                    f.downlight_led_6w + f.vapor_proof_2x24w + f.vapor_proof_2x18w +
+                    f.bulkhead_26w + f.bulkhead_24w + f.prismatic_2x18w +
+                    f.flood_light_30w + f.flood_light_200w + f.fluorescent_50w_5ft +
+                    f.pole_light_60w + f.pool_flood_light + f.pool_underwater_light
+                )
+                # Count socket fixtures
+                total_socket_fixtures += (
+                    f.double_socket_300 + f.single_socket_300 +
+                    f.double_socket_1100 + f.single_socket_1100 +
+                    f.double_socket_waterproof + f.double_socket_ceiling +
+                    f.floor_box
+                )
+                # Count switch fixtures
+                total_switch_fixtures += (
+                    f.switch_1lever_1way + f.switch_2lever_1way +
+                    f.switch_1lever_2way + f.day_night_switch +
+                    f.isolator_30a + f.isolator_20a + f.master_switch
+                )
+
+            # Calculate total points from SLD circuits
+            sld_lighting_points = sum(c.num_points for c in lighting_circuits)
+            sld_power_points = sum(c.num_points for c in power_circuits)
+
+            # Check for significant discrepancies
+
+            # 1. Lighting points mismatch
+            if total_light_fixtures > 0 and sld_lighting_points > 0:
+                diff = abs(total_light_fixtures - sld_lighting_points)
+                if diff > 3:  # Allow small variance
+                    discrepancies.append(Discrepancy(
+                        distribution_board=db.name,
+                        sld_shows=f"{sld_lighting_points} lighting points across {len(lighting_circuits)} circuits",
+                        floor_plan_shows=f"{total_light_fixtures} light fixtures counted",
+                        discrepancy=f"Light fixture count differs from SLD points by {diff}",
+                        impact_on_boq=f"BOQ uses floor plan count ({total_light_fixtures} fixtures)",
+                        action_required="Designer to verify lighting circuit allocation",
+                        drawing_refs=[],
+                    ))
+
+            # 2. Power points mismatch
+            if total_socket_fixtures > 0 and sld_power_points > 0:
+                diff = abs(total_socket_fixtures - sld_power_points)
+                if diff > 5:  # Allow more variance for sockets
+                    discrepancies.append(Discrepancy(
+                        distribution_board=db.name,
+                        sld_shows=f"{sld_power_points} power points across {len(power_circuits)} circuits",
+                        floor_plan_shows=f"{total_socket_fixtures} socket outlets counted",
+                        discrepancy=f"Socket count differs from SLD points by {diff}",
+                        impact_on_boq=f"BOQ uses floor plan count ({total_socket_fixtures} sockets)",
+                        action_required="Designer to verify power circuit allocation",
+                        drawing_refs=[],
+                    ))
+
+            # 3. Spare circuits in SLD but fixtures present
+            if spare_circuits and (total_light_fixtures > 0 or total_socket_fixtures > 0):
+                spare_ids = [c.id for c in spare_circuits]
+
+                # Check if we have more fixtures than non-spare circuits can handle
+                max_lighting_points = len(lighting_circuits) * 10  # SANS max 10 per circuit
+                max_power_points = len(power_circuits) * 10
+
+                if total_light_fixtures > max_lighting_points:
+                    excess = total_light_fixtures - max_lighting_points
+                    discrepancies.append(Discrepancy(
+                        distribution_board=db.name,
+                        sld_shows=f"{len(spare_circuits)} SPARE circuits ({', '.join(spare_ids)})",
+                        floor_plan_shows=f"{total_light_fixtures} light fixtures ({excess} exceed circuit capacity)",
+                        discrepancy=f"Floor plan shows fixtures that may need SPARE circuits",
+                        impact_on_boq=f"Added {(excess // 10) + 1} additional lighting circuits",
+                        action_required="Designer to allocate spare circuits or confirm new circuits needed",
+                        drawing_refs=[],
+                    ))
+
+                if total_socket_fixtures > max_power_points:
+                    excess = total_socket_fixtures - max_power_points
+                    discrepancies.append(Discrepancy(
+                        distribution_board=db.name,
+                        sld_shows=f"{len(spare_circuits)} SPARE circuits ({', '.join(spare_ids)})",
+                        floor_plan_shows=f"{total_socket_fixtures} socket outlets ({excess} exceed circuit capacity)",
+                        discrepancy=f"Floor plan shows sockets that may need SPARE circuits",
+                        impact_on_boq=f"Added {(excess // 10) + 1} additional power circuits",
+                        action_required="Designer to allocate spare circuits or confirm new circuits needed",
+                        drawing_refs=[],
+                    ))
+
+            # 4. Fixtures present but no corresponding circuits
+            if total_light_fixtures > 0 and len(lighting_circuits) == 0:
+                discrepancies.append(Discrepancy(
+                    distribution_board=db.name,
+                    sld_shows="No lighting circuits defined",
+                    floor_plan_shows=f"{total_light_fixtures} light fixtures counted",
+                    discrepancy="Light fixtures on floor plan but no lighting circuits in SLD",
+                    impact_on_boq="Added estimated lighting circuits based on fixture count",
+                    action_required="Designer to add lighting circuits to SLD",
+                    drawing_refs=[],
+                ))
+
+            if total_socket_fixtures > 0 and len(power_circuits) == 0:
+                discrepancies.append(Discrepancy(
+                    distribution_board=db.name,
+                    sld_shows="No power circuits defined",
+                    floor_plan_shows=f"{total_socket_fixtures} socket outlets counted",
+                    discrepancy="Socket outlets on floor plan but no power circuits in SLD",
+                    impact_on_boq="Added estimated power circuits based on socket count",
+                    action_required="Designer to add power circuits to SLD",
+                    drawing_refs=[],
+                ))
+
+    return discrepancies
 
 
 def _calculate_confidence(extraction: ExtractionResult) -> float:
