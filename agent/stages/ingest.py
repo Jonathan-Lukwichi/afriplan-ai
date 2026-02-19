@@ -3,11 +3,16 @@ INGEST Stage: Document preprocessing - PDF/images to base64.
 
 Converts uploaded files into a standardized DocumentSet structure.
 Uses PyMuPDF (fitz) for PDF rendering and Pillow for image processing.
+
+v4.7: Enhanced page classification with:
+- Drawing register parsing (maps TJM-SLD-001 -> SLD type)
+- Cable specification keywords (mm², 4c, swa) for graphics-heavy SLDs
 """
 
 import io
+import re
 import base64
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 from pathlib import Path
 
 try:
@@ -199,6 +204,159 @@ def _process_image(
     return doc_info
 
 
+def _parse_drawing_register(doc_set: DocumentSet) -> Dict[int, str]:
+    """
+    Parse drawing register (typically page 1) to extract drawing number -> page type mappings.
+
+    v4.7: Looks for patterns like:
+    - "TJM-SLD-001" -> SLD
+    - "TJM-GF-01-PLUGS" -> PLUGS
+    - "TJM-GF-01-LIGHTS" -> LIGHTING
+    - "WD-PB-01-SLD" -> SLD
+
+    Returns:
+        Dict mapping page_number -> predicted page_type string
+    """
+    page_type_map: Dict[int, str] = {}
+
+    # Drawing number patterns and their types
+    sld_patterns = [
+        r"sld[-_\s]?\d*",           # SLD-001, SLD_001, SLD 001
+        r"\w+-sld[-_]?\d*",         # TJM-SLD-001, WD-SLD-01
+        r"single\s*line",           # Single Line Diagram
+        r"schematic",               # Schematic
+    ]
+
+    lighting_patterns = [
+        r"light(s|ing)?[-_\s]?\d*", # LIGHTS, LIGHTING, LIGHT-01
+        r"\w+-\w+-light(s|ing)?",   # TJM-GF-01-LIGHTS
+        r"lux\s*layout",            # Lux Layout
+    ]
+
+    plugs_patterns = [
+        r"plug(s)?[-_\s]?\d*",      # PLUGS, PLUG-01
+        r"power[-_\s]?\d*",         # POWER, POWER-01
+        r"socket(s)?[-_\s]?\d*",    # SOCKETS
+        r"\w+-\w+-plug(s)?",        # TJM-GF-01-PLUGS
+    ]
+
+    register_patterns = [
+        r"register",
+        r"transmittal",
+        r"index",
+        r"drawing\s*list",
+    ]
+
+    # Look at first 2 pages for drawing register
+    for doc in doc_set.documents:
+        for page in doc.pages[:2]:  # Only check first 2 pages
+            text_lower = page.text_content.lower()
+
+            # Check if this looks like a drawing register
+            is_register = any(
+                re.search(pat, text_lower) for pat in register_patterns
+            ) or "drawing no" in text_lower or "dwg no" in text_lower
+
+            if not is_register:
+                continue
+
+            # Parse drawing numbers from register
+            # Look for patterns like "TJM-SLD-001" followed by page info
+            lines = text_lower.split('\n')
+
+            for i, line in enumerate(lines):
+                # Try to extract drawing number and associate with type
+                for sld_pat in sld_patterns:
+                    if re.search(sld_pat, line):
+                        # Try to find associated page number
+                        page_match = re.search(r'(?:page|pg|p)?\s*(\d+)', line)
+                        if page_match:
+                            pg_num = int(page_match.group(1))
+                            page_type_map[pg_num] = "sld"
+                        else:
+                            # Assume sequential: drawing on line i maps to page i+1
+                            estimated_page = i + 2  # +2 because register is page 1
+                            if estimated_page <= doc_set.total_pages:
+                                page_type_map[estimated_page] = "sld"
+                        break
+
+                for light_pat in lighting_patterns:
+                    if re.search(light_pat, line) and not re.search(r'sld', line):
+                        page_match = re.search(r'(?:page|pg|p)?\s*(\d+)', line)
+                        if page_match:
+                            pg_num = int(page_match.group(1))
+                            page_type_map[pg_num] = "lighting"
+                        break
+
+                for plugs_pat in plugs_patterns:
+                    if re.search(plugs_pat, line) and not re.search(r'sld', line):
+                        page_match = re.search(r'(?:page|pg|p)?\s*(\d+)', line)
+                        if page_match:
+                            pg_num = int(page_match.group(1))
+                            page_type_map[pg_num] = "plugs"
+                        break
+
+    return page_type_map
+
+
+def _detect_sld_from_cable_specs(text_lower: str) -> int:
+    """
+    Detect SLD pages from cable specification patterns that survive graphics text extraction.
+
+    v4.7: When PyMuPDF extracts text from graphics-heavy SLD drawings, it often
+    captures cable specs like "4c 16mm² pvc swa" even when circuit schedules are
+    vector graphics. This function scores these patterns.
+
+    Returns:
+        Score indicating likelihood this is an SLD page (0-10)
+    """
+    score = 0
+
+    # Cable size patterns (very strong SLD indicator)
+    # Matches: 16mm², 16mm2, 16 mm², 2.5mm, etc.
+    cable_size_pattern = r'\d+(?:\.\d+)?\s*mm[²2]?'
+    cable_matches = re.findall(cable_size_pattern, text_lower)
+    if len(cable_matches) >= 2:
+        score += 4
+    elif len(cable_matches) >= 1:
+        score += 2
+
+    # Multi-core cable patterns (4c, 3c, 2c = 4-core, 3-core, 2-core)
+    core_pattern = r'\b[234]\s*c\b'
+    if re.search(core_pattern, text_lower):
+        score += 3
+
+    # Cable type indicators
+    cable_types = ["pvc swa", "swa pvc", "xlpe", "pilc", "surfix", "cabtyre"]
+    for cable_type in cable_types:
+        if cable_type in text_lower:
+            score += 2
+            break
+
+    # Breaker/protection patterns that survive as text
+    breaker_patterns = [
+        r'\d+\s*a\b',              # 32a, 20 a
+        r'\b\d+\s*amp',            # 32amp, 20 amp
+        r'earth\s*leakage',
+        r'surge\s*protect',
+    ]
+    for bp in breaker_patterns:
+        if re.search(bp, text_lower):
+            score += 1
+            break
+
+    # Engineering company names (often appear on SLDs)
+    if "engineering" in text_lower or "electrical" in text_lower:
+        score += 1
+
+    # Multiple "x" patterns suggesting wattage formulas (5x48W, 3x1200W)
+    wattage_pattern = r'\d+\s*x\s*\d+\s*w'
+    if re.search(wattage_pattern, text_lower):
+        score += 2
+
+    return score
+
+
 def _categorize_pages(doc_set: DocumentSet) -> None:
     """
     Categorize pages based on filename patterns and text content.
@@ -206,7 +364,14 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
 
     v4.1.2: Improved detection for combined layout drawings that contain
     both lighting and socket/switch symbols on the same page.
+
+    v4.7: Enhanced SLD detection with:
+    - Drawing register parsing (FIX 1)
+    - Cable specification keywords (FIX 2)
     """
+    # FIX 1: Parse drawing register to get page type hints
+    register_hints = _parse_drawing_register(doc_set)
+
     for doc in doc_set.documents:
         filename_lower = doc.filename.lower()
 
@@ -223,6 +388,16 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
                 "outside": 0,
             }
 
+            # FIX 1: Apply drawing register hints (very high weight)
+            if page.page_number in register_hints:
+                hint_type = register_hints[page.page_number]
+                if hint_type == "sld":
+                    scores["sld"] += 15  # Strong boost from register
+                elif hint_type == "lighting":
+                    scores["lighting"] += 15
+                elif hint_type == "plugs":
+                    scores["plugs"] += 15
+
             # Filename-based scoring (high weight)
             if any(k in filename_lower for k in ["register", "transmittal", "index"]):
                 scores["register"] += 10
@@ -234,6 +409,10 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
                 scores["plugs"] += 10
             if any(k in filename_lower for k in ["outside", "external", "site", "perimeter"]):
                 scores["outside"] += 10
+
+            # FIX 2: Cable specification detection (graphics-heavy SLDs)
+            cable_spec_score = _detect_sld_from_cable_specs(text_lower)
+            scores["sld"] += cable_spec_score
 
             # Text content-based scoring
             # SLD indicators (enhanced v4.2)
