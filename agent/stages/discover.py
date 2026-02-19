@@ -34,11 +34,11 @@ from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prom
 # Extraction models by provider
 DISCOVER_MODELS = {
     "claude": "claude-sonnet-4-20250514",
-    "gemini": "gemini-1.5-flash",
+    "gemini": "gemini-2.0-flash",  # Current recommended fast model
 }
 ESCALATION_MODELS = {
     "claude": "claude-opus-4-20250514",
-    "gemini": "gemini-1.5-pro",  # Pro for higher accuracy
+    "gemini": "gemini-1.5-pro-latest",  # Pro for higher accuracy
 }
 DISCOVER_MODEL = DISCOVER_MODELS["claude"]  # Default for backwards compatibility
 ESCALATION_MODEL = ESCALATION_MODELS["claude"]

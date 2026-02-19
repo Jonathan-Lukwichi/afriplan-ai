@@ -189,8 +189,8 @@ def render_model_indicator(model_used: str) -> str:
         "claude-sonnet-4-20250514": ("Sonnet", "#8B5CF6", "Standard"),
         "claude-opus-4-20250514": ("Opus", "#F59E0B", "Premium"),
         # Gemini models
-        "gemini-1.5-flash": ("Gemini Flash", "#4285F4", "FREE"),
-        "gemini-1.5-pro": ("Gemini Pro", "#34A853", "FREE"),
+        "gemini-2.0-flash": ("Gemini 2.0", "#4285F4", "FREE"),
+        "gemini-1.5-pro-latest": ("Gemini Pro", "#34A853", "FREE"),
     }
 
     name, color, tier = model_map.get(model_used, ("Unknown", "#64748b", "N/A"))
@@ -304,7 +304,7 @@ with st.sidebar:
                 try:
                     if LLM_PROVIDER == "gemini":
                         # Gemini API test
-                        gemini_model = pipeline.client.GenerativeModel("gemini-1.5-flash")
+                        gemini_model = pipeline.client.GenerativeModel("gemini-2.0-flash")
                         test_response = gemini_model.generate_content("Reply with just 'OK'")
                         st.success(f"Gemini API working! Response: {test_response.text}")
                     else:

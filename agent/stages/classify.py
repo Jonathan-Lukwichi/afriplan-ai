@@ -22,7 +22,7 @@ from agent.prompts.schemas import CLASSIFY_SCHEMA, CONFIDENCE_INSTRUCTION
 # Classification models by provider
 CLASSIFY_MODELS = {
     "claude": "claude-haiku-4-5-20251001",
-    "gemini": "gemini-1.5-flash",
+    "gemini": "gemini-2.0-flash",  # Current recommended model
 }
 CLASSIFY_MODEL = CLASSIFY_MODELS["claude"]  # Default for backwards compatibility
 
