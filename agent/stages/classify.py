@@ -5,6 +5,7 @@ Determines the service tier (Residential/Commercial/Industrial/Maintenance/Mixed
 and identifies building blocks present in the documents.
 
 Supports multiple LLM providers:
+- Groq (llama-3.3-70b-versatile) - 100% FREE!
 - xAI Grok (grok-2-vision) - $25 free credits/month
 - Google Gemini (gemini-2.0-flash) - FREE
 - Anthropic Claude (claude-haiku-4-5) - paid
@@ -25,6 +26,7 @@ CLASSIFY_MODELS = {
     "claude": "claude-haiku-4-5-20251001",
     "gemini": "gemini-2.0-flash",  # Current recommended model
     "grok": "grok-2-vision-1212",  # Grok with vision support
+    "groq": "llama-3.3-70b-versatile",  # Groq with Llama - 100% FREE!
 }
 CLASSIFY_MODEL = CLASSIFY_MODELS["claude"]  # Default for backwards compatibility
 
@@ -53,16 +55,16 @@ Example response:
 
 def classify(
     doc_set: DocumentSet,
-    client: Optional[object] = None,  # Anthropic, Gemini, or Grok client
-    provider: str = "claude",  # "claude", "gemini", or "grok"
+    client: Optional[object] = None,  # Anthropic, Gemini, Grok, or Groq client
+    provider: str = "claude",  # "claude", "gemini", "grok", or "groq"
 ) -> Tuple[ServiceTier, ExtractionMode, List[str], float, StageResult]:
     """
     CLASSIFY stage: Determine project tier and extraction mode.
 
     Args:
         doc_set: Processed documents from INGEST stage
-        client: API client (Anthropic, Gemini, or Grok)
-        provider: LLM provider name ("claude", "gemini", or "grok")
+        client: API client (Anthropic, Gemini, Grok, or Groq)
+        provider: LLM provider name ("claude", "gemini", "grok", or "groq")
 
     Returns:
         Tuple of (tier, mode, building_blocks, confidence, StageResult)
@@ -94,7 +96,18 @@ def classify(
             try:
                 prompt_text = f"{CLASSIFY_PROMPT}\n\nDocument content:\n{combined_text}"
 
-                if provider == "grok":
+                if provider == "groq":
+                    # Groq API call (OpenAI-compatible with Llama)
+                    response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        max_tokens=1024,
+                        temperature=0.1,
+                        messages=[{"role": "user", "content": prompt_text}]
+                    )
+                    response_text = response.choices[0].message.content
+                    tokens_used = response.usage.total_tokens if response.usage else 0
+                    cost_zar = 0.0  # Groq is 100% FREE!
+                elif provider == "grok":
                     # Grok API call (OpenAI-compatible)
                     response = client.chat.completions.create(
                         model="grok-2-vision-1212",

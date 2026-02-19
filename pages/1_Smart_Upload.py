@@ -2,7 +2,11 @@
 AfriPlan Electrical v4.1 - Smart Document Upload
 7-stage AI pipeline with confidence visualization and contractor review
 
-Supports both Google Gemini (FREE) and Claude (paid) as LLM providers.
+Supports multiple LLM providers:
+- Groq (100% FREE with Llama Vision!)
+- Google Gemini (FREE tier)
+- xAI Grok ($25 free credits)
+- Claude (paid)
 """
 
 import streamlit as st
@@ -40,30 +44,39 @@ def load_api_keys():
     provider = None
     api_key = None
 
-    # Try Grok first ($25 free credits/month!)
+    # Try Groq first (100% FREE!)
+    if "GROQ_API_KEY" in st.secrets:
+        os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+        provider = "groq"
+        api_key = st.secrets["GROQ_API_KEY"]
+
+    # Try xAI Grok ($25 free credits/month)
     if "XAI_API_KEY" in st.secrets:
         os.environ["XAI_API_KEY"] = st.secrets["XAI_API_KEY"]
-        provider = "grok"
-        api_key = st.secrets["XAI_API_KEY"]
+        if provider is None:
+            provider = "grok"
+            api_key = st.secrets["XAI_API_KEY"]
 
     # Try Gemini (FREE tier)
     if "GEMINI_API_KEY" in st.secrets:
         os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
-        if provider is None:  # Only use Gemini if Grok not available
+        if provider is None:
             provider = "gemini"
             api_key = st.secrets["GEMINI_API_KEY"]
 
     # Fall back to Claude (paid)
     if "ANTHROPIC_API_KEY" in st.secrets:
         os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
-        if provider is None:  # Only use Claude if others not available
+        if provider is None:
             provider = "claude"
             api_key = st.secrets["ANTHROPIC_API_KEY"]
 
     # Check for provider override
     if "LLM_PROVIDER" in st.secrets:
         provider = st.secrets["LLM_PROVIDER"]
-        if provider == "grok" and "XAI_API_KEY" in st.secrets:
+        if provider == "groq" and "GROQ_API_KEY" in st.secrets:
+            api_key = st.secrets["GROQ_API_KEY"]
+        elif provider == "grok" and "XAI_API_KEY" in st.secrets:
             api_key = st.secrets["XAI_API_KEY"]
         elif provider == "gemini" and "GEMINI_API_KEY" in st.secrets:
             api_key = st.secrets["GEMINI_API_KEY"]
@@ -202,6 +215,9 @@ def render_model_indicator(model_used: str) -> str:
         "gemini-1.5-pro-latest": ("Gemini Pro", "#34A853", "FREE"),
         # Grok models
         "grok-2-vision-1212": ("Grok Vision", "#1DA1F2", "$25 FREE"),
+        # Groq models (Llama)
+        "llama-3.3-70b-versatile": ("Llama 3.3 70B", "#FF6B35", "100% FREE"),
+        "llama-3.2-90b-vision-preview": ("Llama Vision 90B", "#FF6B35", "100% FREE"),
     }
 
     name, color, tier = model_map.get(model_used, ("Unknown", "#64748b", "N/A"))
@@ -310,6 +326,7 @@ with st.sidebar:
 
     if pipeline and pipeline_available:
         provider_labels = {
+            "groq": "Groq (100% FREE)",
             "grok": "Grok ($25 FREE)",
             "gemini": "Gemini (FREE)",
             "claude": "Claude"
@@ -327,7 +344,15 @@ with st.sidebar:
         if st.button("🧪 Test API", key="test_api"):
             with st.spinner("Testing API connection..."):
                 try:
-                    if LLM_PROVIDER == "grok":
+                    if LLM_PROVIDER == "groq":
+                        # Groq API test (OpenAI-compatible with Llama)
+                        test_response = pipeline.client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            max_tokens=50,
+                            messages=[{"role": "user", "content": "Reply with just 'OK'"}]
+                        )
+                        st.success(f"Groq API working! Response: {test_response.choices[0].message.content}")
+                    elif LLM_PROVIDER == "grok":
                         # Grok API test (OpenAI-compatible)
                         test_response = pipeline.client.chat.completions.create(
                             model="grok-2-vision-1212",
@@ -357,7 +382,7 @@ with st.sidebar:
             st.rerun()
     else:
         st.error("API Not Configured")
-        st.caption("Add XAI_API_KEY (Grok), GEMINI_API_KEY (free), or ANTHROPIC_API_KEY")
+        st.caption("Add GROQ_API_KEY (FREE!), GEMINI_API_KEY, or ANTHROPIC_API_KEY")
 
     st.markdown("---")
     st.markdown("### Supported Formats")
@@ -382,6 +407,7 @@ with tab1:
     # API status banner
     if pipeline_available:
         provider_badges = {
+            "groq": "🆓 Groq 100% FREE",
             "grok": "🆓 Grok $25 FREE",
             "gemini": "🆓 Gemini FREE",
             "claude": "Claude"
@@ -416,7 +442,7 @@ with tab1:
                         API Not Configured
                     </div>
                     <div style="font-size: 12px; color: #94a3b8;">
-                        Add XAI_API_KEY (Grok), GEMINI_API_KEY (FREE), or ANTHROPIC_API_KEY
+                        Add GROQ_API_KEY (100% FREE!), GEMINI_API_KEY, or ANTHROPIC_API_KEY
                     </div>
                 </div>
             </div>
@@ -427,12 +453,12 @@ with tab1:
             st.markdown("""
             Add your API key via Streamlit secrets:
 
-            **Option 1: xAI Grok ($25 free credits/month!)**
-            1. Get key at: https://console.x.ai/
+            **Option 1: Groq (100% FREE - RECOMMENDED!)**
+            1. Get key at: https://console.groq.com/
             2. Add to `.streamlit/secrets.toml`:
             ```toml
-            XAI_API_KEY = "xai-..."
-            LLM_PROVIDER = "grok"
+            GROQ_API_KEY = "gsk_..."
+            LLM_PROVIDER = "groq"
             ```
 
             **Option 2: Google Gemini (FREE tier)**
@@ -451,7 +477,12 @@ with tab1:
             """)
 
     # Accuracy mode selection (provider-aware labels)
-    if LLM_PROVIDER == "grok":
+    if LLM_PROVIDER == "groq":
+        mode_options = ["Standard (Llama Vision)", "Maximum Accuracy (Llama Vision)"]
+        mode_help = "Llama Vision is fast and accurate. 100% FREE with Groq!"
+        high_accuracy_label = "Maximum Accuracy (Llama Vision)"
+        high_accuracy_info = "🎯 **Maximum Accuracy Mode** - Uses Llama 3.2 Vision 90B with extended analysis. 100% FREE!"
+    elif LLM_PROVIDER == "grok":
         mode_options = ["Standard (Grok Vision)", "Maximum Accuracy (Grok Vision)"]
         mode_help = "Grok Vision is fast and accurate. Uses your $25 free monthly credits."
         high_accuracy_label = "Maximum Accuracy (Grok Vision)"
@@ -535,6 +566,7 @@ with tab1:
                 # v4.1 7-stage pipeline (stages 1-3: INGEST, CLASSIFY, DISCOVER)
                 with status_placeholder:
                     provider_names = {
+                        "groq": "Groq Llama (100% FREE)",
                         "grok": "xAI Grok ($25 FREE)",
                         "gemini": "Google Gemini (FREE)",
                         "claude": "Claude"
@@ -590,7 +622,7 @@ with tab1:
                         st.error(f"Pipeline error: {str(e)}")
 
             elif not LLM_API_KEY:
-                st.error("No API key configured. Add XAI_API_KEY (Grok), GEMINI_API_KEY (free), or ANTHROPIC_API_KEY to .streamlit/secrets.toml")
+                st.error("No API key configured. Add GROQ_API_KEY (100% FREE!), XAI_API_KEY (Grok), GEMINI_API_KEY (free), or ANTHROPIC_API_KEY to .streamlit/secrets.toml")
             else:
                 st.error("Pipeline not available. Check the installation.")
     else:

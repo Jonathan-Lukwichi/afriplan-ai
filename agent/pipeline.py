@@ -5,6 +5,7 @@ Orchestrates the 7-stage pipeline:
 INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
 
 Supports multiple LLM providers:
+- Groq (100% FREE with Llama 3.2 Vision!)
 - xAI Grok ($25 free credits/month with vision!)
 - Google Gemini (FREE tier available)
 - Anthropic Claude (paid)
@@ -30,7 +31,12 @@ from agent.utils import Timer
 # Provider detection
 def _get_llm_provider():
     """Detect and return the appropriate LLM provider."""
-    # Check for Grok first ($25 free credits/month!)
+    # Check for Groq first (100% FREE!)
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if groq_key:
+        return "groq", groq_key
+
+    # Check for xAI Grok ($25 free credits/month)
     grok_key = os.environ.get("XAI_API_KEY")
     if grok_key:
         return "grok", grok_key
@@ -62,6 +68,7 @@ class AfriPlanPipeline:
     7. OUTPUT: Assemble final result
 
     Supports multiple LLM providers:
+    - Groq (100% FREE with Llama 3.2 Vision!)
     - xAI Grok ($25 free credits/month with vision!)
     - Google Gemini (free tier)
     - Anthropic Claude (paid)
@@ -71,7 +78,7 @@ class AfriPlanPipeline:
         self,
         api_key: Optional[str] = None,
         contractor_profile: Optional[ContractorProfile] = None,
-        provider: Optional[str] = None,  # "grok", "gemini", or "claude"
+        provider: Optional[str] = None,  # "groq", "grok", "gemini", or "claude"
     ):
         """
         Initialize the pipeline.
@@ -79,7 +86,7 @@ class AfriPlanPipeline:
         Args:
             api_key: API key. If None, uses environment variables.
             contractor_profile: Contractor's saved preferences.
-            provider: LLM provider ("grok", "gemini", or "claude"). Auto-detects if None.
+            provider: LLM provider ("groq", "grok", "gemini", or "claude"). Auto-detects if None.
         """
         self.provider = provider
         self.api_key = api_key
@@ -93,7 +100,9 @@ class AfriPlanPipeline:
                 self.api_key = detected_key
 
         # Initialize the appropriate client
-        if self.provider == "grok":
+        if self.provider == "groq":
+            self._init_groq_client()
+        elif self.provider == "grok":
             self._init_grok_client()
         elif self.provider == "gemini":
             self._init_gemini_client()
@@ -105,6 +114,19 @@ class AfriPlanPipeline:
 
         self.contractor_profile = contractor_profile
         self.stages: List[StageResult] = []
+
+    def _init_groq_client(self):
+        """Initialize Groq client (OpenAI-compatible API with Llama models)."""
+        try:
+            from openai import OpenAI
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url="https://api.groq.com/openai/v1",
+            )
+        except ImportError:
+            raise ImportError(
+                "openai not installed. Run: pip install openai"
+            )
 
     def _init_grok_client(self):
         """Initialize xAI Grok client (OpenAI-compatible API)."""
@@ -328,7 +350,7 @@ class AfriPlanPipeline:
 def create_pipeline(
     api_key: Optional[str] = None,
     contractor_profile: Optional[ContractorProfile] = None,
-    provider: Optional[str] = None,  # "grok", "gemini", or "claude"
+    provider: Optional[str] = None,  # "groq", "grok", "gemini", or "claude"
 ) -> AfriPlanPipeline:
     """
     Factory function to create a pipeline instance.
@@ -336,7 +358,7 @@ def create_pipeline(
     Args:
         api_key: API key (for specified provider)
         contractor_profile: Contractor preferences
-        provider: LLM provider ("grok", "gemini", or "claude"). Auto-detects if None.
+        provider: LLM provider ("groq", "grok", "gemini", or "claude"). Auto-detects if None.
 
     Returns:
         AfriPlanPipeline instance
