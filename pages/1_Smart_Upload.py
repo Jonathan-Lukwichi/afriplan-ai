@@ -184,9 +184,13 @@ def render_pipeline_progress(result: Optional[Any] = None, current_stage: str = 
 def render_model_indicator(model_used: str) -> str:
     """Return indicator showing which model was used."""
     model_map = {
+        # Claude models
         "claude-3-5-haiku-20241022": ("Haiku", "#00D4FF", "Fast"),
         "claude-sonnet-4-20250514": ("Sonnet", "#8B5CF6", "Standard"),
         "claude-opus-4-20250514": ("Opus", "#F59E0B", "Premium"),
+        # Gemini models
+        "gemini-1.5-flash": ("Gemini Flash", "#4285F4", "FREE"),
+        "gemini-1.5-pro": ("Gemini Pro", "#34A853", "FREE"),
     }
 
     name, color, tier = model_map.get(model_used, ("Unknown", "#64748b", "N/A"))
@@ -290,24 +294,32 @@ with st.sidebar:
     st.markdown("### Pipeline Status")
 
     if pipeline and pipeline_available:
-        st.success("v4.1 Pipeline Active")
+        provider_label = "Gemini (FREE)" if LLM_PROVIDER == "gemini" else "Claude"
+        st.success(f"v4.1 Pipeline Active ({provider_label})")
         st.caption("7-stage processing available")
 
         # API test button
         if st.button("🧪 Test API", key="test_api"):
             with st.spinner("Testing API connection..."):
                 try:
-                    test_response = pipeline.client.messages.create(
-                        model="claude-3-5-haiku-20241022",
-                        max_tokens=50,
-                        messages=[{"role": "user", "content": "Reply with just 'OK'"}]
-                    )
-                    st.success(f"API working! Response: {test_response.content[0].text}")
+                    if LLM_PROVIDER == "gemini":
+                        # Gemini API test
+                        gemini_model = pipeline.client.GenerativeModel("gemini-1.5-flash")
+                        test_response = gemini_model.generate_content("Reply with just 'OK'")
+                        st.success(f"Gemini API working! Response: {test_response.text}")
+                    else:
+                        # Claude API test
+                        test_response = pipeline.client.messages.create(
+                            model="claude-3-5-haiku-20241022",
+                            max_tokens=50,
+                            messages=[{"role": "user", "content": "Reply with just 'OK'"}]
+                        )
+                        st.success(f"Claude API working! Response: {test_response.content[0].text}")
                 except Exception as e:
                     st.error(f"API Error: {str(e)}")
     else:
         st.error("API Not Configured")
-        st.caption("Add ANTHROPIC_API_KEY")
+        st.caption("Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY")
 
     st.markdown("---")
     st.markdown("### Supported Formats")
@@ -331,7 +343,8 @@ with tab1:
 
     # API status banner
     if pipeline_available:
-        st.markdown("""
+        provider_badge = "🆓 Gemini FREE" if LLM_PROVIDER == "gemini" else "Claude"
+        st.markdown(f"""
         <div style="background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,197,94,0.05));
                     border: 1px solid rgba(34,197,94,0.3); border-radius: 12px; padding: 1rem;
                     margin-bottom: 1.5rem;">
@@ -339,7 +352,7 @@ with tab1:
                 <span style="font-size: 1.5rem;">🤖</span>
                 <div>
                     <div style="font-family: 'Rajdhani', sans-serif; font-weight: 600; color: #22C55E;">
-                        v4.1 AI Pipeline Ready
+                        v4.1 AI Pipeline Ready — {provider_badge}
                     </div>
                     <div style="font-size: 12px; color: #94a3b8;">
                         7-stage processing with contractor review
@@ -360,7 +373,7 @@ with tab1:
                         API Not Configured
                     </div>
                     <div style="font-size: 12px; color: #94a3b8;">
-                        Add ANTHROPIC_API_KEY for full analysis
+                        Add GEMINI_API_KEY (FREE) or ANTHROPIC_API_KEY
                     </div>
                 </div>
             </div>
@@ -369,32 +382,45 @@ with tab1:
 
         with st.expander("How to enable AI analysis"):
             st.markdown("""
-            Add your API key via environment variable or Streamlit secrets:
+            Add your API key via Streamlit secrets:
 
-            **Option 1: Environment Variable**
-            ```bash
-            export ANTHROPIC_API_KEY="sk-ant-api03-your-key-here"
+            **Option 1: Google Gemini (FREE!)**
+            1. Get key at: https://aistudio.google.com/
+            2. Add to `.streamlit/secrets.toml`:
+            ```toml
+            GEMINI_API_KEY = "AIza..."
+            LLM_PROVIDER = "gemini"
             ```
 
-            **Option 2: Streamlit Secrets**
-            Create `.streamlit/secrets.toml`:
+            **Option 2: Anthropic Claude (paid)**
             ```toml
-            ANTHROPIC_API_KEY = "sk-ant-api03-your-key-here"
+            ANTHROPIC_API_KEY = "sk-ant-api03-..."
             ```
             """)
 
-    # Accuracy mode selection
+    # Accuracy mode selection (provider-aware labels)
+    if LLM_PROVIDER == "gemini":
+        mode_options = ["Standard (Flash)", "Maximum Accuracy (Pro)"]
+        mode_help = "Pro is slower but more accurate. Both are FREE with Gemini."
+        high_accuracy_label = "Maximum Accuracy (Pro)"
+        high_accuracy_info = "🎯 **Maximum Accuracy Mode** - Uses Gemini Pro for initial extraction. Still FREE but slower and more accurate."
+    else:
+        mode_options = ["Standard (Sonnet)", "Maximum Accuracy (Opus)"]
+        mode_help = "Opus is slower but more accurate. Use for critical quotations."
+        high_accuracy_label = "Maximum Accuracy (Opus)"
+        high_accuracy_info = "🎯 **Maximum Accuracy Mode** - Uses Opus for initial extraction. Higher cost (~R8/doc) but significantly more accurate."
+
     accuracy_mode = st.radio(
         "Extraction Mode",
-        options=["Standard (Sonnet)", "Maximum Accuracy (Opus)"],
+        options=mode_options,
         horizontal=True,
         index=0,
-        help="Opus is slower but more accurate. Use for critical quotations."
+        help=mode_help
     )
-    use_opus = accuracy_mode == "Maximum Accuracy (Opus)"
+    use_opus = accuracy_mode == high_accuracy_label
 
     if use_opus:
-        st.info("🎯 **Maximum Accuracy Mode** - Uses Opus for initial extraction. Higher cost (~R8/doc) but significantly more accurate.")
+        st.info(high_accuracy_info)
 
     # File uploader
     uploaded_file = st.file_uploader(
