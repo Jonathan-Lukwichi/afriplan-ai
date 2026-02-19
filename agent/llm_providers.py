@@ -53,8 +53,8 @@ class GeminiProvider(LLMProvider):
     """Google Gemini provider - FREE tier available!"""
 
     # Gemini models
-    FLASH_MODEL = "gemini-1.5-flash"  # Fast, free tier
-    PRO_MODEL = "gemini-1.5-pro"      # More capable, limited free
+    FLASH_MODEL = "gemini-2.0-flash"  # Fast, free tier
+    PRO_MODEL = "gemini-1.5-pro-latest"  # More capable, limited free
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")

@@ -94,7 +94,7 @@ def classify(
 
                 if provider == "gemini":
                     # Gemini API call
-                    model = client.GenerativeModel("gemini-1.5-flash")
+                    model = client.GenerativeModel("gemini-2.0-flash")
                     response = model.generate_content(
                         prompt_text,
                         generation_config={"max_output_tokens": 1024, "temperature": 0.1}

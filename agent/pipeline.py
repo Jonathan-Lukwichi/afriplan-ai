@@ -101,7 +101,7 @@ class AfriPlanPipeline:
             import google.generativeai as genai
             genai.configure(api_key=self.api_key)
             self.client = genai
-            self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+            self.gemini_model = genai.GenerativeModel("gemini-2.0-flash")
         except ImportError:
             raise ImportError(
                 "google-generativeai not installed. Run: pip install google-generativeai"
