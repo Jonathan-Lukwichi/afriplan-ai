@@ -7,6 +7,11 @@ Extracts structured electrical data from drawings including:
 - Socket/switch counts from plug layouts
 - Site cable runs from outside lights drawings
 
+v4.4 additions (Wedela Lighting & Plugs PDF):
+- Pool lighting: pool_flood_light, pool_underwater_light
+- Legend totals validation (_validate_against_legend)
+- Enhanced fixture type support
+
 Supports multiple LLM providers:
 - Groq (Llama 4 Scout/Maverick) - 100% FREE with vision!
 - xAI Grok (grok-2-vision) - $25 free credits/month
@@ -572,6 +577,11 @@ def _merge_combined_data(extraction: ExtractionResult, data: Dict[str, Any]) -> 
                 existing_room.fixtures.flood_light_30w = int(fixtures_data.get("flood_light_30w") or 0)
             if fixtures_data.get("flood_light_200w"):
                 existing_room.fixtures.flood_light_200w = int(fixtures_data.get("flood_light_200w") or 0)
+            # v4.4 - Pool lighting
+            if fixtures_data.get("pool_flood_light"):
+                existing_room.fixtures.pool_flood_light = int(fixtures_data.get("pool_flood_light") or 0)
+            if fixtures_data.get("pool_underwater_light"):
+                existing_room.fixtures.pool_underwater_light = int(fixtures_data.get("pool_underwater_light") or 0)
 
             # Sockets
             if fixtures_data.get("double_socket_300"):
@@ -630,7 +640,7 @@ def _merge_combined_data(extraction: ExtractionResult, data: Dict[str, Any]) -> 
                 notes=room_data.get("notes") or [],
             )
 
-            # Set ALL fixture counts from combined extraction
+            # Set ALL fixture counts from combined extraction (v4.4 - includes pool lighting)
             room.fixtures = FixtureCounts(
                 # Lighting
                 recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200") or 0),
@@ -645,6 +655,9 @@ def _merge_combined_data(extraction: ExtractionResult, data: Dict[str, Any]) -> 
                 flood_light_200w=int(fixtures_data.get("flood_light_200w") or 0),
                 fluorescent_50w_5ft=int(fixtures_data.get("fluorescent_50w_5ft") or 0),
                 pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
+                # v4.4 - Pool lighting
+                pool_flood_light=int(fixtures_data.get("pool_flood_light") or 0),
+                pool_underwater_light=int(fixtures_data.get("pool_underwater_light") or 0),
                 # Sockets
                 double_socket_300=int(fixtures_data.get("double_socket_300") or 0),
                 single_socket_300=int(fixtures_data.get("single_socket_300") or 0),
@@ -793,7 +806,7 @@ def _merge_lighting_data(extraction: ExtractionResult, data: Dict[str, Any]) -> 
             notes=room_data.get("notes") or [],
         )
 
-        # Set fixture counts
+        # Set fixture counts (v4.4 - includes pool lighting)
         room.fixtures = FixtureCounts(
             recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200") or 0),
             surface_mount_led_18w=int(fixtures_data.get("surface_mount_led_18w") or 0),
@@ -807,6 +820,9 @@ def _merge_lighting_data(extraction: ExtractionResult, data: Dict[str, Any]) -> 
             bulkhead_24w=int(fixtures_data.get("bulkhead_24w") or 0),
             fluorescent_50w_5ft=int(fixtures_data.get("fluorescent_50w_5ft") or 0),
             pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
+            # v4.4 - Pool lighting
+            pool_flood_light=int(fixtures_data.get("pool_flood_light") or 0),
+            pool_underwater_light=int(fixtures_data.get("pool_underwater_light") or 0),
         )
 
         block.rooms.append(room)
@@ -906,7 +922,7 @@ def _merge_outside_data(extraction: ExtractionResult, data: Dict[str, Any]) -> N
         )
         extraction.site_cable_runs.append(run)
 
-    # Add outside lights
+    # Add outside lights (v4.4 - includes pool lighting)
     outside_data = data.get("outside_lights") or {}
     if outside_data:
         extraction.outside_lights = FixtureCounts(
@@ -915,6 +931,9 @@ def _merge_outside_data(extraction: ExtractionResult, data: Dict[str, Any]) -> N
             flood_light_30w=int(outside_data.get("flood_light_30w") or 0),
             bulkhead_26w=int(outside_data.get("bulkhead_26w") or 0),
             bulkhead_24w=int(outside_data.get("bulkhead_24w") or 0),
+            # v4.4 - Pool lighting
+            pool_flood_light=int(outside_data.get("pool_flood_light") or 0),
+            pool_underwater_light=int(outside_data.get("pool_underwater_light") or 0),
         )
 
 
@@ -927,6 +946,50 @@ def _parse_confidence(conf_str: str) -> ItemConfidence:
         "manual": ItemConfidence.MANUAL,
     }
     return mapping.get(conf_str.lower(), ItemConfidence.ESTIMATED)
+
+
+def _validate_against_legend(extraction_data: Dict[str, Any]) -> List[str]:
+    """
+    v4.4 - Compare extracted room fixture totals against legend totals.
+
+    Many SA drawings include a QTYS column in the legend showing expected totals.
+    This function cross-checks extracted counts against legend_totals for validation.
+
+    Args:
+        extraction_data: Raw extraction dict containing rooms and legend_totals
+
+    Returns:
+        List of warning messages where counts don't match
+    """
+    warnings = []
+    legend_totals = extraction_data.get("legend_totals", {})
+
+    if not legend_totals:
+        return warnings
+
+    rooms = extraction_data.get("rooms", [])
+
+    for fixture_type, expected in legend_totals.items():
+        if expected is None or expected == 0:
+            continue
+
+        # Sum this fixture type across all rooms
+        actual = 0
+        for room in rooms:
+            fixtures = room.get("fixtures", {})
+            room_count = fixtures.get(fixture_type, 0)
+            if room_count:
+                actual += int(room_count)
+
+        if actual != expected:
+            diff = actual - expected
+            direction = "more" if diff > 0 else "fewer"
+            warnings.append(
+                f"Legend mismatch: {fixture_type} - extracted {actual}, "
+                f"legend shows {expected} ({abs(diff)} {direction})"
+            )
+
+    return warnings
 
 
 def _calculate_confidence(extraction: ExtractionResult) -> float:
@@ -1142,6 +1205,9 @@ def _extraction_to_dict(extraction: ExtractionResult) -> Dict[str, Any]:
                     "bulkhead_26w": room.fixtures.bulkhead_26w,
                     "flood_light_200w": room.fixtures.flood_light_200w,
                     "pole_light_60w": room.fixtures.pole_light_60w,
+                    # v4.4 - Pool lighting
+                    "pool_flood_light": room.fixtures.pool_flood_light,
+                    "pool_underwater_light": room.fixtures.pool_underwater_light,
                     "double_socket_300": room.fixtures.double_socket_300,
                     "double_socket_1100": room.fixtures.double_socket_1100,
                     "single_socket_300": room.fixtures.single_socket_300,
@@ -1172,6 +1238,9 @@ def _extraction_to_dict(extraction: ExtractionResult) -> Dict[str, Any]:
             "pole_light_60w": extraction.outside_lights.pole_light_60w,
             "flood_light_200w": extraction.outside_lights.flood_light_200w,
             "bulkhead_26w": extraction.outside_lights.bulkhead_26w,
+            # v4.4 - Pool lighting
+            "pool_flood_light": extraction.outside_lights.pool_flood_light,
+            "pool_underwater_light": extraction.outside_lights.pool_underwater_light,
         }
 
     return result
@@ -1263,6 +1332,9 @@ def _rebuild_extraction_from_dict(
                 bulkhead_26w=int(fixtures_data.get("bulkhead_26w") or 0),
                 flood_light_200w=int(fixtures_data.get("flood_light_200w") or 0),
                 pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
+                # v4.4 - Pool lighting
+                pool_flood_light=int(fixtures_data.get("pool_flood_light") or 0),
+                pool_underwater_light=int(fixtures_data.get("pool_underwater_light") or 0),
                 double_socket_300=int(fixtures_data.get("double_socket_300") or 0),
                 double_socket_1100=int(fixtures_data.get("double_socket_1100") or 0),
                 single_socket_300=int(fixtures_data.get("single_socket_300") or 0),
@@ -1290,13 +1362,16 @@ def _rebuild_extraction_from_dict(
         )
         extraction.site_cable_runs.append(run)
 
-    # Rebuild outside lights
+    # Rebuild outside lights (v4.4 - includes pool lighting)
     outside_data = data.get("outside_lights") or {}
     if outside_data:
         extraction.outside_lights = FixtureCounts(
             pole_light_60w=int(outside_data.get("pole_light_60w") or 0),
             flood_light_200w=int(outside_data.get("flood_light_200w") or 0),
             bulkhead_26w=int(outside_data.get("bulkhead_26w") or 0),
+            # v4.4 - Pool lighting
+            pool_flood_light=int(outside_data.get("pool_flood_light") or 0),
+            pool_underwater_light=int(outside_data.get("pool_underwater_light") or 0),
         )
 
     return extraction

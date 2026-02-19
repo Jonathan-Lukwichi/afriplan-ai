@@ -4,6 +4,10 @@ PRICE Stage: Generate dual BQ — quantity-only + estimated.
 v4.1 philosophy: The tool generates QUANTITIES, not final prices.
 - quantity_bq: Items + quantities, prices empty (contractor fills in)
 - estimated_bq: Same items with default prices (ballpark reference only)
+
+v4.4 additions (Wedela Lighting & Plugs PDF):
+- Pool lighting fixtures: pool_flood_light, pool_underwater_light
+- Default prices for pool lighting (R1,800 / R2,500)
 """
 
 from typing import Tuple, Optional, List
@@ -151,7 +155,7 @@ def price(
                         building_block=block.name,
                     ))
 
-            # Section D: Light Fittings per room
+            # Section D: Light Fittings per room (v4.4 - includes pool lighting)
             for room in block.rooms:
                 f = room.fixtures
                 fixture_map = [
@@ -167,6 +171,9 @@ def price(
                     ("bulkhead_24w", "24W Bulkhead Outdoor", f.bulkhead_24w),
                     ("fluorescent_50w_5ft", "50W 5ft Fluorescent", f.fluorescent_50w_5ft),
                     ("pole_light_60w", "Outdoor Pole Light 2300mm 60W (incl. pole + base)", f.pole_light_60w),
+                    # v4.4 - Pool lighting
+                    ("pool_flood_light", "Pool Area Flood Light 150W (IP65)", f.pool_flood_light),
+                    ("pool_underwater_light", "Pool Underwater Light 35W (IP68)", f.pool_underwater_light),
                 ]
                 for field_name, desc, qty in fixture_map:
                     if qty > 0:
@@ -571,6 +578,9 @@ def _get_default_price(item: BQLineItem, contractor: Optional[ContractorProfile]
         "24W Bulkhead Outdoor": 350.0,
         "50W 5ft Fluorescent": 320.0,
         "Outdoor Pole Light 2300mm 60W (incl. pole + base)": 4500.0,
+        # v4.4 - Pool lighting
+        "Pool Area Flood Light 150W (IP65)": 1800.0,
+        "Pool Underwater Light 35W (IP68)": 2500.0,
 
         # Sockets
         "16A Double Switched Socket @300mm": 160.0,

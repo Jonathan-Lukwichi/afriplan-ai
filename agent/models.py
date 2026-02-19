@@ -21,6 +21,11 @@ v4.3 additions (Universal SLD Extraction):
 - Support for ISO, PP, HP, CP, HVAC, RWB, D/N circuit types
 - Pump station extraction (pool pumps, heat pumps with VSD)
 - Day/night switch detection with bypass
+
+v4.4 additions (Layout Drawing Enhancements - Wedela Lighting & Plugs PDF):
+- FixtureCounts: pool_flood_light, pool_underwater_light (FL, PS symbols)
+- Legend validation support (cross-check room totals vs legend QTYS)
+- Enhanced socket/switch types already in model (waterproof, ceiling, master switch)
 """
 
 from __future__ import annotations
@@ -467,7 +472,7 @@ class SupplyPoint(BaseModel):
 
 
 class FixtureCounts(BaseModel):
-    """All fixture types — 12 lights, 8 sockets, 7 switches, equipment."""
+    """All fixture types — 14 lights (v4.4), 8 sockets, 7 switches, equipment."""
     # === LIGHTS ===
     recessed_led_600x1200: int = 0
     surface_mount_led_18w: int = 0
@@ -481,6 +486,10 @@ class FixtureCounts(BaseModel):
     bulkhead_24w: int = 0
     fluorescent_50w_5ft: int = 0
     pole_light_60w: int = 0
+
+    # v4.4 - Pool lighting types (from Wedela Lighting & Plugs PDF)
+    pool_flood_light: int = 0        # FL - pool area flood light (150W)
+    pool_underwater_light: int = 0   # PS - underwater pool light (35W)
 
     # === POWER SOCKETS ===
     double_socket_300: int = 0
@@ -515,7 +524,7 @@ class FixtureCounts(BaseModel):
                 self.flood_light_30w + self.flood_light_200w + self.downlight_led_6w +
                 self.vapor_proof_2x24w + self.vapor_proof_2x18w + self.prismatic_2x18w +
                 self.bulkhead_26w + self.bulkhead_24w + self.fluorescent_50w_5ft +
-                self.pole_light_60w)
+                self.pole_light_60w + self.pool_flood_light + self.pool_underwater_light)
 
     @computed_field
     @property
@@ -540,7 +549,8 @@ class FixtureCounts(BaseModel):
                 self.downlight_led_6w * 6 + self.vapor_proof_2x24w * 48 +
                 self.vapor_proof_2x18w * 36 + self.prismatic_2x18w * 36 +
                 self.bulkhead_26w * 26 + self.bulkhead_24w * 24 +
-                self.fluorescent_50w_5ft * 50 + self.pole_light_60w * 60)
+                self.fluorescent_50w_5ft * 50 + self.pole_light_60w * 60 +
+                self.pool_flood_light * 150 + self.pool_underwater_light * 35)
 
     @computed_field
     @property

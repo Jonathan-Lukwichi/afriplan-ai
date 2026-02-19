@@ -1,8 +1,13 @@
 """
-AfriPlan Electrical v4.2 - Plugs/Power Layout Extraction Prompt
+AfriPlan Electrical v4.4 - Plugs/Power Layout Extraction Prompt
 
 Extracts rooms with socket outlets and switches from power layout drawings.
 Handles both dedicated power layouts and combined lighting+power drawings.
+
+v4.4 additions (Wedela Lighting & Plugs PDF):
+- legend_totals extraction for validation cross-checking
+- Enhanced symbol table for waterproof sockets, ceiling sockets
+- Master switch (MS) identification
 
 CRITICAL RULES:
 1. READ THE LEGEND FIRST - Every symbol type is defined in the legend
@@ -10,6 +15,7 @@ CRITICAL RULES:
 3. DISTINGUISH SOCKET HEIGHTS - 300mm vs 1100mm is critical
 4. IDENTIFY WET AREA SOCKETS - IP-rated for bathrooms/kitchens
 5. CAPTURE DATA POINTS - CAT6 outlets are common in offices
+6. EXTRACT LEGEND TOTALS - QTYS column provides validation cross-check
 """
 
 from typing import List, Optional, TYPE_CHECKING
@@ -218,6 +224,24 @@ If you cannot clearly count fixtures:
 - Add a note: "COUNT UNCLEAR - VERIFY ON SITE"
 - Do NOT invent fixture quantities
 
+## LEGEND TOTALS EXTRACTION (v4.4)
+
+Many SA drawings include a QTYS column in the legend table showing total counts.
+Extract these as "legend_totals" for validation:
+
+```json
+"legend_totals": {
+  "double_socket_300": 24,
+  "double_socket_waterproof": 8,
+  "double_socket_ceiling": 2,
+  "switch_1lever_1way": 12,
+  "master_switch": 3,
+  "isolator_30a": 4
+}
+```
+
+These totals allow cross-checking: sum of room fixtures should equal legend totals.
+
 ## IMPORTANT REMINDERS
 
 1. Always read the legend FIRST - this defines what symbols mean
@@ -227,6 +251,7 @@ If you cannot clearly count fixtures:
 5. Mark wet areas appropriately
 6. Include confidence level per room and per fixture type
 7. Data points (CAT6) are common in offices - don't miss them
+8. Extract legend_totals (QTYS column) when present for validation
 """
 
 

@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.3 — JSON Schemas for AI Extraction
+AfriPlan Electrical v4.4 — JSON Schemas for AI Extraction
 
 Contains example JSON structures that guide Claude's structured output.
 
@@ -13,6 +13,12 @@ v4.3 additions:
 - Day/night switch detection with bypass
 - ISO (isolator) circuit type support
 - Circuit reference linking to heavy_equipment
+
+v4.4 additions (Layout Drawing Enhancements - Wedela Lighting & Plugs PDF):
+- Pool lighting types: pool_flood_light (FL), pool_underwater_light (PS)
+- legend_totals section for validation cross-checking
+- Room circuit_refs for DB-Room linking
+- Waterproof sockets, ceiling sockets, master switch support
 """
 
 # Confidence instruction to add to all prompts
@@ -247,32 +253,41 @@ SLD_SCHEMA = """{
 
 # Schema for lighting layout extraction - rooms with light fixtures
 LIGHTING_LAYOUT_SCHEMA = """{
-  "building_block": "NewMark Office Building",
+  "building_block": "Pool Block",
   "rooms": [
     {
-      "name": "Suite 1 - Open Plan",
+      "name": "Pool Area",
       "room_number": 1,
-      "type": "office_open_plan",
+      "type": "pool_area",
       "confidence": "extracted",
-      "area_m2": 120,
+      "area_m2": 250,
       "floor": "Ground",
       "fixtures": {
-        "recessed_led_600x1200": 16,
-        "recessed_led_600x1200_confidence": "extracted"
+        "recessed_led_600x1200": 0,
+        "surface_mount_led_18w": 8,
+        "surface_mount_led_18w_confidence": "extracted",
+        "flood_light_200w": 4,
+        "flood_light_200w_confidence": "extracted",
+        "pool_flood_light": 6,
+        "pool_flood_light_confidence": "extracted",
+        "pool_underwater_light": 4,
+        "pool_underwater_light_confidence": "extracted"
       },
-      "circuit_refs": ["DB-S1 L1", "DB-S1 L2"]
+      "circuit_refs": ["DB-PFA L1", "DB-PFA L2"]
     },
     {
-      "name": "Male Ablution",
+      "name": "Male Changing",
       "room_number": 2,
       "type": "ablution",
       "confidence": "extracted",
-      "area_m2": 25,
+      "area_m2": 35,
       "floor": "Ground",
       "is_wet_area": true,
       "fixtures": {
         "vapor_proof_2x24w": 4,
-        "vapor_proof_2x24w_confidence": "extracted"
+        "vapor_proof_2x24w_confidence": "extracted",
+        "bulkhead_24w": 2,
+        "bulkhead_24w_confidence": "extracted"
       },
       "circuit_refs": ["DB-AB1 L1"]
     },
@@ -294,15 +309,23 @@ LIGHTING_LAYOUT_SCHEMA = """{
     }
   ],
   "legend": {
-    "block_name": "NewMark Office Building",
+    "block_name": "Pool Block",
     "lights": [
       {
-        "symbol_id": "LT-REC",
+        "symbol_id": "FL",
         "category": "light",
-        "description": "600x1200 Recessed LED Panel 3x18W",
-        "short_name": "600x1200 Recessed LED",
-        "wattage_w": 54,
-        "ip_rating": "IP20"
+        "description": "Pool Flood Light 150W",
+        "short_name": "Pool Flood",
+        "wattage_w": 150,
+        "ip_rating": "IP65"
+      },
+      {
+        "symbol_id": "PS",
+        "category": "light",
+        "description": "Pool Underwater Light 35W",
+        "short_name": "Pool Underwater",
+        "wattage_w": 35,
+        "ip_rating": "IP68"
       },
       {
         "symbol_id": "LT-VP24",
@@ -313,34 +336,57 @@ LIGHTING_LAYOUT_SCHEMA = """{
         "ip_rating": "IP65"
       }
     ]
+  },
+  "legend_totals": {
+    "pool_flood_light": 6,
+    "pool_underwater_light": 4,
+    "vapor_proof_2x24w": 4,
+    "bulkhead_24w": 2,
+    "surface_mount_led_18w": 8,
+    "flood_light_200w": 4
   }
 }"""
 
 # Schema for plugs/power layout extraction - rooms with sockets and switches
 PLUGS_LAYOUT_SCHEMA = """{
-  "building_block": "NewMark Office Building",
+  "building_block": "Ablution Retail Block",
   "rooms": [
     {
-      "name": "Suite 1 - Open Plan",
+      "name": "Male Changing Room",
       "room_number": 1,
       "confidence": "extracted",
+      "is_wet_area": true,
       "fixtures": {
-        "double_socket_300": 12,
+        "double_socket_300": 2,
+        "double_socket_300_confidence": "extracted",
+        "double_socket_waterproof": 4,
+        "double_socket_waterproof_confidence": "extracted",
+        "switch_1lever_1way": 2,
+        "switch_1lever_1way_confidence": "extracted",
+        "master_switch": 1,
+        "master_switch_confidence": "extracted"
+      },
+      "circuit_refs": ["DB-AB1 P1", "DB-AB1 P2"]
+    },
+    {
+      "name": "Kitchen",
+      "room_number": 2,
+      "confidence": "extracted",
+      "fixtures": {
+        "double_socket_300": 6,
         "double_socket_300_confidence": "extracted",
         "double_socket_1100": 4,
         "double_socket_1100_confidence": "extracted",
-        "data_points_cat6": 16,
-        "data_points_cat6_confidence": "extracted",
-        "floor_box": 2,
-        "floor_box_confidence": "extracted",
-        "switch_1lever_1way": 4,
-        "switch_1lever_1way_confidence": "inferred"
+        "double_socket_ceiling": 2,
+        "double_socket_ceiling_confidence": "extracted",
+        "switch_2lever_1way": 2,
+        "switch_2lever_1way_confidence": "extracted"
       },
-      "circuit_refs": ["DB-S1 P1", "DB-S1 P2", "DB-S1 P3"]
+      "circuit_refs": ["DB-AB1 P3", "DB-AB1 P4"]
     },
     {
       "name": "Server Room",
-      "room_number": 5,
+      "room_number": 3,
       "confidence": "extracted",
       "fixtures": {
         "double_socket_300": 8,
@@ -353,7 +399,7 @@ PLUGS_LAYOUT_SCHEMA = """{
     }
   ],
   "legend": {
-    "block_name": "NewMark Office Building",
+    "block_name": "Ablution Retail Block",
     "sockets": [
       {
         "symbol_id": "PS-DS300",
@@ -361,6 +407,21 @@ PLUGS_LAYOUT_SCHEMA = """{
         "description": "16A Double Switched Socket @300mm",
         "short_name": "Double Socket @300",
         "mounting_height_mm": 300
+      },
+      {
+        "symbol_id": "PS-WP",
+        "category": "socket",
+        "description": "16A Double Switched Socket Waterproof @300mm",
+        "short_name": "Waterproof Socket",
+        "mounting_height_mm": 300,
+        "ip_rating": "IP65"
+      },
+      {
+        "symbol_id": "PS-CEIL",
+        "category": "socket",
+        "description": "16A Double Switched Ceiling Socket",
+        "short_name": "Ceiling Socket",
+        "mounting_height_mm": 2400
       }
     ],
     "switches": [
@@ -370,62 +431,92 @@ PLUGS_LAYOUT_SCHEMA = """{
         "description": "1-Lever 1-Way Switch @1200mm",
         "short_name": "1L 1W Switch",
         "mounting_height_mm": 1200
+      },
+      {
+        "symbol_id": "MS",
+        "category": "switch",
+        "description": "Master Switch - Controls All Lights",
+        "short_name": "Master Switch",
+        "mounting_height_mm": 1200
       }
     ]
+  },
+  "legend_totals": {
+    "double_socket_300": 16,
+    "double_socket_1100": 4,
+    "double_socket_waterproof": 4,
+    "double_socket_ceiling": 2,
+    "switch_1lever_1way": 2,
+    "switch_2lever_1way": 2,
+    "master_switch": 1,
+    "isolator_30a": 2
   }
 }"""
 
 # Schema for combined layout extraction - pages with BOTH lights AND sockets/switches
 # This handles South African drawings where lighting and power layouts are on the same page
 COMBINED_LAYOUT_SCHEMA = """{
-  "building_block": "NewMark Office Building",
+  "building_block": "Pool Block",
   "rooms": [
     {
-      "name": "Suite 1 - Open Plan",
+      "name": "Pool Area",
       "room_number": 1,
-      "type": "office_open_plan",
+      "type": "pool_area",
       "confidence": "extracted",
-      "area_m2": 120,
+      "area_m2": 250,
       "floor": "Ground",
-      "is_wet_area": false,
+      "is_wet_area": true,
       "fixtures": {
-        "recessed_led_600x1200": 16,
-        "recessed_led_600x1200_confidence": "extracted",
+        "recessed_led_600x1200": 0,
         "downlight_led_6w": 0,
         "vapor_proof_2x24w": 0,
-        "surface_mount_led_18w": 0,
-        "bulkhead_26w": 0,
-        "double_socket_300": 12,
+        "surface_mount_led_18w": 8,
+        "surface_mount_led_18w_confidence": "extracted",
+        "bulkhead_24w": 0,
+        "pool_flood_light": 6,
+        "pool_flood_light_confidence": "extracted",
+        "pool_underwater_light": 4,
+        "pool_underwater_light_confidence": "extracted",
+        "flood_light_200w": 4,
+        "flood_light_200w_confidence": "extracted",
+        "double_socket_300": 4,
         "double_socket_300_confidence": "extracted",
-        "double_socket_1100": 4,
-        "double_socket_1100_confidence": "extracted",
+        "double_socket_1100": 0,
         "single_socket_300": 0,
-        "double_socket_waterproof": 0,
-        "data_points_cat6": 16,
-        "data_points_cat6_confidence": "extracted",
-        "floor_box": 2,
-        "switch_1lever_1way": 4,
-        "switch_1lever_1way_confidence": "inferred",
+        "double_socket_waterproof": 6,
+        "double_socket_waterproof_confidence": "extracted",
+        "double_socket_ceiling": 2,
+        "double_socket_ceiling_confidence": "extracted",
+        "data_points_cat6": 0,
+        "floor_box": 0,
+        "switch_1lever_1way": 2,
+        "switch_1lever_1way_confidence": "extracted",
         "switch_2lever_1way": 0,
         "switch_1lever_2way": 0,
-        "day_night_switch": 0,
-        "isolator_30a": 0,
+        "day_night_switch": 1,
+        "day_night_switch_confidence": "extracted",
+        "master_switch": 1,
+        "master_switch_confidence": "extracted",
+        "isolator_30a": 2,
+        "isolator_30a_confidence": "extracted",
         "isolator_20a": 0
       },
-      "circuit_refs": ["DB-S1 L1", "DB-S1 L2", "DB-S1 P1", "DB-S1 P2"]
+      "circuit_refs": ["DB-PFA L1", "DB-PFA L2", "DB-PFA P1", "DB-PFA P2"]
     },
     {
-      "name": "Male Ablution",
+      "name": "Male Changing",
       "room_number": 2,
       "type": "ablution",
       "confidence": "extracted",
-      "area_m2": 25,
+      "area_m2": 35,
       "floor": "Ground",
       "is_wet_area": true,
       "fixtures": {
         "vapor_proof_2x24w": 4,
         "vapor_proof_2x24w_confidence": "extracted",
-        "double_socket_waterproof": 1,
+        "bulkhead_24w": 2,
+        "bulkhead_24w_confidence": "extracted",
+        "double_socket_waterproof": 2,
         "double_socket_waterproof_confidence": "extracted",
         "switch_1lever_1way": 1,
         "switch_1lever_1way_confidence": "extracted"
@@ -434,15 +525,23 @@ COMBINED_LAYOUT_SCHEMA = """{
     }
   ],
   "legend": {
-    "block_name": "NewMark Office Building",
+    "block_name": "Pool Block",
     "lights": [
       {
-        "symbol_id": "LT-REC",
+        "symbol_id": "FL",
         "category": "light",
-        "description": "600x1200 Recessed LED Panel 3x18W",
-        "short_name": "600x1200 Recessed LED",
-        "wattage_w": 54,
-        "ip_rating": "IP20"
+        "description": "Pool Flood Light 150W",
+        "short_name": "Pool Flood",
+        "wattage_w": 150,
+        "ip_rating": "IP65"
+      },
+      {
+        "symbol_id": "PS",
+        "category": "light",
+        "description": "Pool Underwater Light 35W",
+        "short_name": "Pool Underwater",
+        "wattage_w": 35,
+        "ip_rating": "IP68"
       },
       {
         "symbol_id": "LT-VP24",
@@ -460,6 +559,14 @@ COMBINED_LAYOUT_SCHEMA = """{
         "description": "16A Double Switched Socket @300mm",
         "short_name": "Double Socket @300",
         "mounting_height_mm": 300
+      },
+      {
+        "symbol_id": "PS-WP",
+        "category": "socket",
+        "description": "16A Double Switched Socket Waterproof @300mm",
+        "short_name": "Waterproof Socket",
+        "mounting_height_mm": 300,
+        "ip_rating": "IP65"
       }
     ],
     "switches": [
@@ -469,8 +576,30 @@ COMBINED_LAYOUT_SCHEMA = """{
         "description": "1-Lever 1-Way Switch @1200mm",
         "short_name": "1L 1W Switch",
         "mounting_height_mm": 1200
+      },
+      {
+        "symbol_id": "MS",
+        "category": "switch",
+        "description": "Master Switch - Controls All Lights",
+        "short_name": "Master Switch",
+        "mounting_height_mm": 1200
       }
     ]
+  },
+  "legend_totals": {
+    "surface_mount_led_18w": 8,
+    "pool_flood_light": 6,
+    "pool_underwater_light": 4,
+    "flood_light_200w": 4,
+    "vapor_proof_2x24w": 4,
+    "bulkhead_24w": 2,
+    "double_socket_300": 4,
+    "double_socket_waterproof": 8,
+    "double_socket_ceiling": 2,
+    "switch_1lever_1way": 3,
+    "day_night_switch": 1,
+    "master_switch": 1,
+    "isolator_30a": 2
   }
 }"""
 

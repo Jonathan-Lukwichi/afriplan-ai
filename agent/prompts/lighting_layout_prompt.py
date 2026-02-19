@@ -1,13 +1,19 @@
 """
-AfriPlan Electrical v4.1.1 - Lighting Layout Extraction Prompt
+AfriPlan Electrical v4.4 - Lighting Layout Extraction Prompt
 
 Extracts rooms with light fixtures from lighting layout drawings.
+
+v4.4 additions (Wedela Lighting & Plugs PDF):
+- Pool lighting: pool_flood_light (FL), pool_underwater_light (PS)
+- legend_totals extraction for validation
+- Enhanced symbol detection
 
 CRITICAL RULES:
 1. READ THE LEGEND FIRST - Every symbol type is defined in the legend
 2. COUNT EVERY SYMBOL - Do not estimate, count actual instances
 3. MATCH CIRCUIT LABELS - Each fixture has a circuit label (e.g., "L2 DB-S3")
 4. NEVER FABRICATE - If count is unclear, mark as "estimated"
+5. EXTRACT LEGEND TOTALS - The QTYS column provides validation cross-check
 """
 
 from typing import List, TYPE_CHECKING
@@ -60,6 +66,8 @@ Different building blocks have different fixture types:
 | Rectangle on pole | Pole light (60W outdoor) |
 | Circle marked "B" | Bulkhead light (24W/26W outdoor) |
 | Rectangle 5ft | Fluorescent tube (50W) |
+| "FL" label | Pool flood light (150W) |
+| "PS" label | Pool underwater light (35W) |
 
 **IMPORTANT**: The legend on YOUR drawing may differ. Always use the legend
 definitions from the actual drawing, not these defaults.
@@ -100,6 +108,10 @@ definitions from the actual drawing, not these defaults.
 - **bulkhead_24w**: 24W bulkhead outdoor
 - **bulkhead_26w**: 26W bulkhead outdoor
 - **pole_light_60w**: 60W pole light (2.3m pole)
+
+#### Pool Lighting (v4.4)
+- **pool_flood_light**: Pool area flood light (FL symbol, 150W, IP65)
+- **pool_underwater_light**: Pool underwater light (PS symbol, 35W, IP68)
 
 ## CIRCUIT REFERENCE FORMATS
 
@@ -169,6 +181,23 @@ If you cannot clearly count fixtures:
 - Add a note: "COUNT UNCLEAR - VERIFY ON SITE"
 - Do NOT invent fixture quantities
 
+## LEGEND TOTALS EXTRACTION (v4.4)
+
+Many SA drawings include a QTYS column in the legend table showing total counts.
+Extract these as "legend_totals" for validation:
+
+```json
+"legend_totals": {
+  "vapor_proof_2x24w": 24,
+  "bulkhead_24w": 8,
+  "flood_light_200w": 4,
+  "pool_flood_light": 6,
+  "pool_underwater_light": 4
+}
+```
+
+These totals allow cross-checking: sum of room fixtures should equal legend totals.
+
 ## IMPORTANT REMINDERS
 
 1. Always read the legend FIRST - this defines what symbols mean
@@ -178,6 +207,7 @@ If you cannot clearly count fixtures:
 5. Note emergency lights separately
 6. Include confidence level per room and per fixture type
 7. If same fixture type appears multiple times in legend, use the specific wattage
+8. Extract legend_totals (QTYS column) when present for validation
 """
 
 
