@@ -347,9 +347,11 @@ if not PIPELINE_AVAILABLE:
 
     Required modules could not be loaded.
 
+    **Error:** `{PIPELINE_IMPORT_ERROR}`
+
     Please ensure all dependencies are installed:
     ```
-    pip install anthropic PyMuPDF openpyxl fpdf2
+    pip install anthropic PyMuPDF openpyxl fpdf2 pydantic groq
     ```
     """)
     st.stop()
