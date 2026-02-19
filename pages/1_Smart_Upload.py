@@ -36,6 +36,17 @@ except ImportError as e:
     PIPELINE_IMPORT_ERROR = str(e)
     HAS_OPENPYXL = False
 
+    # Fallback ServiceTier so the file can load and show the error
+    from enum import Enum
+    class ServiceTier(Enum):
+        RESIDENTIAL = "residential"
+        COMMERCIAL = "commercial"
+        MAINTENANCE = "maintenance"
+        UNKNOWN = "unknown"
+
+    # Dummy classes so type hints don't fail
+    SimplifiedResult = None
+
 
 # Load API keys from secrets
 def load_api_keys():
