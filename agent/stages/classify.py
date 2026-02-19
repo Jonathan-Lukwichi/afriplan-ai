@@ -1,8 +1,12 @@
 """
-CLASSIFY Stage: Fast tier classification using Haiku 4.5.
+CLASSIFY Stage: Fast tier classification.
 
 Determines the service tier (Residential/Commercial/Industrial/Maintenance/Mixed)
 and identifies building blocks present in the documents.
+
+Supports multiple LLM providers:
+- Google Gemini (gemini-1.5-flash) - FREE
+- Anthropic Claude (claude-haiku-4-5) - paid
 """
 
 import json
@@ -15,8 +19,12 @@ from agent.models import (
 from agent.utils import parse_json_safely, Timer, estimate_cost_zar
 from agent.prompts.schemas import CLASSIFY_SCHEMA, CONFIDENCE_INSTRUCTION
 
-# Classification model
-CLASSIFY_MODEL = "claude-haiku-4-5-20251001"
+# Classification models by provider
+CLASSIFY_MODELS = {
+    "claude": "claude-haiku-4-5-20251001",
+    "gemini": "gemini-1.5-flash",
+}
+CLASSIFY_MODEL = CLASSIFY_MODELS["claude"]  # Default for backwards compatibility
 
 
 CLASSIFY_PROMPT = """You are an expert South African electrical engineer analyzing electrical drawings.
@@ -43,14 +51,16 @@ Example response:
 
 def classify(
     doc_set: DocumentSet,
-    client: Optional[object] = None,  # Anthropic client
+    client: Optional[object] = None,  # Anthropic or Gemini client
+    provider: str = "claude",  # "claude" or "gemini"
 ) -> Tuple[ServiceTier, ExtractionMode, List[str], float, StageResult]:
     """
     CLASSIFY stage: Determine project tier and extraction mode.
 
     Args:
         doc_set: Processed documents from INGEST stage
-        client: Anthropic API client (optional, uses fallback if None)
+        client: API client (Anthropic or Gemini)
+        provider: LLM provider name ("claude" or "gemini")
 
     Returns:
         Tuple of (tier, mode, building_blocks, confidence, StageResult)
@@ -76,23 +86,32 @@ def classify(
         mode = ExtractionMode.ESTIMATION
         building_blocks = doc_set.building_blocks_detected.copy()
         confidence = 0.5
+        model_used = CLASSIFY_MODELS.get(provider, CLASSIFY_MODEL)
 
         if client:
             try:
-                response = client.messages.create(
-                    model=CLASSIFY_MODEL,
-                    max_tokens=1024,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": f"{CLASSIFY_PROMPT}\n\nDocument content:\n{combined_text}"
-                        }
-                    ]
-                )
+                prompt_text = f"{CLASSIFY_PROMPT}\n\nDocument content:\n{combined_text}"
 
-                response_text = response.content[0].text
-                tokens_used = response.usage.input_tokens + response.usage.output_tokens
-                cost_zar = estimate_cost_zar(CLASSIFY_MODEL, response.usage.input_tokens, response.usage.output_tokens)
+                if provider == "gemini":
+                    # Gemini API call
+                    model = client.GenerativeModel("gemini-1.5-flash")
+                    response = model.generate_content(
+                        prompt_text,
+                        generation_config={"max_output_tokens": 1024, "temperature": 0.1}
+                    )
+                    response_text = response.text
+                    tokens_used = getattr(response.usage_metadata, 'total_token_count', 0) if hasattr(response, 'usage_metadata') else 0
+                    cost_zar = 0.0  # Gemini free tier!
+                else:
+                    # Claude API call (default)
+                    response = client.messages.create(
+                        model=model_used,
+                        max_tokens=1024,
+                        messages=[{"role": "user", "content": prompt_text}]
+                    )
+                    response_text = response.content[0].text
+                    tokens_used = response.usage.input_tokens + response.usage.output_tokens
+                    cost_zar = estimate_cost_zar(model_used, response.usage.input_tokens, response.usage.output_tokens)
 
                 # Parse response
                 parsed = parse_json_safely(response_text)
@@ -130,7 +149,7 @@ def classify(
                 "mode": mode.value,
                 "building_blocks": building_blocks,
             },
-            model_used=CLASSIFY_MODEL if client else None,
+            model_used=model_used if client else None,
             tokens_used=tokens_used,
             cost_zar=cost_zar,
             processing_time_ms=timer.elapsed_ms,

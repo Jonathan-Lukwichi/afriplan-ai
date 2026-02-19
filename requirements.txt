@@ -10,3 +10,4 @@ PuLP>=2.7.0
 openpyxl>=3.1.0
 anthropic>=0.18.0
 PyMuPDF>=1.23.0
+google-generativeai>=0.4.0

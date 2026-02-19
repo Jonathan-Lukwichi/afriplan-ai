@@ -1,6 +1,8 @@
 """
 AfriPlan Electrical v4.1 - Smart Document Upload
 7-stage AI pipeline with confidence visualization and contractor review
+
+Supports both Google Gemini (FREE) and Claude (paid) as LLM providers.
 """
 
 import streamlit as st
@@ -31,6 +33,38 @@ try:
     PIPELINE_AVAILABLE = True
 except ImportError as e:
     PIPELINE_IMPORT_ERROR = str(e)
+
+# Load API keys from secrets and set environment variables
+def load_api_keys():
+    """Load API keys from Streamlit secrets and set as environment variables."""
+    provider = None
+    api_key = None
+
+    # Try Gemini first (FREE!)
+    if "GEMINI_API_KEY" in st.secrets:
+        os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+        provider = "gemini"
+        api_key = st.secrets["GEMINI_API_KEY"]
+
+    # Fall back to Claude
+    if "ANTHROPIC_API_KEY" in st.secrets:
+        os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
+        if provider is None:  # Only use Claude if Gemini not available
+            provider = "claude"
+            api_key = st.secrets["ANTHROPIC_API_KEY"]
+
+    # Check for provider override
+    if "LLM_PROVIDER" in st.secrets:
+        provider = st.secrets["LLM_PROVIDER"]
+        if provider == "gemini" and "GEMINI_API_KEY" in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]
+        elif provider == "claude" and "ANTHROPIC_API_KEY" in st.secrets:
+            api_key = st.secrets["ANTHROPIC_API_KEY"]
+
+    return provider, api_key
+
+# Load API keys
+LLM_PROVIDER, LLM_API_KEY = load_api_keys()
 
 # Tier display info (inline, no legacy dependency)
 TIER_DISPLAY = {
@@ -414,14 +448,18 @@ with tab1:
             progress_placeholder = st.empty()
             status_placeholder = st.empty()
 
-            if pipeline_available:
+            if pipeline_available and LLM_API_KEY:
                 # v4.1 7-stage pipeline (stages 1-3: INGEST, CLASSIFY, DISCOVER)
                 with status_placeholder:
-                    st.info("Starting v4.1 AI pipeline (stages 1-3)...")
+                    provider_name = "Google Gemini (FREE)" if LLM_PROVIDER == "gemini" else "Claude"
+                    st.info(f"Starting v4.1 AI pipeline using {provider_name}...")
 
                 try:
                     # Create fresh pipeline instance for this run
-                    run_pipeline = create_pipeline()
+                    run_pipeline = create_pipeline(
+                        api_key=LLM_API_KEY,
+                        provider=LLM_PROVIDER
+                    )
 
                     # Process document (runs INGEST → CLASSIFY → DISCOVER)
                     # Pass accuracy mode to use Opus for initial extraction if selected
@@ -463,8 +501,10 @@ with tab1:
                     with status_placeholder:
                         st.error(f"Pipeline error: {str(e)}")
 
+            elif not LLM_API_KEY:
+                st.error("No API key configured. Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY to .streamlit/secrets.toml")
             else:
-                st.error("Pipeline not available. Please configure ANTHROPIC_API_KEY.")
+                st.error("Pipeline not available. Check the installation.")
     else:
         st.markdown("""
         <div style="background: linear-gradient(135deg, rgba(17,24,39,0.5), rgba(15,23,42,0.3));

@@ -1,14 +1,19 @@
 """
-DISCOVER Stage: JSON extraction using Sonnet 4.5.
+DISCOVER Stage: JSON extraction using Vision LLMs.
 
 Extracts structured electrical data from drawings including:
 - Distribution boards and circuits from SLDs
 - Fixture counts from lighting layouts
 - Socket/switch counts from plug layouts
 - Site cable runs from outside lights drawings
+
+Supports multiple LLM providers:
+- Google Gemini (gemini-1.5-flash/pro) - FREE
+- Anthropic Claude (sonnet/opus) - paid
 """
 
 import json
+import base64
 from typing import Tuple, Optional, List, Dict, Any
 
 from agent.models import (
@@ -26,10 +31,105 @@ from agent.prompts.system_prompt import SYSTEM_PROMPT
 from agent.prompts.sld_prompt import get_sld_extraction_prompt
 from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prompt
 
-# Extraction model
-DISCOVER_MODEL = "claude-sonnet-4-20250514"
-ESCALATION_MODEL = "claude-opus-4-20250514"
-CONFIDENCE_THRESHOLD = 0.80  # Below 80%, escalate to Opus for verification
+# Extraction models by provider
+DISCOVER_MODELS = {
+    "claude": "claude-sonnet-4-20250514",
+    "gemini": "gemini-1.5-flash",
+}
+ESCALATION_MODELS = {
+    "claude": "claude-opus-4-20250514",
+    "gemini": "gemini-1.5-pro",  # Pro for higher accuracy
+}
+DISCOVER_MODEL = DISCOVER_MODELS["claude"]  # Default for backwards compatibility
+ESCALATION_MODEL = ESCALATION_MODELS["claude"]
+CONFIDENCE_THRESHOLD = 0.80  # Below 80%, escalate for verification
+
+# Current provider (set by pipeline)
+_current_provider = "claude"
+
+
+def set_provider(provider: str):
+    """Set the current LLM provider."""
+    global _current_provider
+    _current_provider = provider
+
+
+def _call_vision_llm(
+    client: object,
+    pages: List,
+    prompt: str,
+    model: str,
+    max_tokens: int = 8192,
+) -> Tuple[str, int, float]:
+    """
+    Call the LLM with vision capabilities (works with both Gemini and Claude).
+
+    Args:
+        client: API client (Anthropic or Gemini)
+        pages: List of page objects with image_base64
+        prompt: The prompt text
+        model: Model name to use
+        max_tokens: Maximum output tokens
+
+    Returns:
+        Tuple of (response_text, tokens_used, cost_zar)
+    """
+    global _current_provider
+
+    if _current_provider == "gemini":
+        # Gemini API call with vision
+        import PIL.Image
+        import io
+
+        content_parts = [prompt]
+
+        for page in pages:
+            if page.image_base64:
+                img_bytes = base64.b64decode(page.image_base64)
+                img = PIL.Image.open(io.BytesIO(img_bytes))
+                content_parts.append(img)
+
+        gemini_model = client.GenerativeModel(model)
+        response = gemini_model.generate_content(
+            content_parts,
+            generation_config={
+                "max_output_tokens": max_tokens,
+                "temperature": 0.1,
+            }
+        )
+
+        tokens_used = 0
+        if hasattr(response, 'usage_metadata'):
+            tokens_used = getattr(response.usage_metadata, 'total_token_count', 0)
+
+        return response.text, tokens_used, 0.0  # Gemini free tier!
+
+    else:
+        # Claude API call with vision (default)
+        content = [{"type": "text", "text": prompt}]
+
+        for page in pages:
+            if page.image_base64:
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": page.image_base64,
+                    }
+                })
+
+        response = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": content}]
+        )
+
+        response_text = response.content[0].text
+        tokens_used = response.usage.input_tokens + response.usage.output_tokens
+        cost_zar = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
+
+        return response_text, tokens_used, cost_zar
 
 
 def discover(
@@ -39,6 +139,7 @@ def discover(
     building_blocks: List[str],
     client: Optional[object] = None,
     use_opus_directly: bool = False,
+    provider: str = "claude",  # "claude" or "gemini"
 ) -> Tuple[ExtractionResult, StageResult]:
     """
     DISCOVER stage: Extract structured data from documents.
@@ -48,24 +149,31 @@ def discover(
         tier: Classification tier from CLASSIFY stage
         mode: Extraction mode (AS_BUILT, ESTIMATION, etc.)
         building_blocks: List of building block names
-        client: Anthropic API client
-        use_opus_directly: If True, use Opus for initial extraction (slower but more accurate)
+        client: API client (Anthropic or Gemini)
+        use_opus_directly: If True, use higher-tier model for initial extraction
+        provider: LLM provider ("claude" or "gemini")
 
     Returns:
         Tuple of (ExtractionResult, StageResult)
     """
+    global _current_provider
+    _current_provider = provider
     with Timer("discover") as timer:
         errors = []
         warnings = []
         total_tokens = 0
         total_cost = 0.0
 
-        # Select model based on accuracy preference
-        extraction_model = ESCALATION_MODEL if use_opus_directly else DISCOVER_MODEL
+        # Select model based on provider and accuracy preference
+        if use_opus_directly:
+            extraction_model = ESCALATION_MODELS.get(provider, ESCALATION_MODEL)
+            warnings.append(f"Using {extraction_model} for maximum extraction accuracy")
+        else:
+            extraction_model = DISCOVER_MODELS.get(provider, DISCOVER_MODEL)
         model_used = extraction_model
 
-        if use_opus_directly:
-            warnings.append("Using Opus for maximum extraction accuracy (slower, higher cost)")
+        if provider == "gemini":
+            warnings.append("Using Google Gemini (FREE tier)")
 
         extraction = ExtractionResult(
             extraction_mode=mode,
@@ -200,28 +308,9 @@ Return JSON matching this schema:
 {get_sld_extraction_prompt()}
 """
 
-    # Build content with images
-    content = [{"type": "text", "text": prompt}]
-    for page in pages[:5]:  # Limit to 5 pages
-        if page.image_base64:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": page.image_base64,
-                }
-            })
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=8192,
-        messages=[{"role": "user", "content": content}]
+    response_text, tokens, cost = _call_vision_llm(
+        client, pages[:5], prompt, model, max_tokens=8192
     )
-
-    response_text = response.content[0].text
-    tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -244,27 +333,9 @@ Return JSON matching this schema:
 {get_lighting_prompt([])}
 """
 
-    content = [{"type": "text", "text": prompt}]
-    for page in pages[:5]:
-        if page.image_base64:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": page.image_base64,
-                }
-            })
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=8192,
-        messages=[{"role": "user", "content": content}]
+    response_text, tokens, cost = _call_vision_llm(
+        client, pages[:5], prompt, model, max_tokens=8192
     )
-
-    response_text = response.content[0].text
-    tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -285,27 +356,9 @@ Return JSON matching this schema:
 {PLUGS_LAYOUT_SCHEMA}
 """
 
-    content = [{"type": "text", "text": prompt}]
-    for page in pages[:5]:
-        if page.image_base64:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": page.image_base64,
-                }
-            })
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=8192,
-        messages=[{"role": "user", "content": content}]
+    response_text, tokens, cost = _call_vision_llm(
+        client, pages[:5], prompt, model, max_tokens=8192
     )
-
-    response_text = response.content[0].text
-    tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -327,27 +380,9 @@ Return JSON matching this schema:
 {OUTSIDE_LIGHTS_SCHEMA}
 """
 
-    content = [{"type": "text", "text": prompt}]
-    for page in pages[:3]:
-        if page.image_base64:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": page.image_base64,
-                }
-            })
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": content}]
+    response_text, tokens, cost = _call_vision_llm(
+        client, pages[:3], prompt, model, max_tokens=4096
     )
-
-    response_text = response.content[0].text
-    tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost
@@ -410,27 +445,9 @@ Return JSON matching this schema:
 {COMBINED_LAYOUT_SCHEMA}
 """
 
-    content = [{"type": "text", "text": prompt}]
-    for page in pages[:5]:  # Limit to 5 pages
-        if page.image_base64:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": page.image_base64,
-                }
-            })
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=8192,
-        messages=[{"role": "user", "content": content}]
+    response_text, tokens, cost = _call_vision_llm(
+        client, pages[:5], prompt, model, max_tokens=8192
     )
-
-    response_text = response.content[0].text
-    tokens = response.usage.input_tokens + response.usage.output_tokens
-    cost = estimate_cost_zar(model, response.usage.input_tokens, response.usage.output_tokens)
 
     parsed = parse_json_safely(response_text) or {}
     return parsed, tokens, cost

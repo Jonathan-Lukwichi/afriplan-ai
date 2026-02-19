@@ -3,10 +3,14 @@ AfriPlan Electrical v4.1 — Pipeline Orchestrator
 
 Orchestrates the 7-stage pipeline:
 INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
+
+Supports multiple LLM providers:
+- Google Gemini (FREE tier available)
+- Anthropic Claude (paid)
 """
 
 from typing import List, Tuple, Optional, Any
-import anthropic
+import os
 
 from agent.models import (
     PipelineResult, StageResult, PipelineStage,
@@ -22,6 +26,21 @@ from agent.stages.price import price
 from agent.stages.output import generate_output
 from agent.utils import Timer
 
+# Provider detection
+def _get_llm_provider():
+    """Detect and return the appropriate LLM provider."""
+    # Check for Gemini first (free!)
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key:
+        return "gemini", gemini_key
+
+    # Fall back to Claude
+    claude_key = os.environ.get("ANTHROPIC_API_KEY")
+    if claude_key:
+        return "claude", claude_key
+
+    return None, None
+
 
 class AfriPlanPipeline:
     """
@@ -35,33 +54,78 @@ class AfriPlanPipeline:
     5. VALIDATE: SANS compliance checks
     6. PRICE: Generate dual BQ
     7. OUTPUT: Assemble final result
+
+    Supports both Google Gemini (free) and Claude (paid) as LLM providers.
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         contractor_profile: Optional[ContractorProfile] = None,
+        provider: Optional[str] = None,  # "gemini" or "claude"
     ):
         """
         Initialize the pipeline.
 
         Args:
-            api_key: Anthropic API key. If None, uses ANTHROPIC_API_KEY env var.
+            api_key: API key. If None, uses environment variables.
             contractor_profile: Contractor's saved preferences.
+            provider: LLM provider ("gemini" or "claude"). Auto-detects if None.
         """
-        self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        self.provider = provider
+        self.api_key = api_key
+        self.client = None
+
+        # Auto-detect provider if not specified
+        if provider is None:
+            detected_provider, detected_key = _get_llm_provider()
+            self.provider = detected_provider
+            if api_key is None:
+                self.api_key = detected_key
+
+        # Initialize the appropriate client
+        if self.provider == "gemini":
+            self._init_gemini_client()
+        elif self.provider == "claude":
+            self._init_claude_client()
+        else:
+            # No provider configured - will fail when trying to use LLM
+            self.client = None
+
         self.contractor_profile = contractor_profile
         self.stages: List[StageResult] = []
 
-        # State tracking
-        self.doc_set: Optional[DocumentSet] = None
-        self.tier: ServiceTier = ServiceTier.UNKNOWN
-        self.mode: ExtractionMode = ExtractionMode.ESTIMATION
-        self.building_blocks: List[str] = []
-        self.extraction: Optional[ExtractionResult] = None
-        self.validation: Optional[ValidationResult] = None
-        self.pricing: Optional[PricingResult] = None
-        self.site_conditions: Optional[SiteConditions] = None
+    def _init_gemini_client(self):
+        """Initialize Google Gemini client."""
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            self.client = genai
+            self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        except ImportError:
+            raise ImportError(
+                "google-generativeai not installed. Run: pip install google-generativeai"
+            )
+
+    def _init_claude_client(self):
+        """Initialize Anthropic Claude client."""
+        try:
+            import anthropic
+            self.client = anthropic.Anthropic(api_key=self.api_key)
+        except ImportError:
+            raise ImportError(
+                "anthropic not installed. Run: pip install anthropic"
+            )
+
+    # State tracking (initialized in __init__)
+    doc_set: Optional[DocumentSet] = None
+    tier: ServiceTier = ServiceTier.UNKNOWN
+    mode: ExtractionMode = ExtractionMode.ESTIMATION
+    building_blocks: List[str] = []
+    extraction: Optional[ExtractionResult] = None
+    validation: Optional[ValidationResult] = None
+    pricing: Optional[PricingResult] = None
+    site_conditions: Optional[SiteConditions] = None
 
     def process_documents(
         self,
@@ -89,11 +153,11 @@ class AfriPlanPipeline:
 
         # Stage 2: CLASSIFY
         self.tier, self.mode, self.building_blocks, tier_conf, classify_result = classify(
-            self.doc_set, self.client
+            self.doc_set, self.client, provider=self.provider or "claude"
         )
         self.stages.append(classify_result)
 
-        # Stage 3: DISCOVER (with optional Opus for maximum accuracy)
+        # Stage 3: DISCOVER (with optional higher-tier model for maximum accuracy)
         self.extraction, discover_result = discover(
             self.doc_set,
             self.tier,
@@ -101,6 +165,7 @@ class AfriPlanPipeline:
             self.building_blocks,
             self.client,
             use_opus_directly=use_opus_directly,
+            provider=self.provider or "claude",
         )
         self.stages.append(discover_result)
 
@@ -239,18 +304,20 @@ class AfriPlanPipeline:
 def create_pipeline(
     api_key: Optional[str] = None,
     contractor_profile: Optional[ContractorProfile] = None,
+    provider: Optional[str] = None,  # "gemini" or "claude"
 ) -> AfriPlanPipeline:
     """
     Factory function to create a pipeline instance.
 
     Args:
-        api_key: Anthropic API key
+        api_key: API key (for specified provider)
         contractor_profile: Contractor preferences
+        provider: LLM provider ("gemini" or "claude"). Auto-detects if None.
 
     Returns:
         AfriPlanPipeline instance
     """
-    return AfriPlanPipeline(api_key, contractor_profile)
+    return AfriPlanPipeline(api_key, contractor_profile, provider)
 
 
 # Convenience functions for simple use cases
