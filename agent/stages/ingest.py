@@ -236,12 +236,22 @@ def _categorize_pages(doc_set: DocumentSet) -> None:
                 scores["outside"] += 10
 
             # Text content-based scoring
-            # SLD indicators
-            if any(k in text_lower for k in ["circuit no", "wattage", "wire size", "no of point"]):
+            # SLD indicators (enhanced v4.2)
+            # Strong SLD indicators - circuit schedule tables
+            if any(k in text_lower for k in ["circuit no", "circuit schedule", "load schedule",
+                                              "wattage", "wire size", "no of point", "no. of points",
+                                              "cable size", "breaker size", "mcb rating"]):
                 scores["sld"] += 5
-            if any(k in text_lower for k in ["distribution board", "mcb", "elcb", "breaker"]):
+            # DB/board indicators
+            if any(k in text_lower for k in ["distribution board", "db schedule", "single line",
+                                              "mcb", "elcb", "rccb", "rcbo", "breaker", "main switch"]):
                 scores["sld"] += 3
-            if "db-" in text_lower:
+            # DB naming patterns (DB-1, DB-L1, DB-P1, etc.)
+            if "db-" in text_lower or "db " in text_lower:
+                scores["sld"] += 2
+            # Typical SLD table headers
+            if any(k in text_lower for k in ["cct", "ckt", "total load", "diversity",
+                                              "phase", "neutral", "earth", "protective device"]):
                 scores["sld"] += 2
 
             # Lighting indicators

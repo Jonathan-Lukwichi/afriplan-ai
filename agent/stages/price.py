@@ -108,7 +108,50 @@ def price(
                         notes=notes,
                     ))
 
-            # Section E: Light Fittings per room
+            # Section C: Cable Containment (v4.2)
+            # Estimate conduit based on circuit count and building complexity
+            total_block_circuits = sum(len(db.active_circuits) for db in block.distribution_boards)
+            if total_block_circuits > 0:
+                # PVC conduit for internal wiring (estimate 3m per circuit)
+                item_no += 1
+                quantity_items.append(BQLineItem(
+                    item_no=item_no,
+                    section=BQSection.CONTAINMENT,
+                    description=f"20mm PVC conduit with saddles — {block.name}",
+                    unit="m",
+                    qty=total_block_circuits * 3,
+                    source=ItemConfidence.ESTIMATED,
+                    building_block=block.name,
+                    notes="Estimated 3m conduit per circuit - verify on site",
+                ))
+
+                # Junction boxes (estimate 1 per 2 circuits)
+                jb_qty = max(1, total_block_circuits // 2)
+                item_no += 1
+                quantity_items.append(BQLineItem(
+                    item_no=item_no,
+                    section=BQSection.CONTAINMENT,
+                    description=f"Junction box 100x100mm with lid — {block.name}",
+                    unit="each",
+                    qty=jb_qty,
+                    source=ItemConfidence.ESTIMATED,
+                    building_block=block.name,
+                ))
+
+                # DB enclosure/surface box if needed
+                for db in block.distribution_boards:
+                    item_no += 1
+                    quantity_items.append(BQLineItem(
+                        item_no=item_no,
+                        section=BQSection.CONTAINMENT,
+                        description=f"DB enclosure/surface box — {db.name}",
+                        unit="each",
+                        qty=1,
+                        source=db.confidence,
+                        building_block=block.name,
+                    ))
+
+            # Section D: Light Fittings per room
             for room in block.rooms:
                 f = room.fixtures
                 fixture_map = [
@@ -138,7 +181,7 @@ def price(
                             building_block=block.name,
                         ))
 
-            # Section E: Switches & Controls (v4.2 - split from sockets)
+            # Section E: Switches & Controls (v4.2 - now separate from sockets)
             for room in block.rooms:
                 f = room.fixtures
                 switch_map = [
