@@ -138,7 +138,32 @@ def price(
                             building_block=block.name,
                         ))
 
-            # Section F: Sockets & Switches
+            # Section E: Switches & Controls (v4.2 - split from sockets)
+            for room in block.rooms:
+                f = room.fixtures
+                switch_map = [
+                    ("switch_1lever_1way", "1-Lever 1-Way Switch @1200mm", f.switch_1lever_1way),
+                    ("switch_2lever_1way", "2-Lever 1-Way Switch @1200mm", f.switch_2lever_1way),
+                    ("switch_1lever_2way", "1-Lever 2-Way Switch @1200mm", f.switch_1lever_2way),
+                    ("day_night_switch", "Day/Night Switch @2000mm", f.day_night_switch),
+                    ("isolator_30a", "30A Isolator Switch @2000mm", f.isolator_30a),
+                    ("isolator_20a", "20A Isolator Switch @2000mm", f.isolator_20a),
+                    ("master_switch", "Master Switch", f.master_switch),
+                ]
+                for field_name, desc, qty in switch_map:
+                    if qty > 0:
+                        item_no += 1
+                        quantity_items.append(BQLineItem(
+                            item_no=item_no,
+                            section=BQSection.SWITCHES,
+                            description=f"{desc} — {room.name}",
+                            unit="each",
+                            qty=qty,
+                            source=room.confidence,
+                            building_block=block.name,
+                        ))
+
+            # Section F: Power Sockets (v4.2 - sockets only)
             for room in block.rooms:
                 f = room.fixtures
                 socket_map = [
@@ -150,13 +175,6 @@ def price(
                     ("double_socket_ceiling", "16A Double Ceiling Socket", f.double_socket_ceiling),
                     ("data_points_cat6", "CAT6 Data Point", f.data_points_cat6),
                     ("floor_box", "Floor Box with Power + Data", f.floor_box),
-                    ("switch_1lever_1way", "1-Lever 1-Way Switch @1200mm", f.switch_1lever_1way),
-                    ("switch_2lever_1way", "2-Lever 1-Way Switch @1200mm", f.switch_2lever_1way),
-                    ("switch_1lever_2way", "1-Lever 2-Way Switch @1200mm", f.switch_1lever_2way),
-                    ("day_night_switch", "Day/Night Switch @2000mm", f.day_night_switch),
-                    ("isolator_30a", "30A Isolator Switch @2000mm", f.isolator_30a),
-                    ("isolator_20a", "20A Isolator Switch @2000mm", f.isolator_20a),
-                    ("master_switch", "Master Switch", f.master_switch),
                 ]
                 for field_name, desc, qty in socket_map:
                     if qty > 0:
@@ -171,27 +189,55 @@ def price(
                             building_block=block.name,
                         ))
 
-            # Section G: Heavy Equipment
+            # Section G: Air Conditioning Electrical (v4.2 - dedicated AC section)
             for equip in block.heavy_equipment:
-                item_no += 1
-                vsd_label = " with VSD" if equip.has_vsd else ""
-                quantity_items.append(BQLineItem(
-                    item_no=item_no,
-                    section=BQSection.EQUIPMENT,
-                    description=f"{equip.name} ({equip.rating_kw}kW{vsd_label})",
-                    unit="each",
-                    qty=equip.qty,
-                    source=equip.confidence,
-                    building_block=block.name,
-                ))
+                if equip.type.lower() in ("ac", "air_con", "aircon", "hvac", "split_unit"):
+                    item_no += 1
+                    vsd_label = " with VSD" if equip.has_vsd else ""
+                    quantity_items.append(BQLineItem(
+                        item_no=item_no,
+                        section=BQSection.AC_ELECTRICAL,
+                        description=f"{equip.name} electrical connection ({equip.rating_kw}kW{vsd_label})",
+                        unit="each",
+                        qty=equip.qty,
+                        source=equip.confidence,
+                        building_block=block.name,
+                    ))
+                    # Add isolator for AC
+                    item_no += 1
+                    quantity_items.append(BQLineItem(
+                        item_no=item_no,
+                        section=BQSection.AC_ELECTRICAL,
+                        description=f"AC Isolator 32A for {equip.name}",
+                        unit="each",
+                        qty=equip.qty,
+                        source=equip.confidence,
+                        building_block=block.name,
+                    ))
 
-        # Section J: Site Works (cable runs)
+            # Other heavy equipment (pumps, geysers, motors) → Cables section
+            for equip in block.heavy_equipment:
+                if equip.type.lower() not in ("ac", "air_con", "aircon", "hvac", "split_unit"):
+                    item_no += 1
+                    vsd_label = " with VSD" if equip.has_vsd else ""
+                    quantity_items.append(BQLineItem(
+                        item_no=item_no,
+                        section=BQSection.CABLES,
+                        description=f"{equip.name} dedicated circuit ({equip.rating_kw}kW{vsd_label})",
+                        unit="each",
+                        qty=equip.qty,
+                        source=equip.confidence,
+                        building_block=block.name,
+                        notes="Includes cable, breaker, and connection",
+                    ))
+
+        # Section H: External & Solar (v4.2 - site cable runs)
         for run in extraction.site_cable_runs:
             item_no += 1
             notes = "Distance from drawing" if run.confidence == ItemConfidence.EXTRACTED else "Distance estimated"
             quantity_items.append(BQLineItem(
                 item_no=item_no,
-                section=BQSection.CABLES,
+                section=BQSection.EXTERNAL,
                 description=f"{run.cable_spec} — {run.from_point} to {run.to_point}",
                 unit="m",
                 qty=run.length_m,
@@ -203,21 +249,67 @@ def price(
                 item_no += 1
                 quantity_items.append(BQLineItem(
                     item_no=item_no,
-                    section=BQSection.SITE_WORKS,
+                    section=BQSection.EXTERNAL,
                     description=f"Trenching 600mm deep — {run.from_point} to {run.to_point}",
                     unit="m",
                     qty=run.length_m,
                     source=run.confidence,
                 ))
 
-        # Section I: Compliance additions from validation
+        # Section I: Earthing & Bonding (v4.2 - new section)
+        # Add basic earthing items for each supply point
+        for supply in extraction.supply_points:
+            item_no += 1
+            quantity_items.append(BQLineItem(
+                item_no=item_no,
+                section=BQSection.EARTHING,
+                description=f"Earth electrode 1.5m copper-clad — {supply.name}",
+                unit="each",
+                qty=1,
+                source=ItemConfidence.INFERRED,
+                notes="Per SANS 10142-1 Clause 8",
+            ))
+            item_no += 1
+            quantity_items.append(BQLineItem(
+                item_no=item_no,
+                section=BQSection.EARTHING,
+                description=f"Earth bar and connections — {supply.name}",
+                unit="each",
+                qty=1,
+                source=ItemConfidence.INFERRED,
+            ))
+
+        # Add main bonding for each building block
+        for block in extraction.building_blocks:
+            item_no += 1
+            quantity_items.append(BQLineItem(
+                item_no=item_no,
+                section=BQSection.EARTHING,
+                description=f"Main bonding conductor 16mm² — {block.name}",
+                unit="m",
+                qty=15,  # Default estimate
+                source=ItemConfidence.ESTIMATED,
+                building_block=block.name,
+                notes="Bonding to water/gas pipes per Clause 8.3",
+            ))
+
+        # Compliance additions from validation (v4.2 - route to appropriate sections)
         if validation:
             for flag in validation.flags:
                 if flag.auto_corrected and not flag.passed:
+                    # Route compliance items to appropriate sections
+                    section = BQSection.DISTRIBUTION  # Default
+                    if "earth" in flag.corrected_value.lower():
+                        section = BQSection.EARTHING
+                    elif "surge" in flag.corrected_value.lower():
+                        section = BQSection.DISTRIBUTION
+                    elif "elcb" in flag.corrected_value.lower() or "rcd" in flag.corrected_value.lower():
+                        section = BQSection.DISTRIBUTION
+
                     item_no += 1
                     quantity_items.append(BQLineItem(
                         item_no=item_no,
-                        section=BQSection.COMPLIANCE,
+                        section=section,
                         description=f"Compliance: {flag.corrected_value}",
                         unit="each",
                         qty=1,
@@ -225,27 +317,50 @@ def price(
                         notes=f"Added per {flag.standard_ref}: {flag.message}",
                     ))
 
-        # Section K: Labour
+        # Section J: Testing & Commissioning (v4.2)
         total_circuits = extraction.total_circuits
-        total_points = extraction.total_points
         total_dbs = extraction.total_dbs
-        total_heavy = len(extraction.all_heavy_equipment)
         total_supplies = len(extraction.supply_points) or 1
 
-        labour_items = [
-            (f"Circuit installation ({total_circuits} circuits)", "circuit", total_circuits),
-            (f"Point installation ({total_points} points)", "point", total_points),
-            (f"DB installation and wiring ({total_dbs} boards)", "each", total_dbs),
-            (f"Heavy equipment connection ({total_heavy} units)", "each", total_heavy),
-            (f"Testing and commissioning ({total_dbs} boards)", "each", total_dbs),
+        testing_items = [
+            (f"Insulation resistance testing ({total_circuits} circuits)", "circuit", total_circuits),
+            (f"Earth continuity testing ({total_dbs} boards)", "each", total_dbs),
+            (f"Polarity testing ({total_circuits} circuits)", "circuit", total_circuits),
+            (f"RCD/ELCB testing ({total_dbs} boards)", "each", total_dbs),
             (f"COC certification ({total_supplies} supplies)", "each", total_supplies),
         ]
-        for desc, unit, qty in labour_items:
+        for desc, unit, qty in testing_items:
             if qty > 0:
                 item_no += 1
                 quantity_items.append(BQLineItem(
                     item_no=item_no,
-                    section=BQSection.LABOUR,
+                    section=BQSection.TESTING,
+                    description=desc,
+                    unit=unit,
+                    qty=qty,
+                    source=ItemConfidence.INFERRED,
+                    is_rate_only=True,
+                ))
+
+        # Section K: Preliminaries & General (v4.2)
+        total_points = extraction.total_points
+        total_heavy = len(extraction.all_heavy_equipment)
+
+        prelim_items = [
+            (f"Circuit installation labour ({total_circuits} circuits)", "circuit", total_circuits),
+            (f"Point installation labour ({total_points} points)", "point", total_points),
+            (f"DB installation and wiring ({total_dbs} boards)", "each", total_dbs),
+            (f"Heavy equipment connection ({total_heavy} units)", "each", total_heavy),
+            ("Site establishment", "item", 1),
+            ("Health & safety compliance", "item", 1),
+            ("As-built drawings", "set", 1),
+        ]
+        for desc, unit, qty in prelim_items:
+            if qty > 0:
+                item_no += 1
+                quantity_items.append(BQLineItem(
+                    item_no=item_no,
+                    section=BQSection.PRELIMS,
                     description=desc,
                     unit=unit,
                     qty=qty,
@@ -266,12 +381,12 @@ def price(
             est_item.total_zar = round(price_val * est_item.qty, 2)
             estimated_items.append(est_item)
 
-        # Apply site condition multipliers
+        # Apply site condition multipliers (v4.2 - updated sections)
         if site:
             for item in estimated_items:
-                if item.section == BQSection.LABOUR:
+                if item.section == BQSection.PRELIMS:
                     item.total_zar = round(item.total_zar * site.labour_multiplier, 2)
-                if item.section == BQSection.SITE_WORKS:
+                if item.section == BQSection.EXTERNAL:
                     item.total_zar = round(item.total_zar * site.trenching_multiplier, 2)
 
         result.estimated_bq = estimated_items
@@ -395,16 +510,19 @@ def _get_default_price(item: BQLineItem, contractor: Optional[ContractorProfile]
         if key in item.description:
             return price_val
 
-    # Section-based defaults
+    # Section-based defaults (v4.2 - 11 sections)
     section_defaults = {
         BQSection.DISTRIBUTION: 2500.0,
         BQSection.CABLES: 25.0,  # per meter average
+        BQSection.CONTAINMENT: 45.0,  # per meter
         BQSection.LIGHTS: 500.0,
+        BQSection.SWITCHES: 80.0,
         BQSection.SOCKETS: 150.0,
-        BQSection.EQUIPMENT: 5000.0,
-        BQSection.COMPLIANCE: 1500.0,
-        BQSection.SITE_WORKS: 180.0,
-        BQSection.LABOUR: 450.0,
+        BQSection.AC_ELECTRICAL: 2500.0,
+        BQSection.EXTERNAL: 180.0,  # per meter
+        BQSection.EARTHING: 850.0,
+        BQSection.TESTING: 350.0,
+        BQSection.PRELIMS: 450.0,
     }
 
     return section_defaults.get(item.section, 100.0)

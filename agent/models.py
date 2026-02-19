@@ -771,18 +771,31 @@ class ValidationResult(BaseModel):
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
 class BQSection(str, Enum):
-    SUPPLY = "A - Supply Infrastructure"
-    DISTRIBUTION = "B - Distribution Boards"
-    CABLES = "C - Cables & Wiring"
-    CONTAINMENT = "D - Cable Containment"
-    LIGHTS = "E - Light Fittings"
-    SOCKETS = "F - Socket Outlets & Switches"
-    EQUIPMENT = "G - Heavy Equipment"
-    DEDICATED = "H - Dedicated Circuits"
-    COMPLIANCE = "I - Compliance Additions"
-    SITE_WORKS = "J - Site Works & Trenching"
-    LABOUR = "K - Labour"
-    PROVISIONAL = "L - Provisional Sums"
+    """
+    v4.2 BoQ Sections (11 sections A-K) per specification.
+
+    Changes from v4.1:
+    - Removed SUPPLY (merged into DISTRIBUTION)
+    - Split SOCKETS into SWITCHES (E) and SOCKETS (F)
+    - Removed EQUIPMENT (AC now has dedicated section G)
+    - Removed DEDICATED (merged into relevant sections)
+    - Added EXTERNAL (H) for external/solar work
+    - Added EARTHING (I) for earthing & bonding
+    - Removed COMPLIANCE (now part of relevant sections)
+    - SITE_WORKS → TESTING (J)
+    - LABOUR/PROVISIONAL → PRELIMS (K)
+    """
+    DISTRIBUTION = "A - Distribution Boards & Protection"
+    CABLES = "B - Cables & Wiring"
+    CONTAINMENT = "C - Cable Containment"
+    LIGHTS = "D - Lighting"
+    SWITCHES = "E - Switches & Controls"
+    SOCKETS = "F - Power Sockets"
+    AC_ELECTRICAL = "G - Air Conditioning Electrical"
+    EXTERNAL = "H - External & Solar"
+    EARTHING = "I - Earthing & Bonding"
+    TESTING = "J - Testing & Commissioning"
+    PRELIMS = "K - Preliminaries & General"
 
 
 class BQLineItem(BaseModel):

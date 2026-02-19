@@ -32,6 +32,10 @@ from agent.prompts.schemas import (
 from agent.prompts.system_prompt import SYSTEM_PROMPT
 from agent.prompts.sld_prompt import get_sld_extraction_prompt
 from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prompt
+# v4.2 - Enhanced prompts
+from agent.prompts.plugs_layout_prompt import get_plugs_layout_prompt
+from agent.prompts.page_classifier_prompt import get_page_classifier_prompt
+from agent.prompts.legend_prompt import get_legend_prompt
 
 # Extraction models by provider
 DISCOVER_MODELS = {
@@ -404,12 +408,14 @@ def _extract_plug_data(
     client: object,
     model: str = DISCOVER_MODEL,
 ) -> Tuple[Dict[str, Any], int, float]:
-    """Extract socket/switch data from plug layout pages."""
+    """Extract socket/switch data from plug layout pages using enhanced v4.2 prompt."""
+    # v4.2 - Use dedicated plugs layout prompt
     prompt = f"""{SYSTEM_PROMPT}
 
 {CONFIDENCE_INSTRUCTION}
 
-Extract room and socket/switch data from these plug layout drawings.
+{get_plugs_layout_prompt()}
+
 Return JSON matching this schema:
 {PLUGS_LAYOUT_SCHEMA}
 """
