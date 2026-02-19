@@ -1,16 +1,13 @@
 """
-AfriPlan Electrical v4.1 — Main Application
+AfriPlan Electrical v4.2 — Main Application
 
 SA Electrical Quotation Platform - Quantity Take-Off Accelerator
-Uses Streamlit's modern navigation API for reliable multipage support.
+Simplified workflow: Upload → Extract → Export
 
-v4.1 Philosophy:
-- AI extracts quantities, contractor reviews/corrects
-- Contractor applies their own prices (not auto-generated)
-- Primary output: Quantity-only BQ
-- Secondary output: Estimated BQ (reference only)
+v4.2 Simplified Pipeline:
+INGEST → CLASSIFY → EXTRACT → VALIDATE → OUTPUT
 
-Pipeline: INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
+No editing in-app - contractor fills prices in exported Excel file.
 """
 
 import streamlit as st
@@ -23,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Define all pages using st.Page (v4.1 - 7-stage workflow)
+# Define pages (v4.2 - simplified to 3 pages)
 welcome = st.Page(
     "pages/0_Welcome.py",
     title="Welcome",
@@ -37,35 +34,15 @@ smart_upload = st.Page(
     icon="📤"
 )
 
-# v4.1 Workflow pages
-review = st.Page(
-    "pages/6_Review.py",
-    title="Review & Edit",
-    icon="✏️"
-)
-
-site_conditions = st.Page(
-    "pages/7_Site_Conditions.py",
-    title="Site Conditions",
-    icon="🏗️"
-)
-
-results = st.Page(
-    "pages/8_Results.py",
-    title="Results",
-    icon="📊"
-)
-
-# Settings
 profile = st.Page(
     "pages/5_Profile.py",
-    title="Contractor Profile",
-    icon="👤"
+    title="Settings",
+    icon="⚙️"
 )
 
-# Navigation sections (v4.1 - no legacy pages)
+# Navigation (v4.2 - simplified)
 pg = st.navigation({
-    "AI Workflow": [welcome, smart_upload, review, site_conditions, results],
+    "Main": [welcome, smart_upload],
     "Settings": [profile],
 })
 

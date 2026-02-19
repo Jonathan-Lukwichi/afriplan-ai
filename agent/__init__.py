@@ -60,6 +60,7 @@ from agent.models import (
 
 from agent.pipeline import (
     AfriPlanPipeline,
+    SimplifiedResult,
     create_pipeline,
     process_single_document,
     extract_quantities_only,
@@ -119,6 +120,7 @@ __all__ = [
 
     # Pipeline
     'AfriPlanPipeline',
+    'SimplifiedResult',
     'AfriPlanAgent',  # Legacy v3.0 compatibility
     'create_pipeline',
     'process_single_document',

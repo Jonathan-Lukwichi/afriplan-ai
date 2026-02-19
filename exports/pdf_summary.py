@@ -12,6 +12,7 @@ try:
     from fpdf import FPDF
     HAS_FPDF = True
 except ImportError:
+    FPDF = object  # Placeholder so class definition doesn't fail
     HAS_FPDF = False
 
 from agent.models import (
@@ -20,7 +21,7 @@ from agent.models import (
 )
 
 
-class QuotationPDF(FPDF):
+class QuotationPDF(FPDF):  # type: ignore
     """Custom PDF class for quotation documents."""
 
     def __init__(self, contractor: Optional[ContractorProfile] = None):

@@ -1,11 +1,16 @@
 """
 AfriPlan Electrical v4.1 — Pipeline Orchestrator
 
-Orchestrates the 7-stage pipeline:
+Orchestrates the pipeline stages:
+
+SIMPLIFIED (v4.2):
+INGEST → CLASSIFY → EXTRACT → VALIDATE → OUTPUT
+
+FULL (v4.1):
 INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
 
 Supports multiple LLM providers:
-- Groq (100% FREE with Llama 3.2 Vision!)
+- Groq (100% FREE with Llama 4 Vision!)
 - xAI Grok ($25 free credits/month with vision!)
 - Google Gemini (FREE tier available)
 - Anthropic Claude (paid)
@@ -345,6 +350,132 @@ class AfriPlanPipeline:
 
         # Stage 7
         return self.generate_final_result()
+
+    def run_simplified(
+        self,
+        files: List[Tuple[bytes, str, str]],
+        use_high_accuracy: bool = False,
+    ) -> "SimplifiedResult":
+        """
+        Run simplified pipeline: INGEST → CLASSIFY → EXTRACT → VALIDATE → OUTPUT.
+
+        No review stage, no site conditions. Perfect for quick extraction + export.
+
+        Args:
+            files: List of (file_bytes, filename, mime_type) tuples
+            use_high_accuracy: If True, use best model for extraction
+
+        Returns:
+            SimplifiedResult with extraction, validation, and pricing
+        """
+        # Stages 1-3: INGEST → CLASSIFY → DISCOVER
+        extraction, confidence = self.process_documents(files, use_opus_directly=use_high_accuracy)
+
+        if not extraction or not extraction.building_blocks:
+            return SimplifiedResult(
+                extraction=extraction,
+                validation=None,
+                pricing=None,
+                tier=self.tier,
+                confidence=confidence,
+                stages=self.stages,
+                success=False,
+                error="No data extracted from documents",
+            )
+
+        # Stage 5: VALIDATE (automatic, no UI)
+        self.validation, validate_result = validate(self.extraction)
+        self.stages.append(validate_result)
+
+        # Stage 6: PRICE (no site conditions - uses defaults)
+        self.pricing, price_result = price(
+            self.extraction,
+            self.validation,
+            self.contractor_profile,
+            None,  # No site conditions
+        )
+        self.stages.append(price_result)
+
+        return SimplifiedResult(
+            extraction=self.extraction,
+            validation=self.validation,
+            pricing=self.pricing,
+            tier=self.tier,
+            confidence=confidence,
+            stages=self.stages,
+            success=True,
+        )
+
+
+class SimplifiedResult:
+    """Result from simplified pipeline run."""
+
+    def __init__(
+        self,
+        extraction: Optional[ExtractionResult] = None,
+        validation: Optional[ValidationResult] = None,
+        pricing: Optional[PricingResult] = None,
+        tier: ServiceTier = ServiceTier.UNKNOWN,
+        confidence: float = 0.0,
+        stages: Optional[List[StageResult]] = None,
+        success: bool = True,
+        error: Optional[str] = None,
+    ):
+        self.extraction = extraction
+        self.validation = validation
+        self.pricing = pricing
+        self.tier = tier
+        self.confidence = confidence
+        self.stages = stages or []
+        self.success = success
+        self.error = error
+
+    @property
+    def total_lights(self) -> int:
+        """Total light fittings extracted."""
+        if not self.extraction:
+            return 0
+        return sum(
+            room.fixtures.total_lights
+            for block in self.extraction.building_blocks
+            for room in block.rooms
+        )
+
+    @property
+    def total_sockets(self) -> int:
+        """Total socket outlets extracted."""
+        if not self.extraction:
+            return 0
+        return sum(
+            room.fixtures.total_sockets
+            for block in self.extraction.building_blocks
+            for room in block.rooms
+        )
+
+    @property
+    def total_switches(self) -> int:
+        """Total switches extracted."""
+        if not self.extraction:
+            return 0
+        return sum(
+            room.fixtures.total_switches
+            for block in self.extraction.building_blocks
+            for room in block.rooms
+        )
+
+    @property
+    def compliance_score(self) -> float:
+        """SANS 10142 compliance score (0-100)."""
+        if not self.validation:
+            return 100.0
+        return self.validation.compliance_score
+
+    @property
+    def bq_items_count(self) -> int:
+        """Total BQ line items."""
+        if not self.pricing:
+            return 0
+        return len(self.pricing.quantity_bq)
 
 
 def create_pipeline(
