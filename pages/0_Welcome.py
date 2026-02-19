@@ -303,15 +303,20 @@ with col1:
     st.markdown("""
     <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
                 border: 1px solid rgba(255,107,53,0.3); border-radius: 16px;
-                padding: 2rem 1.5rem; text-align: center; height: 180px;
+                padding: 2rem 1.5rem 2.5rem 1.5rem; text-align: center;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.25);">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🦙</div>
-        <div style="color: #FF6B35; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        <div style="width: 70px; height: 70px; background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(255,107,53,0.1));
+                    border-radius: 16px; display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 1.25rem auto; border: 1px solid rgba(255,107,53,0.3);">
+            <span style="font-size: 2rem;">🦙</span>
+        </div>
+        <div style="color: #FF6B35; font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;">
             Groq + Llama 4
         </div>
-        <div style="background: rgba(255,107,53,0.15); padding: 0.5rem 1rem; border-radius: 20px;
-                    display: inline-block; margin-top: 0.5rem;">
-            <span style="color: #FF6B35; font-size: 0.9rem; font-weight: 600;">100% FREE</span>
+        <div style="background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(255,107,53,0.1));
+                    padding: 0.6rem 1.25rem; border-radius: 10px; border: 1px solid rgba(255,107,53,0.3);
+                    display: inline-block;">
+            <span style="color: #FF6B35; font-size: 0.9rem; font-weight: 700;">100% FREE</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -320,15 +325,20 @@ with col2:
     st.markdown("""
     <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
                 border: 1px solid rgba(66,133,244,0.3); border-radius: 16px;
-                padding: 2rem 1.5rem; text-align: center; height: 180px;
+                padding: 2rem 1.5rem 2.5rem 1.5rem; text-align: center;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.25);">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔷</div>
-        <div style="color: #4285F4; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        <div style="width: 70px; height: 70px; background: linear-gradient(135deg, rgba(66,133,244,0.2), rgba(66,133,244,0.1));
+                    border-radius: 16px; display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 1.25rem auto; border: 1px solid rgba(66,133,244,0.3);">
+            <span style="font-size: 2rem;">🔷</span>
+        </div>
+        <div style="color: #4285F4; font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;">
             Google Gemini
         </div>
-        <div style="background: rgba(66,133,244,0.15); padding: 0.5rem 1rem; border-radius: 20px;
-                    display: inline-block; margin-top: 0.5rem;">
-            <span style="color: #4285F4; font-size: 0.9rem; font-weight: 600;">FREE Tier</span>
+        <div style="background: linear-gradient(135deg, rgba(66,133,244,0.2), rgba(66,133,244,0.1));
+                    padding: 0.6rem 1.25rem; border-radius: 10px; border: 1px solid rgba(66,133,244,0.3);
+                    display: inline-block;">
+            <span style="color: #4285F4; font-size: 0.9rem; font-weight: 700;">FREE Tier</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -337,15 +347,20 @@ with col3:
     st.markdown("""
     <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
                 border: 1px solid rgba(139,92,246,0.3); border-radius: 16px;
-                padding: 2rem 1.5rem; text-align: center; height: 180px;
+                padding: 2rem 1.5rem 2.5rem 1.5rem; text-align: center;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.25);">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🤖</div>
-        <div style="color: #8B5CF6; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        <div style="width: 70px; height: 70px; background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.1));
+                    border-radius: 16px; display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 1.25rem auto; border: 1px solid rgba(139,92,246,0.3);">
+            <span style="font-size: 2rem;">🤖</span>
+        </div>
+        <div style="color: #8B5CF6; font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;">
             Claude AI
         </div>
-        <div style="background: rgba(139,92,246,0.15); padding: 0.5rem 1rem; border-radius: 20px;
-                    display: inline-block; margin-top: 0.5rem;">
-            <span style="color: #8B5CF6; font-size: 0.9rem; font-weight: 600;">Paid Option</span>
+        <div style="background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.1));
+                    padding: 0.6rem 1.25rem; border-radius: 10px; border: 1px solid rgba(139,92,246,0.3);
+                    display: inline-block;">
+            <span style="color: #8B5CF6; font-size: 0.9rem; font-weight: 700;">Paid Option</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
