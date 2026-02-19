@@ -12,6 +12,16 @@ v4.4 additions (Wedela Lighting & Plugs PDF):
 - Legend totals validation (_validate_against_legend)
 - Enhanced fixture type support
 
+v4.5 additions (Universal Electrical Project Schema):
+- System parameters extraction (voltage, phases, frequency, fault levels)
+- Breaker type distinction (MCB vs MCCB vs ACB)
+- Phase designation for load balancing (R1/W1/B1)
+- Cable material (copper vs aluminium)
+- Installation method for site cables
+- Overload relay detection for motor circuits
+- Expanded equipment types (generator, UPS, solar, EV charger, etc.)
+- Supply point with rating_kva, voltage specs
+
 Supports multiple LLM providers:
 - Groq (Llama 4 Scout/Maverick) - 100% FREE with vision!
 - xAI Grok (grok-2-vision) - $25 free credits/month
@@ -27,7 +37,8 @@ from agent.models import (
     DocumentSet, ExtractionResult, ExtractionMode, ServiceTier,
     StageResult, PipelineStage, PageType, ItemConfidence,
     BuildingBlock, DistributionBoard, Circuit, Room, FixtureCounts,
-    HeavyEquipment, SiteCableRun, ProjectMetadata, SupplyPoint
+    HeavyEquipment, SiteCableRun, ProjectMetadata, SupplyPoint,
+    SystemParameters  # v4.5
 )
 from agent.utils import parse_json_safely, Timer, estimate_cost_zar
 from agent.prompts.schemas import (
@@ -684,6 +695,48 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
     """Merge SLD extraction data into ExtractionResult."""
     block_name = data.get("building_block", "")
 
+    # v4.5 - Extract system parameters
+    sys_params_data = data.get("system_parameters")
+    if sys_params_data and extraction.metadata:
+        extraction.metadata.system_parameters = SystemParameters(
+            voltage_v=int(sys_params_data.get("voltage_v") or 400),
+            voltage_single_phase_v=int(sys_params_data.get("voltage_single_phase_v") or 230),
+            phases=sys_params_data.get("phases") or "3PH+N+E",
+            num_phases=int(sys_params_data.get("num_phases") or 3),
+            frequency_hz=int(sys_params_data.get("frequency_hz") or 50),
+            fault_level_main_ka=float(sys_params_data.get("fault_level_main_ka") or 15.0),
+            fault_level_sub_ka=float(sys_params_data.get("fault_level_sub_ka") or 6.0),
+            standard=sys_params_data.get("standard") or "SANS 10142-1",
+            phase_designation=sys_params_data.get("phase_designation") or "RWB",
+            confidence=_parse_confidence(sys_params_data.get("confidence") or "inferred"),
+        )
+
+    # v4.5 - Extract supply point
+    supply_data = data.get("supply_point")
+    if supply_data:
+        supply_point = SupplyPoint(
+            name=supply_data.get("name") or "",
+            type=supply_data.get("type") or "eskom_kiosk",
+            rating_kva=float(supply_data.get("rating_kva") or 0),
+            voltage_primary_v=int(supply_data.get("voltage_primary_v") or 11000),
+            voltage_secondary_v=int(supply_data.get("voltage_secondary_v") or 400),
+            phases=supply_data.get("phases") or "3PH+N+E",
+            main_breaker_a=int(supply_data.get("main_breaker_a") or 0),
+            has_meter=supply_data.get("has_meter") if supply_data.get("has_meter") is not None else True,
+            meter_type=supply_data.get("meter_type") or "ct",
+            feeds_db=supply_data.get("feeds_db") or "",
+            cable_size_mm2=float(supply_data.get("cable_size_mm2") or 0),
+            cable_cores=int(supply_data.get("cable_cores") or 4),
+            cable_type=supply_data.get("cable_type") or "PVC SWA PVC",
+            cable_material=supply_data.get("cable_material") or "copper",
+            cable_length_m=float(supply_data.get("cable_length_m") or 0),
+            fault_level_ka=float(supply_data.get("fault_level_ka") or 15.0),
+            status=supply_data.get("status") or "new",
+            building_block=block_name,
+            confidence=_parse_confidence(supply_data.get("confidence") or "extracted"),
+        )
+        extraction.supply_points.append(supply_point)
+
     # Find or create building block
     block = None
     for b in extraction.building_blocks:
@@ -696,7 +749,7 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
         block = BuildingBlock(name=block_name or "Main Building")
         extraction.building_blocks.append(block)
 
-    # Add distribution boards
+    # Add distribution boards (v4.5 enhanced with breaker_type, cable_material, status)
     for db_data in data.get("distribution_boards", []):
         db = DistributionBoard(
             name=db_data.get("name", ""),
@@ -707,15 +760,23 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
             supply_cable=db_data.get("supply_cable", ""),
             supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2") or 0),
             supply_cable_length_m=float(db_data.get("supply_cable_length_m") or 0),
+            supply_cable_material=db_data.get("supply_cable_material") or "copper",  # v4.5
             main_breaker_a=int(db_data.get("main_breaker_a") or 0),
+            main_breaker_type=db_data.get("main_breaker_type") or "mccb",  # v4.5
+            main_breaker_poles=int(db_data.get("main_breaker_poles") or 4),  # v4.5
             earth_leakage=db_data.get("earth_leakage") or False,
             earth_leakage_rating_a=int(db_data.get("earth_leakage_rating_a") or 0),
+            earth_leakage_ma=int(db_data.get("earth_leakage_ma") or 30),  # v4.5
+            earth_leakage_type=db_data.get("earth_leakage_type") or "rcd",  # v4.5
             surge_protection=db_data.get("surge_protection") or False,
+            surge_type=db_data.get("surge_type") or "",  # v4.5
             spare_ways=int(db_data.get("spare_ways") or 0),
+            fault_level_ka=float(db_data.get("fault_level_ka") or 15.0),  # v4.5
+            status=db_data.get("status") or "new",  # v4.5
             confidence=_parse_confidence(db_data.get("confidence", "extracted")),
         )
 
-        # Add circuits (v4.3 enhanced with VSD/starter/day-night fields)
+        # Add circuits (v4.5 enhanced with breaker_type, phase, cable_material, overload_relay)
         for ckt_data in db_data.get("circuits", []):
             circuit = Circuit(
                 id=ckt_data.get("id") or "",
@@ -726,8 +787,11 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
                 cable_size_mm2=float(ckt_data.get("cable_size_mm2") or 2.5),
                 cable_cores=int(ckt_data.get("cable_cores") or 3),
                 cable_type=ckt_data.get("cable_type") or "GP WIRE",
+                cable_material=ckt_data.get("cable_material") or "copper",  # v4.5
                 breaker_a=int(ckt_data.get("breaker_a") or 20),
+                breaker_type=ckt_data.get("breaker_type") or "mcb",  # v4.5
                 breaker_poles=int(ckt_data.get("breaker_poles") or 1),
+                phase=ckt_data.get("phase") or "",  # v4.5
                 num_points=int(ckt_data.get("num_points") or 0),
                 is_spare=ckt_data.get("is_spare") or False,
                 has_isolator=ckt_data.get("has_isolator") or False,
@@ -744,20 +808,26 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
                 controlled_circuits=ckt_data.get("controlled_circuits") or [],
                 # v4.3 - ISO circuit equipment type
                 equipment_type=ckt_data.get("equipment_type") or "",
+                # v4.5 - Overload relay for motor circuits
+                has_overload_relay=ckt_data.get("has_overload_relay") or False,
             )
             db.circuits.append(circuit)
 
         block.distribution_boards.append(db)
 
-    # Add heavy equipment (v4.3 enhanced with circuit_ref, starter_type, vsd_rating_kw)
+    # Add heavy equipment (v4.5 enhanced with overload_relay, breaker_type, cable_material, status)
     for eq_data in data.get("heavy_equipment", []):
         equipment = HeavyEquipment(
             name=eq_data.get("name") or "",
             type=eq_data.get("type") or "",
             rating_kw=float(eq_data.get("rating_kw") or 0),
+            rating_kva=float(eq_data.get("rating_kva") or 0),  # v4.5
             cable_size_mm2=float(eq_data.get("cable_size_mm2") or 4),
             cable_type=eq_data.get("cable_type") or "PVC SWA PVC",
+            cable_material=eq_data.get("cable_material") or "copper",  # v4.5
             breaker_a=int(eq_data.get("breaker_a") or 32),
+            breaker_type=eq_data.get("breaker_type") or "mcb",  # v4.5
+            breaker_poles=int(eq_data.get("breaker_poles") or 3),  # v4.5
             has_vsd=eq_data.get("has_vsd") or False,
             has_dol=eq_data.get("has_dol") or False,
             isolator_a=int(eq_data.get("isolator_a") or 0),
@@ -769,6 +839,20 @@ def _merge_sld_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
             circuit_ref=eq_data.get("circuit_ref") or "",
             starter_type=eq_data.get("starter_type") or "",
             vsd_rating_kw=float(eq_data.get("vsd_rating_kw") or 0),
+            # v4.5 - Motor protection
+            has_overload_relay=eq_data.get("has_overload_relay") or False,
+            overload_setting_a=float(eq_data.get("overload_setting_a") or 0),
+            # v4.5 - Equipment status
+            status=eq_data.get("status") or "new",
+            # v4.5 - Voltage (for transformers, inverters)
+            voltage_primary_v=int(eq_data.get("voltage_primary_v") or 0),
+            voltage_secondary_v=int(eq_data.get("voltage_secondary_v") or 0),
+            # v4.5 - Backup power specific
+            backup_runtime_hours=float(eq_data.get("backup_runtime_hours") or 0),
+            fuel_type=eq_data.get("fuel_type") or "",
+            # v4.5 - EV charger specific
+            ev_charger_type=eq_data.get("ev_charger_type") or "",
+            ev_charger_kw=float(eq_data.get("ev_charger_kw") or 0),
         )
         block.heavy_equipment.append(equipment)
 
@@ -905,7 +989,7 @@ def _merge_plug_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None
 
 def _merge_outside_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
     """Merge outside lights and site cable data into ExtractionResult."""
-    # Add site cable runs
+    # Add site cable runs (v4.5 enhanced with material, installation_method, trench details)
     for run_data in data.get("site_cable_runs") or []:
         run = SiteCableRun(
             from_point=run_data.get("from_point") or "",
@@ -919,6 +1003,15 @@ def _merge_outside_data(extraction: ExtractionResult, data: Dict[str, Any]) -> N
             needs_trenching=run_data.get("needs_trenching") if run_data.get("needs_trenching") is not None else True,
             confidence=_parse_confidence(run_data.get("confidence") or "estimated"),
             notes=run_data.get("notes") or "",
+            # v4.5 - Enhanced cable attributes
+            material=run_data.get("material") or "copper",
+            is_armoured=run_data.get("is_armoured") if run_data.get("is_armoured") is not None else True,
+            installation_method=run_data.get("installation_method") or "underground",
+            # v4.5 - Trench details
+            trench_depth_mm=int(run_data.get("trench_depth_mm") or 600),
+            trench_width_mm=int(run_data.get("trench_width_mm") or 300),
+            requires_warning_tape=run_data.get("requires_warning_tape") if run_data.get("requires_warning_tape") is not None else True,
+            requires_sand_bedding=run_data.get("requires_sand_bedding") if run_data.get("requires_sand_bedding") is not None else True,
         )
         extraction.site_cable_runs.append(run)
 

@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.4 — JSON Schemas for AI Extraction
+AfriPlan Electrical v4.5 — JSON Schemas for AI Extraction
 
 Contains example JSON structures that guide Claude's structured output.
 
@@ -19,6 +19,16 @@ v4.4 additions (Layout Drawing Enhancements - Wedela Lighting & Plugs PDF):
 - legend_totals section for validation cross-checking
 - Room circuit_refs for DB-Room linking
 - Waterproof sockets, ceiling sockets, master switch support
+
+v4.5 additions (Universal Electrical Project Schema):
+- system_parameters: voltage, phases, frequency, fault levels
+- breaker_type: MCB/MCCB/ACB/Fuse distinction (critical for pricing)
+- phase: R1/W1/B1 designation for load balancing
+- cable_material: copper/aluminium
+- installation_method: underground/trunking/conduit/etc.
+- has_overload_relay: motor protection
+- Expanded equipment types (generator, UPS, solar, EV charger, etc.)
+- supply_point with rating_kva, voltage specs
 """
 
 # Confidence instruction to add to all prompts
@@ -95,6 +105,38 @@ TITLE_BLOCK_SCHEMA = """{
 # Schema for SLD extraction - distribution boards with circuits
 SLD_SCHEMA = """{
   "building_block": "Pool Block",
+  "system_parameters": {
+    "voltage_v": 400,
+    "voltage_single_phase_v": 230,
+    "phases": "3PH+N+E",
+    "num_phases": 3,
+    "frequency_hz": 50,
+    "fault_level_main_ka": 15.0,
+    "fault_level_sub_ka": 6.0,
+    "standard": "SANS 10142-1",
+    "phase_designation": "RWB",
+    "confidence": "extracted"
+  },
+  "supply_point": {
+    "name": "Existing Mini Sub",
+    "type": "mini_sub",
+    "rating_kva": 500,
+    "voltage_primary_v": 11000,
+    "voltage_secondary_v": 400,
+    "phases": "3PH+N+E",
+    "main_breaker_a": 250,
+    "has_meter": true,
+    "meter_type": "ct",
+    "feeds_db": "DB-CR",
+    "cable_size_mm2": 95,
+    "cable_cores": 4,
+    "cable_type": "PVC SWA PVC",
+    "cable_material": "copper",
+    "cable_length_m": 10,
+    "fault_level_ka": 15.0,
+    "status": "existing",
+    "confidence": "extracted"
+  },
   "distribution_boards": [
     {
       "name": "DB-PFA",
@@ -105,13 +147,20 @@ SLD_SCHEMA = """{
       "supply_cable": "16mm² 4C PVC SWA PVC",
       "supply_cable_size_mm2": 16,
       "supply_cable_length_m": 45,
+      "supply_cable_material": "copper",
       "main_breaker_a": 100,
+      "main_breaker_type": "mccb",
+      "main_breaker_poles": 4,
       "earth_leakage": true,
       "earth_leakage_rating_a": 63,
+      "earth_leakage_ma": 30,
+      "earth_leakage_type": "rcd",
       "surge_protection": true,
+      "surge_type": "type2",
       "phase": "3PH",
       "voltage_v": 400,
       "fault_level_ka": 15,
+      "status": "new",
       "circuits": [
         {
           "id": "L1",
@@ -123,8 +172,11 @@ SLD_SCHEMA = """{
           "cable_size_mm2": 2.5,
           "cable_cores": 3,
           "cable_type": "GP WIRE",
+          "cable_material": "copper",
           "breaker_a": 10,
+          "breaker_type": "mcb",
           "breaker_poles": 1,
+          "phase": "R1",
           "num_points": 8
         },
         {
@@ -136,8 +188,11 @@ SLD_SCHEMA = """{
           "cable_size_mm2": 2.5,
           "cable_cores": 3,
           "cable_type": "GP WIRE",
+          "cable_material": "copper",
           "breaker_a": 20,
+          "breaker_type": "mcb",
           "breaker_poles": 1,
+          "phase": "W1",
           "num_points": 4
         },
         {
@@ -149,13 +204,16 @@ SLD_SCHEMA = """{
           "cable_size_mm2": 4,
           "cable_cores": 4,
           "cable_type": "PVC SWA PVC",
+          "cable_material": "copper",
           "breaker_a": 32,
+          "breaker_type": "mcb",
           "breaker_poles": 3,
           "has_vsd": true,
           "vsd_rating_kw": 2.2,
           "starter_type": "vsd",
           "has_isolator": true,
-          "isolator_rating_a": 30
+          "isolator_rating_a": 30,
+          "has_overload_relay": true
         },
         {
           "id": "ISO1",
@@ -166,14 +224,17 @@ SLD_SCHEMA = """{
           "cable_size_mm2": 2.5,
           "cable_cores": 3,
           "cable_type": "GP WIRE",
+          "cable_material": "copper",
           "breaker_a": 20,
+          "breaker_type": "rcbo",
           "breaker_poles": 2,
+          "phase": "B1",
           "has_isolator": true,
           "isolator_rating_a": 20,
           "equipment_type": "geyser"
         },
         {
-          "id": "L1",
+          "id": "L2",
           "type": "lighting",
           "description": "External Lights - Day/Night",
           "wattage_w": 480,
@@ -182,8 +243,11 @@ SLD_SCHEMA = """{
           "cable_size_mm2": 1.5,
           "cable_cores": 3,
           "cable_type": "GP WIRE",
+          "cable_material": "copper",
           "breaker_a": 10,
+          "breaker_type": "mcb",
           "breaker_poles": 1,
+          "phase": "R2",
           "num_points": 8,
           "has_day_night": true,
           "has_bypass": true,
@@ -208,13 +272,17 @@ SLD_SCHEMA = """{
       "confidence": "extracted",
       "cable_size_mm2": 4,
       "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
       "breaker_a": 32,
+      "breaker_type": "mcb",
       "has_vsd": true,
       "vsd_rating_kw": 2.2,
       "starter_type": "vsd",
+      "has_overload_relay": true,
       "isolator_a": 30,
       "fed_from_db": "DB-PFA",
       "circuit_ref": "PP1",
+      "status": "new",
       "qty": 1
     },
     {
@@ -224,13 +292,17 @@ SLD_SCHEMA = """{
       "confidence": "extracted",
       "cable_size_mm2": 6,
       "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
       "breaker_a": 40,
+      "breaker_type": "mccb",
       "has_vsd": true,
       "vsd_rating_kw": 7.5,
       "starter_type": "vsd",
+      "has_overload_relay": true,
       "isolator_a": 40,
       "fed_from_db": "DB-HPS1",
       "circuit_ref": "HP1",
+      "status": "new",
       "qty": 1
     },
     {
@@ -240,12 +312,35 @@ SLD_SCHEMA = """{
       "confidence": "extracted",
       "cable_size_mm2": 25,
       "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
       "breaker_a": 100,
+      "breaker_type": "mccb",
       "has_vsd": false,
       "starter_type": "star_delta",
+      "has_overload_relay": true,
       "isolator_a": 125,
       "fed_from_db": "DB-1",
       "circuit_ref": "HVAC",
+      "status": "new",
+      "qty": 1
+    },
+    {
+      "name": "Standby Generator",
+      "type": "generator",
+      "rating_kva": 100,
+      "rating_kw": 80,
+      "confidence": "extracted",
+      "cable_size_mm2": 35,
+      "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "breaker_a": 160,
+      "breaker_type": "mccb",
+      "has_vsd": false,
+      "isolator_a": 200,
+      "fed_from_db": "DB-CR",
+      "circuit_ref": "GEN1",
+      "fuel_type": "diesel",
+      "status": "new",
       "qty": 1
     }
   ]
@@ -613,7 +708,14 @@ OUTSIDE_LIGHTS_SCHEMA = """{
       "cable_size_mm2": 95,
       "cable_cores": 4,
       "cable_type": "PVC SWA PVC",
+      "material": "copper",
+      "is_armoured": true,
+      "installation_method": "underground",
       "length_m": 85,
+      "trench_depth_mm": 600,
+      "trench_width_mm": 450,
+      "requires_warning_tape": true,
+      "requires_sand_bedding": true,
       "confidence": "extracted",
       "is_underground": true,
       "needs_trenching": true,
@@ -626,6 +728,9 @@ OUTSIDE_LIGHTS_SCHEMA = """{
       "cable_size_mm2": 16,
       "cable_cores": 4,
       "cable_type": "PVC SWA PVC",
+      "material": "copper",
+      "is_armoured": true,
+      "installation_method": "underground",
       "length_m": 45,
       "confidence": "extracted",
       "is_underground": true,
@@ -638,11 +743,30 @@ OUTSIDE_LIGHTS_SCHEMA = """{
       "cable_size_mm2": 6,
       "cable_cores": 4,
       "cable_type": "PVC SWA PVC",
+      "material": "copper",
+      "is_armoured": true,
+      "installation_method": "underground",
       "length_m": 120,
       "confidence": "estimated",
       "is_underground": true,
       "needs_trenching": true,
       "notes": "Length estimated from scale - not marked on drawing"
+    },
+    {
+      "from_point": "DB-CR",
+      "to_point": "Solar Array",
+      "cable_spec": "35mm² 4C Aluminium PVC SWA PVC",
+      "cable_size_mm2": 35,
+      "cable_cores": 4,
+      "cable_type": "PVC SWA PVC",
+      "material": "aluminium",
+      "is_armoured": true,
+      "installation_method": "cable_tray",
+      "length_m": 50,
+      "confidence": "extracted",
+      "is_underground": false,
+      "needs_trenching": false,
+      "notes": "Cable tray run to solar array"
     }
   ],
   "outside_lights": {
@@ -651,13 +775,22 @@ OUTSIDE_LIGHTS_SCHEMA = """{
     "flood_light_200w": 4,
     "flood_light_200w_confidence": "extracted",
     "bulkhead_26w": 8,
-    "bulkhead_26w_confidence": "extracted"
+    "bulkhead_26w_confidence": "extracted",
+    "pool_flood_light": 6,
+    "pool_flood_light_confidence": "extracted",
+    "pool_underwater_light": 4,
+    "pool_underwater_light_confidence": "extracted"
   },
   "underground_sleeves": [
     {
       "size_mm": 50,
       "qty": 4,
       "purpose": "Future solar cable provision"
+    },
+    {
+      "size_mm": 110,
+      "qty": 2,
+      "purpose": "EV charger cable provision"
     }
   ]
 }"""
@@ -743,7 +876,7 @@ MAINTENANCE_SCHEMA = """{
   }
 }"""
 
-# Schema for heavy equipment extraction from SLDs (v4.3 enhanced)
+# Schema for heavy equipment extraction from SLDs (v4.5 enhanced)
 HEAVY_EQUIPMENT_SCHEMA = """{
   "equipment": [
     {
@@ -754,12 +887,17 @@ HEAVY_EQUIPMENT_SCHEMA = """{
       "has_vsd": true,
       "vsd_rating_kw": 2.2,
       "starter_type": "vsd",
+      "has_overload_relay": true,
       "isolator_a": 30,
+      "breaker_a": 32,
+      "breaker_type": "mcb",
       "circuit_ref": "PP1",
       "fed_from_db": "DB-PPS1",
       "building_block": "Pool Block",
       "cable_size_mm2": 4,
       "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "status": "new",
       "qty": 1
     },
     {
@@ -770,28 +908,17 @@ HEAVY_EQUIPMENT_SCHEMA = """{
       "has_vsd": true,
       "vsd_rating_kw": 7.5,
       "starter_type": "vsd",
+      "has_overload_relay": true,
       "isolator_a": 40,
+      "breaker_a": 40,
+      "breaker_type": "mccb",
       "circuit_ref": "HP1",
       "fed_from_db": "DB-HPS1",
       "building_block": "Pool Block",
       "cable_size_mm2": 6,
       "cable_type": "PVC SWA PVC",
-      "qty": 1
-    },
-    {
-      "type": "circulation_pump",
-      "name": "Circulation Pump 1",
-      "rating_kw": 1.5,
-      "confidence": "extracted",
-      "has_vsd": true,
-      "vsd_rating_kw": 1.5,
-      "starter_type": "vsd",
-      "isolator_a": 20,
-      "circuit_ref": "CP1",
-      "fed_from_db": "DB-PFA",
-      "building_block": "Pool Block",
-      "cable_size_mm2": 2.5,
-      "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "status": "new",
       "qty": 1
     },
     {
@@ -801,27 +928,124 @@ HEAVY_EQUIPMENT_SCHEMA = """{
       "confidence": "extracted",
       "has_vsd": false,
       "starter_type": "star_delta",
+      "has_overload_relay": true,
       "isolator_a": 125,
+      "breaker_a": 100,
+      "breaker_type": "mccb",
       "circuit_ref": "HVAC",
       "fed_from_db": "DB-1",
       "building_block": "Community Hall",
       "cable_size_mm2": 25,
       "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "status": "new",
       "qty": 1
     },
     {
-      "type": "borehole_pump",
-      "name": "Borehole Pump",
-      "rating_kw": 4.0,
+      "type": "generator",
+      "name": "Standby Generator",
+      "rating_kva": 100,
+      "rating_kw": 80,
       "confidence": "extracted",
       "has_vsd": false,
-      "starter_type": "dol",
-      "isolator_a": 32,
-      "circuit_ref": "BH1",
+      "starter_type": "direct",
+      "isolator_a": 200,
+      "breaker_a": 160,
+      "breaker_type": "mccb",
+      "circuit_ref": "GEN1",
+      "fed_from_db": "DB-CR",
+      "building_block": "Main Block",
+      "cable_size_mm2": 35,
+      "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "fuel_type": "diesel",
+      "status": "new",
+      "qty": 1
+    },
+    {
+      "type": "ups",
+      "name": "Server Room UPS",
+      "rating_kva": 10,
+      "rating_kw": 8,
+      "confidence": "extracted",
+      "breaker_a": 40,
+      "breaker_type": "mcb",
+      "circuit_ref": "UPS1",
+      "fed_from_db": "DB-IT",
+      "building_block": "Office Block",
+      "cable_size_mm2": 6,
+      "cable_type": "GP WIRE",
+      "cable_material": "copper",
+      "backup_runtime_hours": 0.5,
+      "status": "new",
+      "qty": 1
+    },
+    {
+      "type": "solar_inverter",
+      "name": "Solar PV Inverter",
+      "rating_kva": 50,
+      "rating_kw": 50,
+      "confidence": "extracted",
+      "breaker_a": 80,
+      "breaker_type": "mccb",
+      "circuit_ref": "PV1",
+      "fed_from_db": "DB-CR",
+      "building_block": "Main Block",
+      "cable_size_mm2": 16,
+      "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "status": "new",
+      "qty": 1
+    },
+    {
+      "type": "ev_charger",
+      "name": "EV Charger - Parking Bay 1",
+      "rating_kw": 22,
+      "confidence": "extracted",
+      "breaker_a": 40,
+      "breaker_type": "rcbo",
+      "circuit_ref": "EV1",
       "fed_from_db": "DB-EXT",
       "building_block": "External",
-      "cable_size_mm2": 4,
+      "cable_size_mm2": 10,
       "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "ev_charger_type": "ac_type2",
+      "ev_charger_kw": 22,
+      "status": "new",
+      "qty": 2
+    },
+    {
+      "type": "gate_motor",
+      "name": "Main Entrance Gate Motor",
+      "rating_kw": 0.75,
+      "confidence": "extracted",
+      "breaker_a": 10,
+      "breaker_type": "mcb",
+      "isolator_a": 20,
+      "circuit_ref": "GATE1",
+      "fed_from_db": "DB-EXT",
+      "building_block": "External",
+      "cable_size_mm2": 2.5,
+      "cable_type": "PVC SWA PVC",
+      "cable_material": "copper",
+      "status": "new",
+      "qty": 1
+    },
+    {
+      "type": "fire_panel",
+      "name": "Fire Alarm Control Panel",
+      "rating_kw": 0.5,
+      "confidence": "extracted",
+      "breaker_a": 10,
+      "breaker_type": "mcb",
+      "circuit_ref": "FA1",
+      "fed_from_db": "DB-CR",
+      "building_block": "Main Block",
+      "cable_size_mm2": 2.5,
+      "cable_type": "FIRE RATED",
+      "cable_material": "copper",
+      "status": "new",
       "qty": 1
     }
   ]

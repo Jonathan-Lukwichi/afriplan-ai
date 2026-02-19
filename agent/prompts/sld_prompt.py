@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.3 - SLD Extraction Prompt
+AfriPlan Electrical v4.5 - SLD Extraction Prompt
 
 THE MOST CRITICAL PROMPT - Extracts distribution boards and circuits from
 Single Line Diagram (SLD) pages. This is where all electrical data comes from.
@@ -14,6 +14,16 @@ v4.3 Enhancements:
 - Enhanced wattage formula parsing (e.g., "5x48W = 240W")
 - Pump equipment extraction for pool/heat pumps
 - Day/night switch detection with bypass
+
+v4.5 Enhancements (Universal Electrical Project Schema):
+- System parameters extraction (voltage, phases, frequency, fault levels)
+- Breaker type distinction (MCB vs MCCB vs ACB vs Fuse)
+- Phase designation for load balancing (R1/W1/B1)
+- Cable material (copper vs aluminium)
+- Installation method for cables
+- Overload relay detection for motor circuits
+- Expanded equipment types (meter, UPS, generator, solar, EV charger, etc.)
+- Power source extraction with kVA ratings
 """
 
 from typing import List, TYPE_CHECKING
@@ -76,6 +86,19 @@ Look for:
 - Main breaker/MCCB rating at the top of the DB
 - Sub-board feeds showing which other DBs this one supplies
 
+## SYSTEM PARAMETERS EXTRACTION (v4.5)
+
+Look for system-level specifications on the drawing title block or notes:
+
+| Parameter | Where to Find | Example |
+|-----------|---------------|---------|
+| **voltage_v** | Title block, "SYSTEM" note | 400V (3-phase), 230V (single) |
+| **phases** | Title block | "3PH+N+E", "1PH+N+E" |
+| **frequency_hz** | Title block | 50Hz (always 50Hz in SA) |
+| **fault_level_ka** | Near main breaker | 15kA, 6kA |
+
+Extract as `system_parameters` in the output.
+
 ## EXTRACTION RULES
 
 ### For Each Distribution Board:
@@ -84,21 +107,42 @@ Look for:
 3. **building_block**: Which building this DB serves
 4. **total_ways**: Total number of ways/positions in the DB
 5. **main_breaker_a**: Main breaker rating in Amps
-6. **elcb_present**: Is there an earth leakage device (ELCB/RCD)?
-7. **elcb_rating_ma**: If present, the mA rating (typically 30mA)
-8. **surge_present**: Is there a surge protection device (SPD)?
-9. **supply_from**: What supplies this DB (Eskom, Kiosk, another DB)
-10. **supply_cable**: Incoming cable specification
+6. **main_breaker_type**: Breaker type (see below)
+7. **elcb_present**: Is there an earth leakage device (ELCB/RCD)?
+8. **elcb_rating_ma**: If present, the mA rating (typically 30mA)
+9. **surge_present**: Is there a surge protection device (SPD)?
+10. **surge_type**: "type1", "type2", "type3", or "type1+2"
+11. **supply_from**: What supplies this DB (Eskom, Kiosk, another DB)
+12. **supply_cable**: Incoming cable specification
+13. **supply_cable_material**: "copper" or "aluminium"
+14. **fault_level_ka**: Fault level rating of the board
+15. **status**: "existing", "new", or "proposed"
+
+### BREAKER TYPE DETECTION (v4.5)
+
+| Rating Range | Typical Type | Symbol/Label |
+|--------------|--------------|--------------|
+| 6A-63A | **MCB** | Small rectangle, "MCB" |
+| 100A-250A | **MCCB** | Larger box, "MCCB", "Q1" |
+| 400A-1600A | **MCCB** | Large box with ratings |
+| 800A-6300A | **ACB** | Large symbol, "ACB" |
+| Any | **Fuse** | Fuse symbol, "HRC" |
+
+**IMPORTANT**: MCCB costs 5-10× more than MCB — accurate detection is critical for pricing!
 
 ### For Each Circuit:
 1. **circuit_number**: Exact circuit designation (L1, L2, P1, AC1, etc.)
 2. **description**: What the circuit feeds
 3. **wattage_w**: Total wattage (from schedule table)
 4. **breaker_a**: Breaker rating in Amps
-5. **cable_size_mm2**: Cable size in mm² (from schedule or assume from breaker)
-6. **num_points**: Number of points (lights, sockets, etc.)
-7. **is_lighting**: True if this is a lighting circuit (L prefix)
-8. **is_dedicated**: True if dedicated circuit (stove, geyser, AC, pump)
+5. **breaker_type**: "mcb", "mccb", "rcbo" (see table above)
+6. **breaker_poles**: 1, 2, or 3 poles
+7. **cable_size_mm2**: Cable size in mm² (from schedule or assume from breaker)
+8. **cable_material**: "copper" or "aluminium" (default: copper)
+9. **num_points**: Number of points (lights, sockets, etc.)
+10. **is_lighting**: True if this is a lighting circuit (L prefix)
+11. **is_dedicated**: True if dedicated circuit (stove, geyser, AC, pump)
+12. **phase**: Phase designation if visible (R1, W1, B1, R2, W2, B2, etc.)
 
 ### For Sub-Board Feeds:
 If the SLD shows feeds going to other distribution boards:
@@ -140,12 +184,35 @@ For pump and motor circuits, identify the starter type:
 | Simple contactor symbol | **DOL** | Direct On-Line starter |
 | Two contactors with timer | **Star-Delta** | Star-delta starter for large motors |
 | Rectangle with soft curve | **Soft Starter** | Soft starter for smooth motor start |
+| Circle with K | **Contactor** | Simple contactor (no overload) |
 
 **For each motor/pump circuit, extract:**
 - `has_vsd`: true/false (look for VSD symbol)
 - `vsd_rating_kw`: Motor kW rating if VSD present
-- `starter_type`: "vsd" | "dol" | "star_delta" | "soft_starter"
+- `starter_type`: "vsd" | "dol" | "star_delta" | "soft_starter" | "contactor" | "direct"
 - `isolator_a`: Isolator rating (usually 1.5× motor current)
+- `has_overload_relay`: true/false (look for OL symbol or "OL" text)
+- `overload_setting_a`: Overload relay setting if shown
+
+## CABLE MATERIAL DETECTION (v4.5)
+
+Cables are usually copper (Cu) unless specified otherwise:
+
+| Label | Material | Notes |
+|-------|----------|-------|
+| "Cu", "Copper", no label | **copper** | Default for most installations |
+| "Al", "Aluminium", "Alu" | **aluminium** | Larger sizes (70mm²+), cheaper but larger |
+
+**Note**: Aluminium cables require 1.6× larger cross-section for same current capacity.
+
+## PHASE BALANCING EXTRACTION (v4.5)
+
+Look for phase designations on circuits:
+- **R, W, B** = Red, White, Blue (SA convention)
+- **L1, L2, L3** = Alternative phase naming
+- **R1, W1, B1, R2, W2, B2** = Circuit allocation pattern
+
+Extract the `phase` field for each circuit to enable load balancing validation.
 
 ## WATTAGE FORMULA PATTERNS (v4.3)
 
@@ -175,31 +242,90 @@ Look for day/night (photocell) switch circuits:
 - `has_bypass`: true if bypass switch included
 - `controlled_circuits`: List of circuit IDs controlled (e.g., ["L1", "L2"])
 
-## HEAVY EQUIPMENT IDENTIFICATION (v4.3 Enhanced)
+## HEAVY EQUIPMENT IDENTIFICATION (v4.5 Enhanced)
 
 When you see circuits for equipment, extract as `heavy_equipment`:
 
+### Pumps & Motors
 | Equipment Type | Look For | type value | Default has_vsd |
 |----------------|----------|------------|-----------------|
-| Pool Pump | "POOL PUMP", PP1-PP4, "POOL PUMP1" | pool_pump | true |
-| Heat Pump | "HEAT PUMP", HP1-HP5, "HEAT PUMP1" | heat_pump | true |
-| Circulation Pump | "CIRC PUMP", CP1, "CIRCULATION" | circulation_pump | true |
+| Pool Pump | "POOL PUMP", PP1-PP4 | pool_pump | true |
+| Heat Pump | "HEAT PUMP", HP1-HP5 | heat_pump | true |
+| Circulation Pump | "CIRC PUMP", CP1 | circulation_pump | true |
 | Borehole Pump | "BH PUMP", "BOREHOLE" | borehole_pump | false |
-| HVAC System | "HVAC", large kW (>18kW) | hvac | false |
-| Geyser | "GEYSER", G1-G5 | geyser | false |
+| Fire Pump | "FIRE PUMP", FP1 | fire_pump | false |
+| Sump Pump | "SUMP", "SUMPPUMP" | sump_pump | false |
 
-**For pump sub-boards (DB-PPS, DB-HPS, etc.):**
-Each breaker feeding a pump should be extracted as a heavy_equipment item with:
-- `name`: "Pool Pump 1", "Heat Pump 2", etc.
-- `type`: "pool_pump", "heat_pump", etc.
-- `rating_kw`: Motor rating
-- `has_vsd`: true (for pool/heat pumps)
-- `starter_type`: "vsd", "dol", etc.
+### HVAC & Ventilation
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| HVAC System | "HVAC", large kW (>18kW) | hvac |
+| Air Conditioning | "A/C", "AC", "AIRCON" | air_con |
+| Ventilation Fan | "VENT FAN", "EXTRACTOR" | ventilation_fan |
+
+### Water Heating
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| Geyser | "GEYSER", G1-G5, "50L", "100L" | geyser |
+| Solar Geyser | "SOLAR GEYSER" | solar_geyser |
+| Heat Pump Geyser | "HP GEYSER" | heat_pump_geyser |
+
+### Power Systems (v4.5 NEW)
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| Generator | "GEN", "GENERATOR", "GENSET" | generator |
+| UPS | "UPS", "UNINTERRUPTIBLE" | ups |
+| Solar Inverter | "SOLAR INV", "PV INVERTER" | solar_inverter |
+| Battery Storage | "BATTERY", "ESS" | battery_storage |
+
+### Metering (v4.5 NEW)
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| Energy Meter | "METER", "kWh METER" | meter |
+| Prepaid Meter | "PREPAID" | prepaid_meter |
+| CT Meter | "CT METER" | ct_meter |
+
+### Access & Security (v4.5 NEW)
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| Gate Motor | "GATE MOTOR", "GATE" | gate_motor |
+| Garage Motor | "GARAGE" | garage_motor |
+| Security System | "SECURITY", "ALARM" | security_system |
+| CCTV | "CCTV", "CAMERAS" | cctv |
+
+### Fire Systems (v4.5 NEW)
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| Fire Panel | "FIRE PANEL", "FA PANEL" | fire_panel |
+
+### Transport (v4.5 NEW)
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| Lift | "LIFT", "ELEVATOR" | lift |
+| Escalator | "ESCALATOR" | escalator |
+
+### EV Charging (v4.5 NEW)
+| Equipment Type | Look For | type value |
+|----------------|----------|------------|
+| EV Charger | "EV CHARGER", "EVSE", "CHARGING" | ev_charger |
+
+**For each heavy equipment item, extract:**
+- `name`: Descriptive name (e.g., "Pool Pump 1", "Main Generator")
+- `type`: Equipment type from tables above
+- `rating_kw`: Power rating in kW
+- `rating_kva`: For transformers/UPS/generators - kVA rating
+- `has_vsd`: true/false (for pump circuits)
+- `starter_type`: "vsd", "dol", "star_delta", "soft_starter", "contactor", "direct"
+- `has_overload_relay`: true/false (look for OL symbol)
 - `isolator_a`: Isolator rating in Amps
-- `circuit_ref`: Circuit ID (e.g., "PP1", "HP3")
+- `breaker_a`: Breaker rating
+- `breaker_type`: "mcb", "mccb", "acb"
+- `circuit_ref`: Circuit ID (e.g., "PP1", "HP3", "GEN1")
 - `fed_from_db`: Parent DB name (e.g., "DB-PPS1")
 - `cable_size_mm2`: Cable size
 - `cable_type`: Cable type (e.g., "PVC SWA PVC")
+- `cable_material`: "copper" or "aluminium"
+- `status`: "existing", "new", "proposed"
 
 ## CONFIDENCE LEVELS
 
@@ -251,6 +377,16 @@ If you cannot clearly read a value:
 8. Always include confidence level for each extracted value
 9. DB names MUST match exactly what's on the drawing (e.g., "DB-CA", "DB-S1")
 10. Read main breaker rating from the diagram header
+
+## v4.5 ADDITIONAL REMINDERS
+
+11. **Breaker type**: MCB vs MCCB is CRITICAL for pricing (MCCB costs 5-10× more)
+12. **Phase designation**: Extract R1/W1/B1 patterns for load balancing validation
+13. **Cable material**: Note if aluminium (Al) - affects sizing and pricing
+14. **Overload relays**: Look for "OL" on motor circuits
+15. **System parameters**: Extract voltage, phases, frequency, fault level from title block
+16. **Equipment status**: Mark "existing" vs "new" vs "proposed"
+17. **Power sources**: Extract kVA rating for transformers, generators, UPS
 """
 
 

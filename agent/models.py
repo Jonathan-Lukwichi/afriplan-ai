@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.3 — Data Models
+AfriPlan Electrical v4.5 — Data Models
 SINGLE SOURCE OF TRUTH for all data shapes.
 
 v4.1 philosophy change from v4.0:
@@ -26,6 +26,15 @@ v4.4 additions (Layout Drawing Enhancements - Wedela Lighting & Plugs PDF):
 - FixtureCounts: pool_flood_light, pool_underwater_light (FL, PS symbols)
 - Legend validation support (cross-check room totals vs legend QTYS)
 - Enhanced socket/switch types already in model (waterproof, ceiling, master switch)
+
+v4.5 additions (Universal Electrical Project Schema - from Wedela SLD analysis):
+- SystemParameters: voltage, phases, frequency, fault levels (3PH+N+E, 400V, 50Hz, 15kA)
+- Circuit: breaker_type (MCB/MCCB/ACB/Fuse), phase designation (R1/W1/B1)
+- SiteCableRun: material (copper/aluminium), installation_method enum
+- HeavyEquipment: expanded types (meter, ups, generator, solar_inverter, ev_charger, etc.)
+- HeavyEquipment: overload_relay field for motor circuits
+- SupplyPoint: rating_kva, voltage_primary, voltage_secondary, status
+- BreakerType and InstallationMethod enums for standardized values
 """
 
 from __future__ import annotations
@@ -103,6 +112,97 @@ class ItemConfidence(str, Enum):
 class PhaseConfig(str, Enum):
     SINGLE = "1PH"
     THREE = "3PH"
+
+
+# v4.5 - New enums for universal electrical project support
+class BreakerType(str, Enum):
+    """Circuit breaker types - affects pricing significantly."""
+    MCB = "mcb"           # Miniature Circuit Breaker (6A-63A) - most common
+    MCCB = "mccb"         # Moulded Case Circuit Breaker (100A-1600A) - 5-10x cost
+    ACB = "acb"           # Air Circuit Breaker (800A-6300A) - industrial
+    FUSE = "fuse"         # HRC fuses, NH types
+    RCBO = "rcbo"         # Combined MCB + RCD
+    UNKNOWN = "unknown"
+
+
+class CableMaterial(str, Enum):
+    """Cable conductor material - affects pricing and current capacity."""
+    COPPER = "copper"
+    ALUMINIUM = "aluminium"
+    UNKNOWN = "unknown"
+
+
+class InstallationMethod(str, Enum):
+    """Cable installation method - affects labour and containment pricing."""
+    UNDERGROUND = "underground"           # Buried in trench
+    BURIED_DIRECT = "buried_direct"       # Direct burial without conduit
+    TRUNKING = "trunking"                 # Surface trunking
+    CONDUIT = "conduit"                   # PVC or steel conduit
+    CABLE_TRAY = "cable_tray"             # Open cable tray
+    CABLE_LADDER = "cable_ladder"         # Cable ladder rack
+    WALL_MOUNTED = "wall_mounted"         # Surface mounted on wall
+    CEILING_VOID = "ceiling_void"         # In ceiling space
+    UNKNOWN = "unknown"
+
+
+class EquipmentStatus(str, Enum):
+    """Equipment/installation status."""
+    EXISTING = "existing"     # Already installed
+    NEW = "new"               # To be installed (new work)
+    PROPOSED = "proposed"     # Future/planned
+    REMOVE = "remove"         # To be removed
+
+
+class EquipmentType(str, Enum):
+    """v4.5 - Comprehensive equipment types for universal extraction."""
+    # Pumps
+    POOL_PUMP = "pool_pump"
+    HEAT_PUMP = "heat_pump"
+    CIRCULATION_PUMP = "circulation_pump"
+    BOREHOLE_PUMP = "borehole_pump"
+    FIRE_PUMP = "fire_pump"
+    SUMP_PUMP = "sump_pump"
+    IRRIGATION_PUMP = "irrigation_pump"
+    # HVAC
+    HVAC = "hvac"
+    AIR_CON = "air_con"
+    VENTILATION_FAN = "ventilation_fan"
+    COMPRESSOR = "compressor"
+    # Water heating
+    GEYSER = "geyser"
+    SOLAR_GEYSER = "solar_geyser"
+    HEAT_PUMP_GEYSER = "heat_pump_geyser"
+    # Power systems
+    GENERATOR = "generator"
+    UPS = "ups"
+    SOLAR_INVERTER = "solar_inverter"
+    BATTERY_STORAGE = "battery_storage"
+    # Metering
+    METER = "meter"
+    PREPAID_METER = "prepaid_meter"
+    CT_METER = "ct_meter"
+    # Access/Security
+    GATE_MOTOR = "gate_motor"
+    GARAGE_MOTOR = "garage_motor"
+    SECURITY_SYSTEM = "security_system"
+    CCTV = "cctv"
+    ACCESS_CONTROL = "access_control"
+    # Fire systems
+    FIRE_PANEL = "fire_panel"
+    SMOKE_DETECTOR = "smoke_detector"
+    # Building management
+    BMS = "bms"
+    # Transport
+    LIFT = "lift"
+    ESCALATOR = "escalator"
+    CONVEYOR = "conveyor"
+    # EV
+    EV_CHARGER = "ev_charger"
+    # Kitchen
+    STOVE = "stove"
+    OVEN = "oven"
+    # Other
+    OTHER = "other"
 
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -216,6 +316,47 @@ class SiteConditions(BaseModel):
 
     # Additional notes
     notes: str = ""
+
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  SYSTEM PARAMETERS — v4.5 Electrical system specs                            ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+class SystemParameters(BaseModel):
+    """
+    v4.5 - Electrical system parameters extracted from SLD drawings.
+    Critical for breaker coordination, cable sizing, and fault calculations.
+    """
+    # Voltage
+    voltage_v: int = 400                        # System voltage (230V single, 400V three-phase)
+    voltage_single_phase_v: int = 230           # Single-phase voltage
+
+    # Phase configuration
+    phases: str = "3PH+N+E"                     # "1PH+N+E", "3PH+N+E", "3PH+N"
+    num_phases: int = 3                         # 1 or 3
+
+    # Frequency
+    frequency_hz: int = 50                      # SA = 50Hz
+
+    # Fault levels (kA)
+    fault_level_main_ka: float = 15.0           # Main board fault level
+    fault_level_sub_ka: float = 6.0             # Sub-board fault level (smaller boards)
+
+    # Standards
+    standard: str = "SANS 10142-1"              # Primary standard
+    additional_standards: List[str] = Field(default_factory=list)  # OHS Act, NRS 034, etc.
+
+    # Phase designation convention
+    phase_designation: str = "RWB"              # "RWB" (Red/White/Blue) or "L1L2L3"
+
+    # Confidence
+    confidence: ItemConfidence = ItemConfidence.INFERRED
+
+    @computed_field
+    @property
+    def is_three_phase(self) -> bool:
+        return self.num_phases == 3 or "3PH" in self.phases
+
 
     @computed_field
     @property
@@ -384,6 +525,18 @@ class ProjectMetadata(BaseModel):
     description: str = ""
     building_blocks: List[str] = Field(default_factory=list)
 
+    # v4.5 - System parameters
+    system_parameters: Optional[SystemParameters] = None
+
+    # v4.5 - Enhanced contact details
+    client_address: str = ""
+    client_tel: str = ""
+    client_email: str = ""
+    consultant_address: str = ""
+    consultant_tel: str = ""
+    consultant_email: str = ""
+    site_address: str = ""
+
 
 class Circuit(BaseModel):
     id: str = ""
@@ -418,6 +571,18 @@ class Circuit(BaseModel):
     # v4.3 - ISO circuit equipment type
     equipment_type: str = ""                 # For ISO circuits: "geyser", "ac", "pump", etc.
 
+    # v4.5 - Breaker type (affects pricing significantly)
+    breaker_type: str = "mcb"                # "mcb", "mccb", "acb", "fuse", "rcbo"
+
+    # v4.5 - Phase designation for 3-phase load balancing
+    phase: str = ""                          # "R1", "W1", "B1", "R2", "W2", "B2", etc.
+
+    # v4.5 - Cable material
+    cable_material: str = "copper"           # "copper" or "aluminium"
+
+    # v4.5 - Overload relay for motor circuits
+    has_overload_relay: bool = False
+
 
 class DistributionBoard(BaseModel):
     name: str = ""
@@ -444,6 +609,23 @@ class DistributionBoard(BaseModel):
     confidence: ItemConfidence = ItemConfidence.EXTRACTED
     page_source: str = ""
 
+    # v4.5 - Enhanced main breaker info
+    main_breaker_type: str = "mccb"          # "mcb", "mccb", "acb" - affects pricing
+    main_breaker_poles: int = 4              # 3P, 3P+N, 4P
+
+    # v4.5 - Cable material
+    supply_cable_material: str = "copper"    # "copper" or "aluminium"
+
+    # v4.5 - Earth leakage details
+    earth_leakage_ma: int = 30               # 30mA personal, 100mA fire, 300mA equipment
+    earth_leakage_type: str = "rcd"          # "rcd", "rcbo", "elcb"
+
+    # v4.5 - Surge protection details
+    surge_type: str = ""                     # "type1", "type2", "type3", "type1+2"
+
+    # v4.5 - Board status
+    status: str = "new"                      # "existing", "new", "proposed"
+
     @computed_field
     @property
     def active_circuits(self) -> List[Circuit]:
@@ -461,14 +643,52 @@ class DistributionBoard(BaseModel):
 
 
 class SupplyPoint(BaseModel):
+    """
+    Power supply point - where electrical power enters the installation.
+    v4.5: Enhanced to support transformers, generators, solar, UPS sources.
+    """
     name: str = ""
-    type: str = "eskom_kiosk"
+    type: str = "eskom_kiosk"                # See below for types
+    # Types: "eskom_kiosk", "mini_sub", "transformer", "generator", "solar_inverter",
+    #        "ups", "grid_supply", "mdb_feed", "existing_db"
+
+    # Rating
     main_breaker_a: int = 0
+    rating_kva: float = 0.0                  # Transformer/generator kVA rating
+
+    # Voltage
+    voltage_primary_v: int = 11000           # Primary voltage (for transformers)
+    voltage_secondary_v: int = 400           # Secondary voltage / supply voltage
+
+    # Phase configuration
+    phases: str = "3PH+N+E"                  # "1PH+N+E", "3PH+N+E"
+
+    # Cable to first DB
     cable_to_first_db: str = ""
+    cable_size_mm2: float = 0.0
+    cable_cores: int = 4
+    cable_type: str = "PVC SWA PVC"
+    cable_material: str = "copper"
     cable_length_m: float = 0.0
+
+    # Metering
+    has_meter: bool = True
+    meter_type: str = "ct"                   # "direct", "ct", "prepaid"
+    meter_location: str = ""
+
+    # Destination
     feeds_db: str = ""
     building_block: str = ""
+
+    # Status
+    status: str = "new"                      # "existing", "new", "proposed"
+
+    # Fault level
+    fault_level_ka: float = 15.0             # Prospective fault current
+
+    # Notes and confidence
     notes: str = ""
+    confidence: ItemConfidence = ItemConfidence.EXTRACTED
 
 
 class FixtureCounts(BaseModel):
@@ -577,9 +797,14 @@ class Room(BaseModel):
 
 
 class HeavyEquipment(BaseModel):
+    """
+    Heavy equipment that requires dedicated circuits.
+    v4.5: Expanded to support all equipment types from universal schema.
+    """
     name: str = ""
-    type: str = ""                           # pool_pump, heat_pump, circulation_pump, hvac, borehole_pump, geyser, ac
+    type: str = ""                           # See EquipmentType enum for all supported types
     rating_kw: float = 0.0
+    rating_kva: float = 0.0                  # For transformers, UPS, generators
     cable_size_mm2: float = 4.0
     cable_type: str = "PVC SWA PVC"
     cable_length_m: float = 0.0
@@ -595,8 +820,34 @@ class HeavyEquipment(BaseModel):
 
     # v4.3 - Circuit reference and starter type
     circuit_ref: str = ""                    # Circuit ID linking back to DB (e.g., "PP1", "HP3")
-    starter_type: str = ""                   # "vsd", "dol", "star_delta", "soft_starter"
+    starter_type: str = ""                   # "vsd", "dol", "star_delta", "soft_starter", "contactor", "direct"
     vsd_rating_kw: float = 0.0               # VSD power rating (when has_vsd=True)
+
+    # v4.5 - Motor protection
+    has_overload_relay: bool = False         # Thermal overload relay for motor protection
+    overload_setting_a: float = 0.0          # Overload relay current setting
+
+    # v4.5 - Enhanced breaker info
+    breaker_type: str = "mcb"                # "mcb", "mccb", "acb", "fuse"
+    breaker_poles: int = 3                   # 1, 2, or 3 poles
+
+    # v4.5 - Cable material
+    cable_material: str = "copper"           # "copper" or "aluminium"
+
+    # v4.5 - Equipment status
+    status: str = "new"                      # "existing", "new", "proposed", "remove"
+
+    # v4.5 - Voltage (for transformers, inverters)
+    voltage_primary_v: int = 0               # Primary voltage (transformers)
+    voltage_secondary_v: int = 0             # Secondary voltage (transformers)
+
+    # v4.5 - Backup power specific
+    backup_runtime_hours: float = 0.0        # For UPS/battery systems
+    fuel_type: str = ""                      # For generators: "diesel", "petrol", "gas"
+
+    # v4.5 - EV charger specific
+    ev_charger_type: str = ""                # "ac_type2", "dc_ccs", "dc_chademo"
+    ev_charger_kw: float = 0.0               # Charger power rating
 
 
 class CableContainment(BaseModel):
@@ -623,6 +874,17 @@ class SiteCableRun(BaseModel):
     needs_trenching: bool = True
     confidence: ItemConfidence = ItemConfidence.EXTRACTED  # lengths from drawing = high confidence
     notes: str = ""
+
+    # v4.5 - Enhanced cable attributes
+    material: str = "copper"                 # "copper" or "aluminium"
+    is_armoured: bool = True                 # SWA = Steel Wire Armoured
+    installation_method: str = "underground" # underground, trunking, conduit, cable_tray, etc.
+
+    # v4.5 - Trench details (when underground)
+    trench_depth_mm: int = 600               # Standard depth for LV cables
+    trench_width_mm: int = 300               # Standard trench width
+    requires_warning_tape: bool = True       # Underground cable warning tape
+    requires_sand_bedding: bool = True       # Sand bed for cable protection
 
 
 class UndergroundSleeve(BaseModel):
