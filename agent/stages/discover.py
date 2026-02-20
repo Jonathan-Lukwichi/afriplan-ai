@@ -55,7 +55,8 @@ from agent.models import (
 from agent.utils import parse_json_safely, Timer, estimate_cost_zar
 from agent.prompts.schemas import (
     SLD_SCHEMA, LIGHTING_LAYOUT_SCHEMA, PLUGS_LAYOUT_SCHEMA,
-    COMBINED_LAYOUT_SCHEMA, OUTSIDE_LIGHTS_SCHEMA, CONFIDENCE_INSTRUCTION
+    COMBINED_LAYOUT_SCHEMA, OUTSIDE_LIGHTS_SCHEMA, CONFIDENCE_INSTRUCTION,
+    REGISTER_SCHEMA, TITLE_BLOCK_SCHEMA,  # v5.0 - Cover sheet metadata
 )
 from agent.prompts.system_prompt import SYSTEM_PROMPT
 from agent.prompts.sld_prompt import get_sld_extraction_prompt
@@ -277,6 +278,7 @@ def discover(
             extraction.building_blocks.append(BuildingBlock(name=block_name))
 
         # Process pages by type
+        register_pages = doc_set.pages_by_type(PageType.REGISTER)  # v5.0 - Cover sheet metadata
         sld_pages = doc_set.pages_by_type(PageType.SLD)
         lighting_pages = doc_set.pages_by_type(PageType.LAYOUT_LIGHTING)
         plug_pages = doc_set.pages_by_type(PageType.LAYOUT_PLUGS)
@@ -284,6 +286,16 @@ def discover(
         outside_pages = doc_set.pages_by_type(PageType.OUTSIDE_LIGHTS)
 
         extraction.pages_processed = len(doc_set.all_pages)
+
+        # v5.0: Extract metadata from register/transmittal pages FIRST (for cover sheet)
+        if register_pages and client:
+            try:
+                register_data, tokens, cost = _extract_register_data(register_pages, client, extraction_model)
+                total_tokens += tokens
+                total_cost += cost
+                _merge_register_data(extraction, register_data)
+            except Exception as e:
+                warnings.append(f"Register extraction (non-critical): {str(e)}")
 
         # Extract from SLD pages
         if sld_pages and client:
@@ -507,6 +519,47 @@ Return JSON matching this schema:
 
     response_text, tokens, cost = _call_vision_llm(
         client, pages[:3], prompt, model, max_tokens=4096
+    )
+
+    parsed = parse_json_safely(response_text) or {}
+    return parsed, tokens, cost
+
+
+def _extract_register_data(
+    pages: List,
+    client: object,
+    model: str = DISCOVER_MODEL,
+) -> Tuple[Dict[str, Any], int, float]:
+    """
+    v5.0: Extract project metadata from register/transmittal pages.
+
+    This extracts information for the BOQ cover sheet:
+    - Project name and description
+    - Client name and contact details
+    - Consultant/Engineer name and contact details
+    - Drawing numbers list
+    - Revision information
+    """
+    prompt = f"""{SYSTEM_PROMPT}
+
+{CONFIDENCE_INSTRUCTION}
+
+Extract project metadata from this register/transmittal/title page.
+Look for the project name, client details, consultant/engineer details, and drawing list.
+
+Return JSON matching this schema:
+{REGISTER_SCHEMA}
+
+## IMPORTANT:
+- Extract the FULL project name (e.g., "Proposed New Offices on Erf 1/1, Newmark")
+- Get client company name (look for "Client:", "Owner:", "Employer:")
+- Get consultant name (look for "Engineer:", "Consultant:", "Electrical Engineer:")
+- List ALL drawing numbers if a drawing register/index is shown
+- Note any revision information
+"""
+
+    response_text, tokens, cost = _call_vision_llm(
+        client, pages[:2], prompt, model, max_tokens=2048  # Register pages don't need much
     )
 
     parsed = parse_json_safely(response_text) or {}
@@ -1073,6 +1126,58 @@ def _merge_outside_data(extraction: ExtractionResult, data: Dict[str, Any]) -> N
             pool_flood_light=int(outside_data.get("pool_flood_light") or 0),
             pool_underwater_light=int(outside_data.get("pool_underwater_light") or 0),
         )
+
+
+def _merge_register_data(extraction: ExtractionResult, data: Dict[str, Any]) -> None:
+    """
+    v5.0: Merge register/transmittal extraction into ExtractionResult.metadata.
+
+    Populates fields needed for the BOQ cover sheet:
+    - project_name, description
+    - client_name, client_address, client_tel, client_email
+    - consultant_name, consultant_address, consultant_tel
+    - drawing_numbers list
+    - revision, standard
+    """
+    metadata = extraction.metadata
+
+    # Project info
+    if data.get("project_name"):
+        metadata.project_name = data["project_name"]
+    if data.get("project_number"):
+        # Can append to description
+        if metadata.description:
+            metadata.description = f"{data['project_number']} - {metadata.description}"
+        else:
+            metadata.description = data["project_number"]
+
+    # Client info
+    if data.get("client_name"):
+        metadata.client_name = data["client_name"]
+    if data.get("site_address"):
+        metadata.client_address = data["site_address"]  # Use site address as client address
+    if data.get("client_phone"):
+        metadata.client_tel = data["client_phone"]
+    if data.get("client_email"):
+        metadata.client_email = data["client_email"]
+
+    # Consultant/Engineer info
+    engineer_name = data.get("engineer_name") or data.get("consultant_name") or ""
+    if engineer_name:
+        metadata.consultant_name = engineer_name
+    if data.get("engineer_ref"):
+        metadata.consultant_address = f"Ref: {data['engineer_ref']}"
+
+    # Drawing numbers (for cover sheet reference)
+    if data.get("drawing_numbers"):
+        metadata.drawing_numbers = data["drawing_numbers"]
+
+    # Revision
+    if data.get("revision"):
+        try:
+            metadata.revision = int(data["revision"].replace("Rev", "").replace("R", "").strip())
+        except (ValueError, AttributeError):
+            metadata.revision = 1
 
 
 def _parse_confidence(conf_str: str) -> ItemConfidence:

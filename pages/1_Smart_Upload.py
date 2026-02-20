@@ -29,7 +29,7 @@ try:
         ValidationResult,
         PricingResult,
     )
-    from exports.excel_bq import export_quantity_bq, HAS_OPENPYXL
+    from exports.excel_bq import export_professional_bq, HAS_OPENPYXL
     from exports.pdf_summary import generate_pdf_summary
     PIPELINE_AVAILABLE = True
 except ImportError as e:
@@ -226,12 +226,74 @@ def render_compliance_summary(result: SimplifiedResult):
 
 
 def render_detailed_extraction(result: SimplifiedResult):
-    """Render detailed extraction view (read-only)."""
+    """Render detailed extraction view with validation checklist."""
     extraction = result.extraction
 
     if not extraction or not extraction.building_blocks:
         st.info("No extraction data available")
         return
+
+    # v5.0: Import and run extraction checklist validation
+    try:
+        from agent.extraction_checklist import (
+            create_model_checklist, validate_extraction, ChecklistCategory
+        )
+        checklist = create_model_checklist()
+        checklist = validate_extraction(extraction, checklist)
+
+        # Show overall extraction rate
+        rate = checklist.extraction_rate
+        rate_color = "#22C55E" if rate >= 70 else "#F59E0B" if rate >= 40 else "#EF4444"
+
+        st.markdown(f"""
+        <div style="background: {rate_color}15; border: 1px solid {rate_color}40;
+                    border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+            <div style="font-size: 1.2rem; font-weight: 700; color: {rate_color};">
+                BOQ Extraction Rate: {rate:.0f}%
+            </div>
+            <div style="font-size: 0.85rem; color: #94a3b8;">
+                {checklist.extracted_items} of {checklist.total_items} checklist items extracted
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Show checklist by category
+        for category in ChecklistCategory:
+            cat_items = checklist.items_by_category(category)
+            extracted = sum(1 for item in cat_items if item.extracted)
+
+            # Color based on completion
+            if extracted == len(cat_items):
+                cat_color = "#22C55E"
+                cat_icon = "✓"
+            elif extracted > 0:
+                cat_color = "#F59E0B"
+                cat_icon = "◐"
+            else:
+                cat_color = "#EF4444"
+                cat_icon = "✗"
+
+            with st.expander(f"{cat_icon} {category.value} — {extracted}/{len(cat_items)}", expanded=False):
+                for item in cat_items:
+                    status_icon = "✓" if item.extracted else "✗"
+                    status_color = "#22C55E" if item.extracted else "#6B7280"
+                    qty_text = f" ({item.extracted_qty:.0f} {item.expected_unit})" if item.extracted and item.extracted_qty > 0 else ""
+
+                    st.markdown(f"""
+                    <div style="display: flex; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid #1f2937;">
+                        <span style="color: {status_color}; margin-right: 0.5rem;">{status_icon}</span>
+                        <span style="flex: 1;">{item.name}{qty_text}</span>
+                        <span style="font-size: 0.75rem; color: #64748b;">{item.source if item.extracted else 'Not found'}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    except ImportError:
+        # Fallback to old view if checklist module not available
+        pass
+
+    # Also show building block summary
+    st.markdown("---")
+    st.markdown("### Building Blocks")
 
     for block in extraction.building_blocks:
         with st.expander(f"🏢 {block.name} — {len(block.rooms)} rooms, {len(block.distribution_boards)} DBs", expanded=False):
@@ -253,14 +315,15 @@ def render_detailed_extraction(result: SimplifiedResult):
                             circuit_summary += f" +{len(db.circuits) - 5} more"
                         st.caption(f"  Circuits: {circuit_summary}")
 
-            # Rooms
+            # Rooms with fixture counts
             if block.rooms:
                 st.markdown("**Rooms:**")
-                for room in block.rooms[:10]:  # Show first 10
+                for room in block.rooms[:10]:
                     f = room.fixtures
                     lights = f.total_lights
                     sockets = f.total_sockets
-                    st.markdown(f"- **{room.name}**: {lights} lights, {sockets} sockets")
+                    switches = f.total_switches
+                    st.markdown(f"- **{room.name}**: {lights} lights, {sockets} sockets, {switches} switches")
 
                 if len(block.rooms) > 10:
                     st.caption(f"... and {len(block.rooms) - 10} more rooms")
@@ -289,19 +352,21 @@ def render_export_section(result: SimplifiedResult, filename: str):
     with col1:
         if HAS_OPENPYXL:
             try:
-                excel_bytes = export_quantity_bq(
-                    result.pricing,
+                # v5.0: Use professional export with 3 sheets (Cover, BOQ, Summary)
+                excel_bytes = export_professional_bq(
+                    pricing=result.pricing,
+                    extraction=result.extraction,  # Pass extraction for metadata
                     project_name=project_name,
                 )
                 st.download_button(
-                    label="📥 Download Excel BQ",
+                    label="📥 Download Professional Excel BQ",
                     data=excel_bytes,
-                    file_name=f"{project_name}_BQ_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=f"{project_name}_BOQ_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                     type="primary",
                 )
-                st.caption("Quantities only - fill in your prices")
+                st.caption("3-sheet BOQ: Cover, BOQ (14 sections), Summary")
             except Exception as e:
                 st.error(f"Excel export error: {e}")
         else:
