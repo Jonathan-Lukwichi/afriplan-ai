@@ -277,14 +277,17 @@ def validate_extraction(extraction_result, checklist: ExtractionChecklist = None
                 for item in checklist.items:
                     if item.category == ChecklistCategory.LIGHTING:
                         if "LED PANEL" in item.name.upper():
-                            if fixtures.led_panels_3x18w > 0 or fixtures.led_panels > 0:
+                            # Use correct attribute: recessed_led_600x1200
+                            if fixtures.recessed_led_600x1200 > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.led_panels_3x18w or fixtures.led_panels
+                                item.extracted_qty += fixtures.recessed_led_600x1200
                                 item.source = "Layout drawings"
                         elif "CEILING" in item.name.upper():
-                            if fixtures.surface_mount_led > 0 or fixtures.led_downlights > 0:
+                            # Use correct attributes: surface_mount_led_18w, downlight_led_6w
+                            ceiling_count = fixtures.surface_mount_led_18w + fixtures.downlight_led_6w
+                            if ceiling_count > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.surface_mount_led or fixtures.led_downlights
+                                item.extracted_qty += ceiling_count
                                 item.source = "Layout drawings"
                         elif "FLOOD" in item.name.upper():
                             if fixtures.flood_light_200w > 0 or fixtures.flood_light_30w > 0:
@@ -298,14 +301,16 @@ def validate_extraction(extraction_result, checklist: ExtractionChecklist = None
                 for item in checklist.items:
                     if item.category == ChecklistCategory.LIGHTING:
                         if "1-LEVER" in item.name.upper():
-                            if fixtures.switches_1_lever > 0:
+                            # Use correct attribute: switch_1lever_1way
+                            if fixtures.switch_1lever_1way > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.switches_1_lever
+                                item.extracted_qty += fixtures.switch_1lever_1way
                                 item.source = "Layout drawings"
                         elif "2-LEVER" in item.name.upper():
-                            if fixtures.switches_2_lever > 0:
+                            # Use correct attribute: switch_2lever_1way
+                            if fixtures.switch_2lever_1way > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.switches_2_lever
+                                item.extracted_qty += fixtures.switch_2lever_1way
                                 item.source = "Layout drawings"
 
             # Sockets
@@ -314,32 +319,37 @@ def validate_extraction(extraction_result, checklist: ExtractionChecklist = None
                 for item in checklist.items:
                     if item.category == ChecklistCategory.POWER_OUTLETS:
                         if "DOUBLE" in item.name.upper() and "@300" in item.name:
-                            if fixtures.double_sockets > 0 or fixtures.sockets_double_300 > 0:
+                            # Use correct attribute: double_socket_300
+                            if fixtures.double_socket_300 > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.double_sockets or fixtures.sockets_double_300
+                                item.extracted_qty += fixtures.double_socket_300
                                 item.source = "Layout drawings"
                         elif "SINGLE" in item.name.upper() and "@300" in item.name:
-                            if fixtures.single_sockets > 0 or fixtures.sockets_single_300 > 0:
+                            # Use correct attribute: single_socket_300
+                            if fixtures.single_socket_300 > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.single_sockets or fixtures.sockets_single_300
+                                item.extracted_qty += fixtures.single_socket_300
                                 item.source = "Layout drawings"
                         elif "DOUBLE" in item.name.upper() and "@1100" in item.name:
-                            if fixtures.sockets_double_1100 > 0:
+                            # Use correct attribute: double_socket_1100
+                            if fixtures.double_socket_1100 > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.sockets_double_1100
+                                item.extracted_qty += fixtures.double_socket_1100
                                 item.source = "Layout drawings"
                         elif "ISOLATOR" in item.name.upper():
-                            if fixtures.isolators_30a > 0 or fixtures.isolators_20a > 0:
+                            # Use correct attributes: isolator_30a, isolator_20a
+                            if fixtures.isolator_30a > 0 or fixtures.isolator_20a > 0:
                                 item.extracted = True
                                 if "30A" in item.name:
-                                    item.extracted_qty += fixtures.isolators_30a
+                                    item.extracted_qty += fixtures.isolator_30a
                                 elif "20A" in item.name:
-                                    item.extracted_qty += fixtures.isolators_20a
+                                    item.extracted_qty += fixtures.isolator_20a
                                 item.source = "Layout drawings"
                         elif "FLOOR BOX" in item.name.upper():
-                            if fixtures.floor_boxes > 0:
+                            # Use correct attribute: floor_box
+                            if fixtures.floor_box > 0:
                                 item.extracted = True
-                                item.extracted_qty += fixtures.floor_boxes
+                                item.extracted_qty += fixtures.floor_box
                                 item.source = "Layout drawings"
 
             # Data points
