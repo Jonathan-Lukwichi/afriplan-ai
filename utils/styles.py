@@ -1027,6 +1027,340 @@ CUSTOM_CSS = """
         margin: 1.5rem 0 !important;
     }
 
+    /* ========================================
+       MOBILE RESPONSIVENESS
+    ======================================== */
+
+    /* Tablet (768px and below) */
+    @media screen and (max-width: 768px) {
+        /* Hero section adjustments */
+        .hero-section {
+            min-height: 40vh;
+            padding: 2rem 1rem;
+        }
+
+        .hero-title {
+            font-size: clamp(1.5rem, 6vw, 2.5rem) !important;
+        }
+
+        .hero-subtitle {
+            font-size: 1rem !important;
+            letter-spacing: 1.5px !important;
+        }
+
+        .hero-stats {
+            gap: 1rem;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+        }
+
+        /* Cards */
+        .glass-card, .tier-card {
+            padding: 1rem !important;
+            margin: 0.5rem 0 !important;
+        }
+
+        .tier-card {
+            min-height: 150px;
+        }
+
+        /* Typography */
+        h1, .section-title {
+            font-size: 1.3rem !important;
+            letter-spacing: 1px !important;
+        }
+
+        h2 {
+            font-size: 1.1rem !important;
+        }
+
+        h3 {
+            font-size: 1rem !important;
+        }
+
+        /* BQ Table */
+        .bq-table {
+            font-size: 11px;
+        }
+
+        .bq-table th, .bq-table td {
+            padding: 6px 8px;
+        }
+
+        /* Tabs */
+        .stTabs [data-baseweb="tab"] {
+            padding: 8px 12px !important;
+            font-size: 11px !important;
+            letter-spacing: 1px !important;
+        }
+
+        /* Buttons */
+        .stButton > button {
+            padding: 10px 20px !important;
+            font-size: 12px !important;
+        }
+
+        /* Quote options */
+        .quote-option {
+            padding: 1rem !important;
+        }
+
+        /* Main header */
+        .main-header {
+            padding: 1.5rem 1rem;
+        }
+
+        .main-header h1 {
+            font-size: 1.4rem !important;
+        }
+    }
+
+    /* Mobile (480px and below) */
+    @media screen and (max-width: 480px) {
+        /* Hero section */
+        .hero-section {
+            min-height: 35vh;
+            padding: 1.5rem 0.75rem;
+        }
+
+        .hero-badge {
+            padding: 6px 14px;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .hero-title {
+            font-size: clamp(1.2rem, 7vw, 2rem) !important;
+            line-height: 1.2 !important;
+        }
+
+        .hero-subtitle {
+            font-size: 0.85rem !important;
+            letter-spacing: 1px !important;
+        }
+
+        .hero-stats {
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-item {
+            min-width: 60px;
+        }
+
+        .stat-number {
+            font-size: 1.2rem;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        /* Cards - full width stack */
+        .glass-card, .tier-card {
+            padding: 0.875rem !important;
+            border-radius: 12px !important;
+        }
+
+        .tier-card h3 {
+            font-size: 1rem !important;
+        }
+
+        .tier-card p {
+            font-size: 12px !important;
+        }
+
+        /* Section headers */
+        h1, .section-title {
+            font-size: 1.1rem !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        h2 {
+            font-size: 1rem !important;
+        }
+
+        h3 {
+            font-size: 0.9rem !important;
+        }
+
+        p {
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+        }
+
+        /* BQ Table - scrollable */
+        .bq-table {
+            font-size: 10px;
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .bq-table th, .bq-table td {
+            padding: 4px 6px;
+        }
+
+        /* Tabs - horizontal scroll */
+        .stTabs [data-baseweb="tab-list"] {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding: 4px !important;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            padding: 6px 10px !important;
+            font-size: 10px !important;
+            letter-spacing: 0.5px !important;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Buttons */
+        .stButton > button {
+            padding: 8px 16px !important;
+            font-size: 11px !important;
+            letter-spacing: 1px !important;
+            width: 100%;
+        }
+
+        /* Inputs */
+        .stSelectbox > div > div,
+        .stNumberInput > div > div > input,
+        .stTextInput > div > div > input {
+            font-size: 14px !important;
+        }
+
+        .stSelectbox label,
+        .stNumberInput label,
+        .stTextInput label {
+            font-size: 11px !important;
+        }
+
+        /* Quote options */
+        .quote-option {
+            padding: 0.75rem !important;
+        }
+
+        /* Main header */
+        .main-header {
+            padding: 1rem 0.75rem;
+            border-radius: 12px;
+        }
+
+        .main-header h1 {
+            font-size: 1.2rem !important;
+        }
+
+        .main-header p {
+            font-size: 12px !important;
+            letter-spacing: 1px !important;
+        }
+
+        /* Footer */
+        .premium-footer {
+            padding: 1.5rem 1rem;
+        }
+
+        .premium-footer p {
+            font-size: 10px !important;
+        }
+
+        /* Sidebar navigation */
+        [data-testid="stSidebarNavLink"] {
+            padding: 10px 12px !important;
+            margin: 4px 2px !important;
+        }
+
+        [data-testid="stSidebarNavLink"] span {
+            font-size: 11px !important;
+            letter-spacing: 1px !important;
+        }
+
+        /* Alerts */
+        .stAlert {
+            padding: 0.75rem !important;
+            font-size: 12px !important;
+        }
+
+        /* Expanders */
+        .streamlit-expanderHeader {
+            font-size: 12px !important;
+            padding: 0.75rem !important;
+        }
+    }
+
+    /* Small mobile (360px and below) */
+    @media screen and (max-width: 360px) {
+        .hero-title {
+            font-size: 1.1rem !important;
+        }
+
+        .hero-subtitle {
+            font-size: 0.75rem !important;
+        }
+
+        .stat-number {
+            font-size: 1rem;
+        }
+
+        .stat-label {
+            font-size: 9px;
+        }
+
+        .glass-card, .tier-card {
+            padding: 0.75rem !important;
+        }
+
+        h1, .section-title {
+            font-size: 1rem !important;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            padding: 5px 8px !important;
+            font-size: 9px !important;
+        }
+
+        .stButton > button {
+            font-size: 10px !important;
+            padding: 6px 12px !important;
+        }
+    }
+
+    /* Landscape mobile */
+    @media screen and (max-height: 500px) and (orientation: landscape) {
+        .hero-section {
+            min-height: auto;
+            padding: 1rem;
+        }
+
+        .hero-stats {
+            margin-top: 1rem;
+        }
+    }
+
+    /* Fix Streamlit columns on mobile */
+    @media screen and (max-width: 640px) {
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        /* Make columns stack vertically */
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+        }
+
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            min-width: 100% !important;
+            margin-bottom: 1rem;
+        }
+    }
+
 </style>
 
 <!-- Glow Orbs HTML -->
