@@ -282,7 +282,158 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 3rem;'></div>", unsafe_allow_html=True)
+
+# ============================================
+# ADVANTAGES FOR ELECTRICAL ENGINEERS
+# ============================================
+st.markdown("""
+<div style="text-align: center; margin-bottom: 2rem;">
+    <h2 style="color: #00D4FF; font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+               letter-spacing: 0.1em; margin-bottom: 0.5rem;">ADVANTAGES FOR ELECTRICAL ENGINEERS</h2>
+    <p style="color: #64748b; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.15em;">
+        Why Professionals Choose AfriPlan
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("""
+    <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                border: 1px solid rgba(0,212,255,0.25); border-radius: 20px;
+                padding: 2rem; margin-bottom: 1.5rem;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,212,255,0.1));
+                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                        border: 1px solid rgba(0,212,255,0.3);">
+                <span style="font-size: 1.5rem;">⏱️</span>
+            </div>
+            <h3 style="color: #00D4FF; font-size: 1.15rem; margin: 0; font-weight: 600;">
+                Save 4-8 Hours Per Project
+            </h3>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+            Manual quantity take-offs from drawings take hours. AI extracts everything in minutes.
+            More time for design work, less time counting.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                border: 1px solid rgba(0,212,255,0.25); border-radius: 20px;
+                padding: 2rem; margin-bottom: 1.5rem;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1));
+                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                        border: 1px solid rgba(34,197,94,0.3);">
+                <span style="font-size: 1.5rem;">✓</span>
+            </div>
+            <h3 style="color: #22C55E; font-size: 1.15rem; margin: 0; font-weight: 600;">
+                Reduce Counting Errors
+            </h3>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+            Human counting is error-prone, especially on complex drawings. AI provides consistent,
+            systematic extraction across all pages with confidence scoring.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                border: 1px solid rgba(0,212,255,0.25); border-radius: 20px;
+                padding: 2rem;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1));
+                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                        border: 1px solid rgba(245,158,11,0.3);">
+                <span style="font-size: 1.5rem;">📋</span>
+            </div>
+            <h3 style="color: #F59E0B; font-size: 1.15rem; margin: 0; font-weight: 600;">
+                Professional BOQ Output
+            </h3>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+            Export industry-standard Excel BOQs with 14 sections, ready for tendering.
+            Cover sheet, itemized quantities, summary with VAT - all formatted professionally.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+    <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                border: 1px solid rgba(0,212,255,0.25); border-radius: 20px;
+                padding: 2rem; margin-bottom: 1.5rem;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.1));
+                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                        border: 1px solid rgba(139,92,246,0.3);">
+                <span style="font-size: 1.5rem;">🏛️</span>
+            </div>
+            <h3 style="color: #8B5CF6; font-size: 1.15rem; margin: 0; font-weight: 600;">
+                Built-in SANS 10142-1 Compliance
+            </h3>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+            Automatic validation against SA electrical standards. Flags non-compliant items before
+            you submit. No more compliance surprises during COC inspections.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                border: 1px solid rgba(0,212,255,0.25); border-radius: 20px;
+                padding: 2rem; margin-bottom: 1.5rem;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(236,72,153,0.1));
+                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                        border: 1px solid rgba(236,72,153,0.3);">
+                <span style="font-size: 1.5rem;">💰</span>
+            </div>
+            <h3 style="color: #EC4899; font-size: 1.15rem; margin: 0; font-weight: 600;">
+                Win More Tenders
+            </h3>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+            Submit quotes faster than competitors. Accurate quantities mean competitive pricing
+            without leaving money on the table. Beat the deadline, win the job.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                border: 1px solid rgba(255,107,53,0.25); border-radius: 20px;
+                padding: 2rem;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(255,107,53,0.1));
+                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                        border: 1px solid rgba(255,107,53,0.3);">
+                <span style="font-size: 1.5rem;">🆓</span>
+            </div>
+            <h3 style="color: #FF6B35; font-size: 1.15rem; margin: 0; font-weight: 600;">
+                100% Free - No Hidden Costs
+            </h3>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+            Powered by Groq's free Llama 4 API. No subscriptions, no per-document fees, no limits.
+            Enterprise-grade AI extraction without enterprise pricing.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<div style='height: 3rem;'></div>", unsafe_allow_html=True)
 
 # ============================================
 # AI PROVIDERS - Section Header
