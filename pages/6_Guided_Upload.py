@@ -1,9 +1,7 @@
 """
-AfriPlan Electrical v5.1 - Guided Upload (4-Step Document Flow + Local Mode)
+AfriPlan Electrical v6.0 - Guided Upload (AI-Only 4-Step Document Flow)
 
-Supports TWO extraction modes:
-1. **AI-Based** (Cloud) - Uses Groq/Grok/Gemini/Claude for intelligent extraction
-2. **Local (No AI)** - Deterministic pipeline using regex, keywords, and OpenCV
+AI-powered extraction using Claude/Groq/Gemini/Grok vision models.
 
 Document Flow:
 1. Cover Page / Drawing Register → Project info
@@ -28,7 +26,6 @@ from utils.components import page_header, section_header
 
 # Import pipeline components
 PIPELINE_AVAILABLE = False
-DETERMINISTIC_AVAILABLE = False
 
 try:
     from agent.stages.ingest import ingest
@@ -42,20 +39,6 @@ try:
 except ImportError as e:
     PIPELINE_IMPORT_ERROR = str(e)
     HAS_OPENPYXL = False
-
-# Import deterministic pipeline (local-only, no AI)
-try:
-    from agent.deterministic_pipeline import (
-        DeterministicPipeline,
-        DeterministicPipelineResult,
-        run_deterministic_pipeline_bytes,
-        quick_extract,
-    )
-    from agent.models import PipelineConfig
-    DETERMINISTIC_AVAILABLE = True
-except ImportError as e:
-    DETERMINISTIC_IMPORT_ERROR = str(e)
-    DETERMINISTIC_AVAILABLE = False
 
 
 # ============================================================================
@@ -115,14 +98,8 @@ PROVIDER_MODELS = {
 # ============================================================================
 
 def init_session_state():
-    """Initialize all session state variables for 4-step flow."""
+    """Initialize all session state variables for 4-step AI-only flow."""
     defaults = {
-        # Extraction mode: "ai" or "local"
-        "extraction_mode": "ai",
-
-        # Upload mode: "guided" (4-step) or "quick" (single upload)
-        "upload_mode": "guided",
-
         # Navigation (5 steps: 4 uploads + 1 review)
         "guided_step": 1,
         "max_completed_step": 0,
@@ -133,22 +110,8 @@ def init_session_state():
         "lighting_pages": [],
         "power_pages": [],
 
-        # Raw file bytes (for deterministic pipeline)
-        "cover_bytes": None,
-        "sld_bytes": None,
-        "lighting_bytes": None,
-        "power_bytes": None,
-
-        # Quick upload - single combined document
-        "combined_bytes": None,
-        "quick_upload_result": None,
-
-        # Pipeline instances
-        "interactive_pipeline": None,  # AI-based
-        "deterministic_pipeline": None,  # Local-only
-
-        # Deterministic pipeline results
-        "deterministic_result": None,
+        # Pipeline instance (AI-based)
+        "interactive_pipeline": None,
 
         # Step 1: Project Info
         "project_info": {},
@@ -205,108 +168,6 @@ def process_uploaded_file(uploaded_file):
         return []
 
 
-def process_with_deterministic_pipeline(file_bytes: bytes, filename: str):
-    """
-    Process a PDF file using the deterministic (local-only) pipeline.
-    Returns structured extraction results without any AI/cloud calls.
-    """
-    if not DETERMINISTIC_AVAILABLE:
-        st.error("Deterministic pipeline not available")
-        return None
-
-    try:
-        result = run_deterministic_pipeline_bytes(file_bytes, filename=filename)
-        return result
-    except Exception as e:
-        st.error(f"Deterministic extraction error: {e}")
-        return None
-
-
-def render_deterministic_progress(stage_name: str, progress: float):
-    """Render progress indicator for deterministic pipeline stages."""
-    stages = ["INGEST", "CLASSIFY", "CROP", "EXTRACT", "MERGE"]
-    stage_icons = {
-        "INGEST": "📥",
-        "CLASSIFY": "🏷️",
-        "CROP": "✂️",
-        "EXTRACT": "📊",
-        "MERGE": "🔗",
-    }
-
-    cols = st.columns(5)
-    for i, stage in enumerate(stages):
-        with cols[i]:
-            if stage == stage_name:
-                st.markdown(f"**{stage_icons.get(stage, '')} {stage}**")
-            elif stages.index(stage) < stages.index(stage_name):
-                st.markdown(f":green[{stage_icons.get(stage, '')} {stage}]")
-            else:
-                st.markdown(f":gray[{stage_icons.get(stage, '')} {stage}]")
-
-
-def convert_deterministic_to_display(det_result: DeterministicPipelineResult) -> dict:
-    """
-    Convert DeterministicPipelineResult to display format compatible with session state.
-    """
-    if not det_result or not det_result.project_result:
-        return {}
-
-    project = det_result.project_result
-    display = {
-        "project_info": {
-            "project_name": project.project_name or "",
-            "client_name": project.client_name or "",
-            "consultant_name": project.consultant_name or "",
-            "date": "",
-            "revision": "",
-        },
-        "detected_dbs": [],
-        "db_schedules": {},
-        "cable_routes": [],
-        "rooms": [],
-        "room_lighting": {},
-        "room_power": {},
-    }
-
-    # Extract DB info from SLD pages
-    # project.sld_pages is List[SLDExtraction] directly (not PageExtractionResult)
-    for sld in project.sld_pages:
-        db_name = sld.db_name or f"DB-{len(display['detected_dbs'])+1}"
-        if db_name not in display["detected_dbs"]:
-            display["detected_dbs"].append(db_name)
-
-        # Build schedule from circuits
-        circuits = []
-        for circuit in sld.circuits:
-            circuits.append({
-                "circuit_id": circuit.circuit_id,
-                "description": circuit.description,
-                "points": circuit.num_points,
-                "wattage_w": circuit.wattage_w,
-                "breaker_a": circuit.breaker_a,
-                "wire_size": circuit.wire_size_mm2,
-            })
-
-        display["db_schedules"][db_name] = {
-            "db_name": db_name,
-            "main_breaker_a": sld.main_breaker_a,
-            "supply_from": sld.supply_from,
-            "total_ways": sld.total_circuits + sld.spare_circuits,  # SLDExtraction uses total_circuits + spare_circuits
-            "circuits": circuits,
-            "schedule_found": True,
-        }
-
-    # Extract room info from layout pages
-    # project.lighting_pages/plugs_pages are List[LayoutExtraction] directly
-    for layout in project.lighting_pages + project.plugs_pages:
-        for room in layout.room_labels:
-            if room not in display["rooms"]:
-                display["rooms"].append(room)
-
-    # Note: Detailed fixture counts per room would require additional processing
-    # The deterministic pipeline extracts at page level, not room level
-
-    return display
 
 
 def build_extraction_from_session_state():
@@ -615,235 +476,13 @@ def show_page_thumbnails(pages, max_show=3):
 # ============================================================================
 # QUICK UPLOAD MODE (Single Document - Automatic Split)
 # ============================================================================
-
-def render_quick_upload():
-    """
-    Quick Upload mode: Single combined PDF, automatic page splitting & classification.
-    Only available in Local mode (deterministic pipeline).
-    """
-    section_header("Quick Upload (Local Mode)",
-                   "Upload combined PDF - automatic page splitting & classification")
-
-    st.info("""
-    **Upload a single PDF** containing all pages (cover, SLD, lighting, power layouts).
-
-    The deterministic pipeline will automatically:
-    1. 📥 **INGEST** - Convert PDF to pages
-    2. 🏷️ **CLASSIFY** - Detect page types (Register, SLD, Lighting, Plugs)
-    3. ✂️ **CROP** - Identify regions (title block, legend, schedule)
-    4. 📊 **EXTRACT** - Pull data from each page type
-    5. 🔗 **MERGE** - Aggregate to project-level results
-    """)
-
-    # File upload
-    uploaded_file = st.file_uploader(
-        "Upload Combined PDF",
-        type=["pdf"],
-        key="quick_upload_file"
-    )
-
-    if uploaded_file:
-        st.session_state.combined_bytes = uploaded_file.getvalue()
-        st.success(f"Uploaded: {uploaded_file.name} ({len(st.session_state.combined_bytes) / 1024:.1f} KB)")
-
-    if st.session_state.combined_bytes and not st.session_state.quick_upload_result:
-        if st.button("🚀 Process Document (Local)", type="primary", use_container_width=True):
-            with st.spinner("Running 5-stage deterministic pipeline..."):
-                # Show progress stages
-                progress_container = st.empty()
-
-                # Run deterministic pipeline
-                det_result = process_with_deterministic_pipeline(
-                    st.session_state.combined_bytes,
-                    uploaded_file.name if uploaded_file else "document.pdf"
-                )
-
-                if det_result:
-                    st.session_state.quick_upload_result = det_result
-                    st.session_state.deterministic_result = det_result
-                    st.rerun()
-
-    # Show results
-    if st.session_state.quick_upload_result:
-        render_quick_upload_results()
-
-
-def render_quick_upload_results():
-    """Display results from quick upload processing."""
-    det_result = st.session_state.quick_upload_result
-
-    if not det_result or not det_result.success:
-        st.error("Extraction failed. Try the 4-step guided upload instead.")
-        if det_result and det_result.errors:
-            for err in det_result.errors[:3]:
-                st.error(f"Error: {err}")
-        return
-
-    # Success banner
-    st.success("✅ Document processed successfully!")
-
-    # Pipeline stages summary
-    st.markdown("### Pipeline Stages")
-    render_deterministic_progress("MERGE", 1.0)
-
-    # Show stage timings
-    if det_result.stage_results:
-        cols = st.columns(5)
-        for i, stage in enumerate(det_result.stage_results[:5]):
-            with cols[i]:
-                st.metric(
-                    stage.stage_name,
-                    f"{stage.processing_time_ms}ms",
-                    f"{stage.items_processed} items"
-                )
-
-    # Page classification summary
-    st.markdown("### Page Classification")
-    if det_result.pages:
-        page_types = {}
-        for page in det_result.pages:
-            ptype = page.classification.page_type.value if page.classification else "unknown"
-            page_types[ptype] = page_types.get(ptype, 0) + 1
-
-        cols = st.columns(len(page_types))
-        for i, (ptype, count) in enumerate(page_types.items()):
-            with cols[i]:
-                icon = {"register": "📋", "sld": "⚡", "layout_lighting": "💡",
-                        "layout_plugs": "🔌", "unknown": "❓"}.get(ptype, "📄")
-                st.metric(f"{icon} {ptype.replace('_', ' ').title()}", count)
-
-    # Extraction summary
-    st.markdown("### Extraction Summary")
-    project = det_result.project_result
-
-    if project:
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Project Name", project.project_name or "Not found")
-        with col2:
-            st.metric("DBs Found", len(project.sld_pages))
-        with col3:
-            # project.sld_pages is List[SLDExtraction] directly
-            total_circuits = sum(
-                len(sld.circuits) for sld in project.sld_pages
-            )
-            st.metric("Circuits", total_circuits)
-        with col4:
-            # project.lighting_pages/plugs_pages are List[LayoutExtraction] directly
-            room_count = sum(
-                len(layout.room_labels)
-                for layout in project.lighting_pages + project.plugs_pages
-            )
-            st.metric("Rooms", room_count)
-
-        # Detailed results in expanders
-        if project.sld_pages:
-            with st.expander("⚡ SLD / Circuit Schedules", expanded=True):
-                for sld in project.sld_pages:
-                    # sld is SLDExtraction directly, not PageExtractionResult
-                    st.markdown(f"**{sld.db_name or 'DB'}** - "
-                                f"Main: {sld.main_breaker_a}A, "
-                                f"{len(sld.circuits)} circuits")
-                    if sld.circuits:
-                        import pandas as pd
-                        df = pd.DataFrame([{
-                            "Circuit": c.circuit_id,
-                            "Description": c.description,
-                            "Points": c.num_points,
-                            "Wattage": c.wattage_w,
-                            "Breaker": f"{c.breaker_a}A" if c.breaker_a else "",
-                            "Wire": c.wire_size_mm2,
-                        } for c in sld.circuits])
-                        st.dataframe(df, use_container_width=True)
-
-        if project.lighting_pages:
-            with st.expander("💡 Lighting Layout"):
-                for i, layout in enumerate(project.lighting_pages):
-                    # layout is LayoutExtraction directly
-                    st.markdown(f"**Lighting {i+1}** - "
-                                f"Rooms: {', '.join(layout.room_labels[:5])}")
-                    if layout.legend_items:
-                        st.markdown(f"Legend: {', '.join(layout.legend_items[:10])}")
-
-        if project.plugs_pages:
-            with st.expander("🔌 Power Layout"):
-                for i, layout in enumerate(project.plugs_pages):
-                    # layout is LayoutExtraction directly
-                    st.markdown(f"**Power {i+1}** - "
-                                f"Rooms: {', '.join(layout.room_labels[:5])}")
-
-        # Populate session state for export
-        display = convert_deterministic_to_display(det_result)
-        st.session_state.project_info = display.get("project_info", {})
-        st.session_state.detected_dbs = display.get("detected_dbs", [])
-        st.session_state.db_schedules = display.get("db_schedules", {})
-        st.session_state.detected_rooms = display.get("rooms", [])
-
-    # Warnings
-    if det_result.warnings:
-        with st.expander(f"⚠️ Warnings ({len(det_result.warnings)})", expanded=False):
-            for warn in det_result.warnings[:10]:
-                st.warning(f"{warn.message}")
-
-    # Export buttons
-    st.markdown("### Export")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        # Build extraction result for export
-        if st.button("Generate BOQ", type="primary", use_container_width=True):
-            st.session_state.final_extraction = build_extraction_from_session_state()
-            try:
-                validation, _ = validate(st.session_state.final_extraction)
-                st.session_state.final_validation = validation
-                pricing, _ = price(st.session_state.final_extraction, validation, None, None)
-                st.session_state.final_pricing = pricing
-                st.success("BOQ generated!")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-    with col2:
-        if st.session_state.final_pricing and HAS_OPENPYXL:
-            try:
-                project_name = st.session_state.project_info.get("project_name", "Project")
-                safe_name = "".join(c for c in project_name if c.isalnum() or c in " -_")[:50]
-                excel_bytes = export_professional_bq(
-                    st.session_state.final_pricing,
-                    st.session_state.final_extraction,
-                    project_name
-                )
-                st.download_button(
-                    "📥 Download Excel BOQ",
-                    data=excel_bytes,
-                    file_name=f"{safe_name}_BOQ.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.error(f"Excel error: {e}")
-
-    with col3:
-        if st.button("🔄 Start Over", use_container_width=True):
-            st.session_state.combined_bytes = None
-            st.session_state.quick_upload_result = None
-            st.session_state.deterministic_result = None
-            st.session_state.final_extraction = None
-            st.session_state.final_validation = None
-            st.session_state.final_pricing = None
-            st.rerun()
-
-
-# ============================================================================
 # STEP 1: COVER PAGE / DRAWING REGISTER
 # ============================================================================
 
 def render_step_1_cover():
     """Step 1: Upload cover page and extract project info."""
-    is_local_mode = st.session_state.extraction_mode == "local"
-    mode_label = "🖥️ Local Mode" if is_local_mode else "☁️ AI Mode"
-
     section_header("Step 1: Cover Page / Drawing Register",
-                   f"Upload the cover page to extract project information ({mode_label})")
+                   "Upload the cover page to extract project information")
 
     st.info("""
     **What to upload:** `01_Cover_Page_Drawing_Register.pdf`
@@ -865,8 +504,6 @@ def render_step_1_cover():
 
     if uploaded_file:
         with st.spinner("Processing cover page..."):
-            # Store raw bytes for deterministic pipeline
-            st.session_state.cover_bytes = uploaded_file.getvalue()
             pages = process_uploaded_file(uploaded_file)
             if pages:
                 st.session_state.cover_pages = pages
@@ -878,40 +515,19 @@ def render_step_1_cover():
         st.markdown("---")
         st.markdown("### Extract Project Information")
 
-        if is_local_mode:
-            # LOCAL MODE: Use deterministic pipeline
-            if st.button("Extract (Local)", type="primary", key="extract_cover_local"):
-                with st.spinner("Local extraction (regex + keywords)..."):
-                    render_deterministic_progress("INGEST", 0.2)
-                    det_result = process_with_deterministic_pipeline(
-                        st.session_state.cover_bytes,
-                        "cover_page.pdf"
-                    )
-                    if det_result and det_result.success:
-                        st.session_state.deterministic_result = det_result
-                        display = convert_deterministic_to_display(det_result)
-                        st.session_state.project_info = display.get("project_info", {})
+        if st.button("Extract with AI", type="primary", key="extract_cover"):
+            pipeline = init_pipeline()
+            if pipeline:
+                st.session_state.interactive_pipeline = pipeline
+                with st.spinner("AI extracting project info..."):
+                    result = pipeline.run_project_info_pass(st.session_state.cover_pages)
+                    if result.success:
+                        st.session_state.project_info = result.display_data
                     else:
                         st.session_state.project_info = {}
-                        if det_result:
-                            for warn in det_result.warnings[:3]:
-                                st.warning(f"⚠️ {warn.message}")
                 st.rerun()
-        else:
-            # AI MODE: Use interactive pipeline
-            if st.button("Extract with AI", type="primary", key="extract_cover"):
-                pipeline = init_pipeline()
-                if pipeline:
-                    st.session_state.interactive_pipeline = pipeline
-                    with st.spinner("AI extracting project info..."):
-                        result = pipeline.run_project_info_pass(st.session_state.cover_pages)
-                        if result.success:
-                            st.session_state.project_info = result.display_data
-                        else:
-                            st.session_state.project_info = {}
-                    st.rerun()
-                else:
-                    st.error("Failed to initialize AI. Check API key.")
+            else:
+                st.error("Failed to initialize AI. Check API key.")
 
     # Show editable form if extracted
     if st.session_state.project_info or st.session_state.cover_pages:
@@ -975,11 +591,8 @@ def render_step_1_cover():
 
 def render_step_2_sld():
     """Step 2: Upload SLD and extract DBs, schedules, supply point, cables."""
-    is_local_mode = st.session_state.extraction_mode == "local"
-    mode_label = "🖥️ Local Mode" if is_local_mode else "☁️ AI Mode"
-
     section_header("Step 2: SLD & Circuit Schedules",
-                   f"Upload SLD to extract distribution boards, circuits, and cable routes ({mode_label})")
+                   "Upload SLD to extract distribution boards, circuits, and cable routes")
 
     # Sub-step navigation
     substep = st.session_state.get("sld_substep", "upload")
@@ -1004,8 +617,6 @@ def render_step_2_sld():
 
         if uploaded_file:
             with st.spinner("Processing SLD pages..."):
-                # Store raw bytes for deterministic pipeline
-                st.session_state.sld_bytes = uploaded_file.getvalue()
                 pages = process_uploaded_file(uploaded_file)
                 if pages:
                     st.session_state.sld_pages = pages
@@ -1019,80 +630,9 @@ def render_step_2_sld():
                     st.session_state.guided_step = 1
                     st.rerun()
             with col2:
-                button_label = "Extract (Local)" if is_local_mode else "Detect Distribution Boards"
-                if st.button(button_label, type="primary", use_container_width=True):
-                    if is_local_mode:
-                        # LOCAL MODE: Run full deterministic extraction on SLD
-                        st.session_state["sld_substep"] = "local_extract"
-                    else:
-                        st.session_state["sld_substep"] = "detect_dbs"
+                if st.button("Detect Distribution Boards", type="primary", use_container_width=True):
+                    st.session_state["sld_substep"] = "detect_dbs"
                     st.rerun()
-        return
-
-    # SUBSTEP: Local extraction (deterministic - all at once)
-    if substep == "local_extract":
-        st.markdown("### Local Extraction (No AI)")
-        render_deterministic_progress("EXTRACT", 0.6)
-
-        if not st.session_state.detected_dbs:
-            with st.spinner("Extracting DBs and circuits using regex patterns..."):
-                det_result = process_with_deterministic_pipeline(
-                    st.session_state.sld_bytes,
-                    "sld_schedule.pdf"
-                )
-                if det_result and det_result.success:
-                    st.session_state.deterministic_result = det_result
-                    display = convert_deterministic_to_display(det_result)
-
-                    # Update session state with extracted data
-                    st.session_state.detected_dbs = display.get("detected_dbs", [])
-                    st.session_state.db_schedules = display.get("db_schedules", {})
-                    st.session_state.cable_routes = display.get("cable_routes", [])
-
-                    # Show any warnings
-                    if det_result.warnings:
-                        for warn in det_result.warnings[:3]:
-                            st.warning(f"⚠️ {warn.message}")
-
-        if st.session_state.detected_dbs:
-            st.success(f"Found {len(st.session_state.detected_dbs)} distribution boards")
-
-            # Show detected DBs
-            st.markdown("**Detected DBs:** (edit if needed)")
-            for i, db in enumerate(st.session_state.detected_dbs):
-                st.markdown(f"- {db}")
-
-            # Show schedules
-            if st.session_state.db_schedules:
-                with st.expander("View Extracted Schedules", expanded=False):
-                    for db_name, schedule in st.session_state.db_schedules.items():
-                        st.markdown(f"**{db_name}**")
-                        circuits = schedule.get("circuits", [])
-                        if circuits:
-                            import pandas as pd
-                            df = pd.DataFrame(circuits)
-                            st.dataframe(df, use_container_width=True)
-                        else:
-                            st.caption("No circuits extracted")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Back to Upload", use_container_width=True):
-                    st.session_state["sld_substep"] = "upload"
-                    st.rerun()
-            with col2:
-                if st.button("Continue to Lighting Layout", type="primary", use_container_width=True):
-                    st.session_state["sld_substep"] = "upload"  # Reset for next time
-                    st.session_state.guided_step = 3
-                    st.session_state.max_completed_step = max(2, st.session_state.max_completed_step)
-                    st.rerun()
-        else:
-            st.warning("No DBs detected from SLD. The document may not contain recognizable circuit schedules.")
-            st.info("Try uploading a different document or switch to AI mode for better extraction.")
-
-            if st.button("Back to Upload", use_container_width=True):
-                st.session_state["sld_substep"] = "upload"
-                st.rerun()
         return
 
     # Initialize pipeline if needed
@@ -1336,11 +876,8 @@ def render_step_2_sld():
 
 def render_step_3_lighting():
     """Step 3: Upload lighting layout, extract legend first, then room fixtures."""
-    is_local_mode = st.session_state.extraction_mode == "local"
-    mode_label = "🖥️ Local Mode" if is_local_mode else "☁️ AI Mode"
-
     section_header("Step 3: Lighting Layout",
-                   f"Extract lighting legend, then count fixtures per room ({mode_label})")
+                   "Extract lighting legend, then count fixtures per room")
 
     substep = st.session_state.get("lighting_substep", "upload")
     pipeline = st.session_state.interactive_pipeline
@@ -1365,8 +902,6 @@ def render_step_3_lighting():
 
         if uploaded_file:
             with st.spinner("Processing lighting layout..."):
-                # Store raw bytes for deterministic pipeline
-                st.session_state.lighting_bytes = uploaded_file.getvalue()
                 pages = process_uploaded_file(uploaded_file)
                 if pages:
                     st.session_state.lighting_pages = pages
@@ -1378,93 +913,12 @@ def render_step_3_lighting():
             with col1:
                 if st.button("Back to SLD", use_container_width=True):
                     st.session_state.guided_step = 2
-                    if is_local_mode:
-                        st.session_state["sld_substep"] = "local_extract"
-                    else:
-                        st.session_state["sld_substep"] = "cable_routes"
+                    st.session_state["sld_substep"] = "cable_routes"
                     st.rerun()
             with col2:
-                button_label = "Extract (Local)" if is_local_mode else "Extract Lighting Legend"
-                if st.button(button_label, type="primary", use_container_width=True):
-                    if is_local_mode:
-                        st.session_state["lighting_substep"] = "local_extract"
-                    else:
-                        st.session_state["lighting_substep"] = "legend"
+                if st.button("Extract Lighting Legend", type="primary", use_container_width=True):
+                    st.session_state["lighting_substep"] = "legend"
                     st.rerun()
-        return
-
-    # SUBSTEP: Local extraction (deterministic)
-    if substep == "local_extract":
-        st.markdown("### Local Extraction (No AI)")
-        render_deterministic_progress("EXTRACT", 0.6)
-
-        if not st.session_state.lighting_legend.get("has_legend"):
-            with st.spinner("Extracting lighting info using regex patterns..."):
-                det_result = process_with_deterministic_pipeline(
-                    st.session_state.lighting_bytes,
-                    "lighting_layout.pdf"
-                )
-                if det_result and det_result.success:
-                    # Extract lighting data from result
-                    display = convert_deterministic_to_display(det_result)
-                    st.session_state.detected_rooms = display.get("rooms", [])
-
-                    # Build legend from extracted legend items
-                    # Use page_results (List[PageExtractionResult]) which has layout_data
-                    light_types = []
-                    switch_types = []
-                    for page_result in det_result.page_results:
-                        if page_result.layout_data:
-                            for item in page_result.layout_data.legend_items:
-                                item_lower = item.lower()
-                                if any(x in item_lower for x in ["light", "downlight", "led", "panel", "flood"]):
-                                    light_types.append({"name": item, "symbol": "", "wattage_w": 0})
-                                elif any(x in item_lower for x in ["switch", "lever"]):
-                                    switch_types.append({"name": item, "symbol": ""})
-
-                    st.session_state.lighting_legend = {
-                        "has_legend": len(light_types) > 0,
-                        "light_types": light_types,
-                        "switch_types": switch_types,
-                    }
-
-                    if det_result.warnings:
-                        for warn in det_result.warnings[:3]:
-                            st.warning(f"⚠️ {warn.message}")
-
-        legend = st.session_state.lighting_legend
-        rooms = st.session_state.detected_rooms
-
-        st.success(f"Extracted {len(legend.get('light_types', []))} light types, {len(rooms)} rooms")
-
-        # Show legend
-        if legend.get("light_types"):
-            with st.expander("Light Types", expanded=True):
-                import pandas as pd
-                df = pd.DataFrame(legend["light_types"])
-                st.dataframe(df, use_container_width=True)
-
-        if legend.get("switch_types"):
-            with st.expander("Switch Types", expanded=False):
-                import pandas as pd
-                df = pd.DataFrame(legend["switch_types"])
-                st.dataframe(df, use_container_width=True)
-
-        # Show rooms
-        if rooms:
-            st.markdown(f"**Detected Rooms:** {', '.join(rooms)}")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Back to Upload", use_container_width=True):
-                st.session_state["lighting_substep"] = "upload"
-                st.rerun()
-        with col2:
-            if st.button("Continue to Power Layout", type="primary", use_container_width=True):
-                st.session_state["lighting_substep"] = "upload"  # Reset
-                st.session_state.guided_step = 4
-                st.session_state.max_completed_step = max(3, st.session_state.max_completed_step)
-                st.rerun()
         return
 
     # SUBSTEP: Legend extraction
@@ -1667,11 +1121,8 @@ def render_step_3_lighting():
 
 def render_step_4_power():
     """Step 4: Upload power layout, extract legend, then room sockets."""
-    is_local_mode = st.session_state.extraction_mode == "local"
-    mode_label = "🖥️ Local Mode" if is_local_mode else "☁️ AI Mode"
-
     section_header("Step 4: Power Layout",
-                   f"Extract power legend, then count sockets per room ({mode_label})")
+                   "Extract power legend, then count sockets per room")
 
     substep = st.session_state.get("power_substep", "upload")
     pipeline = st.session_state.interactive_pipeline
@@ -1695,8 +1146,6 @@ def render_step_4_power():
 
         if uploaded_file:
             with st.spinner("Processing power layout..."):
-                # Store raw bytes for deterministic pipeline
-                st.session_state.power_bytes = uploaded_file.getvalue()
                 pages = process_uploaded_file(uploaded_file)
                 if pages:
                     st.session_state.power_pages = pages
@@ -1708,84 +1157,13 @@ def render_step_4_power():
             with col1:
                 if st.button("Back to Lighting", use_container_width=True):
                     st.session_state.guided_step = 3
-                    if is_local_mode:
-                        st.session_state["lighting_substep"] = "local_extract"
-                    else:
-                        st.session_state["lighting_substep"] = "room_fixtures"
-                        st.session_state.current_lighting_room_index = len(st.session_state.detected_rooms) - 1
+                    st.session_state["lighting_substep"] = "room_fixtures"
+                    st.session_state.current_lighting_room_index = len(st.session_state.detected_rooms) - 1
                     st.rerun()
             with col2:
-                button_label = "Extract (Local)" if is_local_mode else "Extract Power Legend"
-                if st.button(button_label, type="primary", use_container_width=True):
-                    if is_local_mode:
-                        st.session_state["power_substep"] = "local_extract"
-                    else:
-                        st.session_state["power_substep"] = "legend"
+                if st.button("Extract Power Legend", type="primary", use_container_width=True):
+                    st.session_state["power_substep"] = "legend"
                     st.rerun()
-        return
-
-    # SUBSTEP: Local extraction (deterministic)
-    if substep == "local_extract":
-        st.markdown("### Local Extraction (No AI)")
-        render_deterministic_progress("EXTRACT", 0.6)
-
-        if not st.session_state.power_legend.get("has_legend"):
-            with st.spinner("Extracting power info using regex patterns..."):
-                det_result = process_with_deterministic_pipeline(
-                    st.session_state.power_bytes,
-                    "power_layout.pdf"
-                )
-                if det_result and det_result.success:
-                    # Extract power data from result
-                    # Use page_results (List[PageExtractionResult]) which has layout_data
-                    socket_types = []
-                    isolator_types = []
-                    for page_result in det_result.page_results:
-                        if page_result.layout_data:
-                            for item in page_result.layout_data.legend_items:
-                                item_lower = item.lower()
-                                if any(x in item_lower for x in ["socket", "plug", "outlet", "data", "cat"]):
-                                    socket_types.append({"name": item, "symbol": "", "height_mm": 300})
-                                elif any(x in item_lower for x in ["isolator", "iso"]):
-                                    isolator_types.append({"name": item, "symbol": ""})
-
-                    st.session_state.power_legend = {
-                        "has_legend": len(socket_types) > 0,
-                        "socket_types": socket_types,
-                        "isolator_types": isolator_types,
-                    }
-
-                    if det_result.warnings:
-                        for warn in det_result.warnings[:3]:
-                            st.warning(f"⚠️ {warn.message}")
-
-        legend = st.session_state.power_legend
-        st.success(f"Extracted {len(legend.get('socket_types', []))} socket types, {len(legend.get('isolator_types', []))} isolator types")
-
-        # Show legend
-        if legend.get("socket_types"):
-            with st.expander("Socket Types", expanded=True):
-                import pandas as pd
-                df = pd.DataFrame(legend["socket_types"])
-                st.dataframe(df, use_container_width=True)
-
-        if legend.get("isolator_types"):
-            with st.expander("Isolator Types", expanded=False):
-                import pandas as pd
-                df = pd.DataFrame(legend["isolator_types"])
-                st.dataframe(df, use_container_width=True)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Back to Upload", use_container_width=True):
-                st.session_state["power_substep"] = "upload"
-                st.rerun()
-        with col2:
-            if st.button("Review & Export", type="primary", use_container_width=True):
-                st.session_state["power_substep"] = "upload"  # Reset
-                st.session_state.guided_step = 5
-                st.session_state.max_completed_step = max(4, st.session_state.max_completed_step)
-                st.rerun()
         return
 
     # SUBSTEP: Power legend
@@ -1945,125 +1323,26 @@ def render_step_4_power():
 
 def render_step_5_review():
     """Step 5: Final review and BOQ export."""
-    is_local_mode = st.session_state.extraction_mode == "local"
-    mode_label = "🖥️ Local Mode" if is_local_mode else "☁️ AI Mode"
-
     section_header("Step 5: Review & Export",
-                   f"Validate extraction and download BOQ ({mode_label})")
+                   "Validate extraction and download BOQ")
 
     pipeline = st.session_state.interactive_pipeline
 
-    # Build final result based on mode
+    # Build final result from AI pipeline
     if st.session_state.final_extraction is None:
         with st.spinner("Building final BOQ..."):
-            if is_local_mode:
-                # LOCAL MODE: Build result from deterministic pipeline data
-                render_deterministic_progress("MERGE", 1.0)
-
-                # Combine all deterministic results
-                all_bytes = []
-                if st.session_state.cover_bytes:
-                    all_bytes.append((st.session_state.cover_bytes, "cover.pdf"))
-                if st.session_state.sld_bytes:
-                    all_bytes.append((st.session_state.sld_bytes, "sld.pdf"))
-                if st.session_state.lighting_bytes:
-                    all_bytes.append((st.session_state.lighting_bytes, "lighting.pdf"))
-                if st.session_state.power_bytes:
-                    all_bytes.append((st.session_state.power_bytes, "power.pdf"))
-
-                # Run combined extraction
-                if all_bytes:
-                    combined_result = None
-                    for file_bytes, filename in all_bytes:
-                        result = process_with_deterministic_pipeline(file_bytes, filename)
-                        if result and result.success:
-                            if combined_result is None:
-                                combined_result = result
-                            else:
-                                # Merge pages from each result
-                                combined_result.pages.extend(result.pages)
-
-                    if combined_result and combined_result.project_result:
-                        # Build ExtractionResult from deterministic data
-                        from agent.models import ExtractionResult, DistributionBoard, Circuit, Room, FixtureCounts
-
-                        project = combined_result.project_result
-                        dbs = []
-                        rooms = []
-
-                        # Convert SLD data to ExtractionResult format
-                        # project.sld_pages is List[SLDExtraction] directly
-                        for sld in project.sld_pages:
-                            circuits = []
-                            for c in sld.circuits:
-                                circuits.append(Circuit(
-                                    circuit_id=c.circuit_id,
-                                    description=c.description,
-                                    breaker_a=c.breaker_a or 10,
-                                    wire_size_mm2=c.wire_size_mm2 or "1.5",
-                                    points=c.num_points or 0,
-                                ))
-                            dbs.append(DistributionBoard(
-                                name=sld.db_name or "DB",
-                                main_breaker_a=sld.main_breaker_a or 100,
-                                total_ways=sld.total_ways or 12,
-                                circuits=circuits,
-                            ))
-
-                        # Convert layout data to rooms
-                        # project.lighting_pages/plugs_pages are List[LayoutExtraction] directly
-                        room_names = set()
-                        for layout in project.lighting_pages + project.plugs_pages:
-                            room_names.update(layout.room_labels)
-
-                        for room_name in room_names:
-                            rooms.append(Room(
-                                name=room_name,
-                                fixtures=FixtureCounts(),  # Default counts
-                            ))
-
-                        st.session_state.final_extraction = ExtractionResult(
-                            project_name=project.project_name or st.session_state.project_info.get("project_name", "Project"),
-                            client_name=project.client_name or st.session_state.project_info.get("client_name", ""),
-                            distribution_boards=dbs,
-                            rooms=rooms,
-                        )
-                    else:
-                        # Fallback: Build from session state
-                        st.session_state.final_extraction = build_extraction_from_session_state()
-                else:
-                    st.session_state.final_extraction = build_extraction_from_session_state()
-
-                # Validate and price
-                try:
-                    validation, _ = validate(st.session_state.final_extraction)
-                    st.session_state.final_validation = validation
-                    pricing, _ = price(st.session_state.final_extraction, validation, None, None)
-                    st.session_state.final_pricing = pricing
-                except Exception as e:
-                    st.warning(f"Validation/pricing error: {e}")
-                    st.session_state.final_validation = None
-                    st.session_state.final_pricing = None
-            else:
-                # AI MODE: Use interactive pipeline
-                st.session_state.final_extraction = pipeline.build_final_result()
-                validation, _ = validate(st.session_state.final_extraction)
-                st.session_state.final_validation = validation
-                pricing, _ = price(st.session_state.final_extraction, validation, None, None)
-                st.session_state.final_pricing = pricing
+            st.session_state.final_extraction = pipeline.build_final_result()
+            validation, _ = validate(st.session_state.final_extraction)
+            st.session_state.final_validation = validation
+            pricing, _ = price(st.session_state.final_extraction, validation, None, None)
+            st.session_state.final_pricing = pricing
 
     extraction = st.session_state.final_extraction
     validation = st.session_state.final_validation
     pricing = st.session_state.final_pricing
 
-    # Get statistics based on mode
-    if is_local_mode:
-        stats = {
-            "db_schedules_extracted": len(st.session_state.db_schedules),
-            "rooms_detected": len(st.session_state.detected_rooms),
-        }
-    else:
-        stats = pipeline.get_statistics() if pipeline else {}
+    # Get statistics from AI pipeline
+    stats = pipeline.get_statistics() if pipeline else {}
 
     # Calculate accuracy score
     db_count = stats.get("db_schedules_extracted", 0)
@@ -2229,10 +1508,7 @@ def render_step_5_review():
             keys_to_clear = [
                 "guided_step", "max_completed_step",
                 "cover_pages", "sld_pages", "lighting_pages", "power_pages",
-                "cover_bytes", "sld_bytes", "lighting_bytes", "power_bytes",
-                "combined_bytes", "quick_upload_result",
-                "interactive_pipeline", "deterministic_pipeline", "deterministic_result",
-                "project_info",
+                "interactive_pipeline", "project_info",
                 "supply_point", "detected_dbs", "db_schedules", "cable_routes",
                 "current_db_index", "lighting_legend", "detected_rooms",
                 "room_lighting", "current_lighting_room_index",
@@ -2254,95 +1530,32 @@ inject_custom_css()
 init_session_state()
 
 page_header(
-    title="Guided Upload v2.1",
-    subtitle="4-step document flow | AI or Local extraction | 75%+ accuracy target"
+    title="Guided Upload v3.0",
+    subtitle="AI-powered 4-step document flow | 75%+ accuracy target"
 )
 
-# Check if at least one pipeline is available
-if not PIPELINE_AVAILABLE and not DETERMINISTIC_AVAILABLE:
-    st.error("No extraction pipeline available")
+# Check if pipeline is available
+if not PIPELINE_AVAILABLE:
+    st.error("Pipeline not available. Check imports.")
     st.stop()
 
-# Sidebar: Extraction Mode Selection
-st.sidebar.markdown("### 🔧 Extraction Mode")
-
-mode_options = []
-mode_labels = {}
-
-if DETERMINISTIC_AVAILABLE:
-    mode_options.append("local")
-    mode_labels["local"] = "🖥️ Local (No AI)"
-
-if PIPELINE_AVAILABLE and LLM_API_KEY:
-    mode_options.append("ai")
-    mode_labels["ai"] = "☁️ AI-Based"
-
-if not mode_options:
-    st.error("No extraction mode available. Configure API keys or check installation.")
+if not LLM_API_KEY:
+    st.error("No API key configured. Add GROQ_API_KEY, XAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY to secrets.")
     st.stop()
 
-# Mode selection radio
-selected_mode = st.sidebar.radio(
-    "Choose extraction method:",
-    options=mode_options,
-    format_func=lambda x: mode_labels.get(x, x),
-    key="extraction_mode_radio",
-    help="**Local:** Fast, free, works offline using regex/keywords. **AI:** Higher accuracy using vision models."
-)
+# Sidebar: AI Provider Info
+st.sidebar.markdown("### 🤖 AI Provider")
+provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", ""))
+st.sidebar.success(f"{provider_name} ({provider_cost})")
 
-# Update session state if mode changed
-if selected_mode != st.session_state.extraction_mode:
-    st.session_state.extraction_mode = selected_mode
-    # Reset results when mode changes
-    st.session_state.final_extraction = None
-    st.session_state.final_validation = None
-    st.session_state.final_pricing = None
-    st.session_state.deterministic_result = None
+st.sidebar.info("""
+**AI-Powered Extraction**
 
-# Show mode-specific info and upload mode option
-if st.session_state.extraction_mode == "local":
-    st.sidebar.info("""
-    **Local Mode (No AI)**
-
-    ✅ Free - No API costs
-    ✅ Fast - No network latency
-    ✅ Private - Data stays local
-    ✅ Offline - Works without internet
-
-    **Method:** Regex, keywords, OpenCV
-    """)
-
-    # Upload mode selection (only for local mode)
-    st.sidebar.markdown("### 📤 Upload Mode")
-    upload_mode = st.sidebar.radio(
-        "Choose upload style:",
-        options=["quick", "guided"],
-        format_func=lambda x: "⚡ Quick Upload (Single PDF)" if x == "quick" else "📝 4-Step Guided",
-        key="upload_mode_radio",
-        help="**Quick:** Upload one combined PDF, auto-split. **Guided:** Upload 4 separate documents."
-    )
-
-    if upload_mode != st.session_state.upload_mode:
-        st.session_state.upload_mode = upload_mode
-        # Reset state when changing upload mode
-        st.session_state.quick_upload_result = None
-        st.session_state.combined_bytes = None
-else:
-    # AI mode - only guided upload available
-    st.session_state.upload_mode = "guided"
-
-    st.sidebar.markdown("### AI Provider")
-    provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", ""))
-    st.sidebar.success(f"{provider_name} ({provider_cost})")
-
-    st.sidebar.info("""
-    **AI Mode (Cloud)**
-
-    ✅ Higher accuracy
-    ✅ Better at complex layouts
-    ✅ Understands context
-    ⚠️ Requires API key
-    """)
+✅ High accuracy with vision models
+✅ Understands complex layouts
+✅ Extracts legends before counting
+✅ Specialized prompts per document type
+""")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
@@ -2353,26 +1566,21 @@ st.sidebar.markdown("""
 3. **Lighting Layout** → Legend → Fixtures
 4. **Power Layout** → Legend → Sockets
 
-**Key Improvement:** Extract legends BEFORE counting fixtures for higher accuracy.
+**Key:** Extract legends FIRST, then count fixtures using legend symbols.
 """)
 
-# Render based on upload mode
-if st.session_state.upload_mode == "quick" and st.session_state.extraction_mode == "local":
-    # Quick Upload mode - single PDF, automatic processing
-    render_quick_upload()
-else:
-    # Guided 4-step upload mode
-    render_progress_indicator()
+# Render the 4-step guided upload
+render_progress_indicator()
 
-    step = st.session_state.guided_step
+step = st.session_state.guided_step
 
-    if step == 1:
-        render_step_1_cover()
-    elif step == 2:
-        render_step_2_sld()
-    elif step == 3:
-        render_step_3_lighting()
-    elif step == 4:
-        render_step_4_power()
-    elif step == 5:
-        render_step_5_review()
+if step == 1:
+    render_step_1_cover()
+elif step == 2:
+    render_step_2_sld()
+elif step == 3:
+    render_step_3_lighting()
+elif step == 4:
+    render_step_4_power()
+elif step == 5:
+    render_step_5_review()
