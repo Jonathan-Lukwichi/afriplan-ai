@@ -491,8 +491,8 @@ def render_step_2_sld():
             # Show detected DBs with checkboxes
             st.markdown("**Detected DBs:** (uncheck any false positives)")
             valid_dbs = []
-            for db in st.session_state.detected_dbs:
-                if st.checkbox(db, value=True, key=f"db_check_{db}"):
+            for i, db in enumerate(st.session_state.detected_dbs):
+                if st.checkbox(db, value=True, key=f"sld_db_check_{i}"):
                     valid_dbs.append(db)
 
             # Add manual DB
@@ -824,8 +824,8 @@ def render_step_3_lighting():
             st.success(f"Found {len(st.session_state.detected_rooms)} rooms")
 
             valid_rooms = []
-            for room in st.session_state.detected_rooms:
-                if st.checkbox(room, value=True, key=f"room_check_{room}"):
+            for i, room in enumerate(st.session_state.detected_rooms):
+                if st.checkbox(room, value=True, key=f"ltg_room_check_{i}"):
                     valid_rooms.append(room)
 
             new_room = st.text_input("Add room manually", placeholder="e.g., SUITE 5, KITCHEN")
