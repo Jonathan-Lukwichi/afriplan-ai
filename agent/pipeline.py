@@ -1,13 +1,22 @@
 """
-AfriPlan Electrical v4.1 — Pipeline Orchestrator
+AfriPlan Electrical v4.11 — Pipeline Orchestrator
 
 Orchestrates the pipeline stages:
 
 SIMPLIFIED (v4.2):
 INGEST → CLASSIFY → EXTRACT → VALIDATE → OUTPUT
 
-FULL (v4.1):
-INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
+FULL (v4.11):
+INGEST → CLASSIFY → DISCOVER (Multi-Pass) → REVIEW → VALIDATE → PRICE → OUTPUT
+
+v4.11 - Multi-Pass Extraction:
+- Breaks extraction into 6 focused passes for better accuracy
+- Pass 1: PROJECT_INFO (cover page)
+- Pass 2: DB_DETECTION (find all DBs)
+- Pass 3: DB_SCHEDULES (one DB at a time)
+- Pass 4: ROOM_DETECTION (find all rooms)
+- Pass 5: ROOM_FIXTURES (one room at a time)
+- Pass 6: CABLE_ROUTES (connections between DBs)
 
 Supports multiple LLM providers:
 - Groq (100% FREE with Llama 4 Vision!)
@@ -26,7 +35,8 @@ from agent.models import (
 )
 from agent.stages.ingest import ingest
 from agent.stages.classify import classify
-from agent.stages.discover import discover
+from agent.stages.discover import discover, DISCOVER_MODELS, ESCALATION_MODELS
+from agent.stages.multi_pass_discover import multi_pass_discover, MultiPassState
 from agent.stages.review import ReviewManager, create_review_stage_result
 from agent.stages.validate import validate
 from agent.stages.price import price
@@ -208,15 +218,44 @@ class AfriPlanPipeline:
         )
         self.stages.append(classify_result)
 
-        # Stage 3: DISCOVER (with optional higher-tier model for maximum accuracy)
-        self.extraction, discover_result = discover(
-            self.doc_set,
-            self.tier,
-            self.mode,
-            self.building_blocks,
-            self.client,
-            use_opus_directly=use_opus_directly,
+        # Stage 3: DISCOVER (v4.11 - Multi-Pass Extraction for better accuracy)
+        # Select model based on provider and accuracy preference
+        if use_opus_directly:
+            extraction_model = ESCALATION_MODELS.get(self.provider or "claude", "claude-opus-4-20250514")
+        else:
+            extraction_model = DISCOVER_MODELS.get(self.provider or "claude", "claude-sonnet-4-20250514")
+
+        # Use multi-pass discovery for step-by-step extraction
+        timer = Timer()
+        timer.start()
+
+        self.extraction, multi_pass_state, warnings = multi_pass_discover(
+            pages=self.doc_set.pages,
+            client=self.client,
+            model=extraction_model,
             provider=self.provider or "claude",
+            progress_callback=None,  # Could add UI callback here
+        )
+
+        elapsed_ms = timer.elapsed_ms()
+
+        # Create StageResult from multi-pass results
+        discover_result = StageResult(
+            stage=PipelineStage.DISCOVER,
+            success=len(self.extraction.distribution_boards) > 0 or len(self.extraction.rooms) > 0,
+            confidence=0.7 if self.extraction.distribution_boards else 0.4,
+            data={
+                "extraction_mode": "multi_pass",
+                "passes_completed": [p.value for p in multi_pass_state.passes_completed],
+                "dbs_found": len(self.extraction.distribution_boards),
+                "rooms_found": len(self.extraction.rooms),
+                "total_circuits": sum(len(db.circuits) for db in self.extraction.distribution_boards),
+                "warnings": warnings,
+            },
+            processing_time_ms=elapsed_ms,
+            model_used=extraction_model,
+            tokens_used=multi_pass_state.total_tokens,
+            cost_zar=multi_pass_state.total_cost,
         )
         self.stages.append(discover_result)
 
