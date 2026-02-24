@@ -27,6 +27,17 @@ v4.10 - SLD-First Strategy:
 - SLD extraction happens FIRST, before layout processing
 - Layout drawings are used for room names and verification only
 - This fixes the 26% extraction rate problem on layout-heavy drawings
+
+v4.11 - Multi-Pass Extraction:
+- Breaks extraction into 6 focused passes for better accuracy
+- Pass 1: Project Info (cover page)
+- Pass 2: DB Detection (find all DBs)
+- Pass 3: DB Schedules (one DB at a time)
+- Pass 4: Room Detection (find all rooms)
+- Pass 5: Room Fixtures (one room at a time)
+- Pass 6: Cable Routes (connections between DBs)
+- Each pass uses a FOCUSED prompt asking for ONE thing only
+- Works much better with limited vision models like Llama 4
 """
 
 from agent.models import (
@@ -142,4 +153,4 @@ __all__ = [
     'generate_output',
 ]
 
-__version__ = '4.10.0'
+__version__ = '4.11.0'
