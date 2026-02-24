@@ -218,68 +218,142 @@ def normalize_fixture_data(raw_fixtures: dict) -> dict:
 
 
 def map_fixture_to_standard_key(name: str) -> str:
-    """Map a legend fixture name to a standard key for build_extraction_result."""
+    """
+    Map a legend fixture name to a standard key for build_extraction_result.
+
+    Keys MUST match exactly what build_extraction_result() expects, which are
+    based on FixtureCounts model attributes.
+    """
     name_lower = name.lower().replace("_", " ").replace("-", " ")
 
-    # Lighting fixtures - check most specific first
+    # === LIGHTING FIXTURES ===
+    # Panel/Recessed lights
     if "600x1200" in name_lower or "1200" in name_lower:
         return "recessed_led_600x1200"
     if "600x600" in name_lower:
-        return "recessed_led_600x600"
+        return "recessed_led_600x1200"  # Map to 1200 (builder only uses 1200)
     if any(x in name_lower for x in ["panel", "recessed", "led panel"]):
-        return "recessed_led_600x1200"  # Default panel size
+        return "recessed_led_600x1200"
+
+    # Downlights
     if any(x in name_lower for x in ["downlight", "down light", "spotlight", "spot"]):
         return "downlight"
-    if any(x in name_lower for x in ["surface", "ceiling", "batten", "strip"]):
+
+    # Surface mount / ceiling lights
+    if any(x in name_lower for x in ["surface", "ceiling light", "batten", "strip"]):
         return "surface_mount_led"
+
+    # Flood lights
+    if any(x in name_lower for x in ["200w flood", "flood 200", "high power flood"]):
+        return "flood_light_200w"
+    if any(x in name_lower for x in ["flood", "floodlight"]):
+        return "flood_light_30w"
+
+    # Pool lights
+    if any(x in name_lower for x in ["underwater", "pool light", "submerge"]):
+        return "pool_underwater_light"
+    if "pool" in name_lower and "flood" in name_lower:
+        return "pool_flood_light"
+
+    # Vapor proof
+    if any(x in name_lower for x in ["vapor 2x24", "vapour 2x24", "24w vapor", "24w vapour"]):
+        return "vapor_proof_2x24w"
     if any(x in name_lower for x in ["vapor", "vapour", "waterproof light"]):
-        return "vapor_proof"
+        return "vapor_proof_2x18w"
+
+    # Bulkhead
+    if any(x in name_lower for x in ["bulkhead 26", "26w bulkhead"]):
+        return "bulkhead_26w"
     if any(x in name_lower for x in ["bulkhead", "wall light", "wall mount"]):
-        return "bulkhead"
-    if any(x in name_lower for x in ["flood", "outdoor", "external"]):
-        return "flood_light"
+        return "bulkhead_24w"
+
+    # Prismatic
+    if "prismatic" in name_lower:
+        return "prismatic_2x18w"
+
+    # Fluorescent
+    if any(x in name_lower for x in ["fluorescent", "5ft", "5 ft"]):
+        return "fluorescent_50w_5ft"
+
+    # Pole light
+    if any(x in name_lower for x in ["pole light", "pole", "outdoor post"]):
+        return "pole_light_60w"
+
+    # Emergency lights (map to surface mount since no dedicated field)
     if "emergency" in name_lower:
-        return "emergency_light"
+        return "surface_mount_led"
+
     # Generic light catch-all
     if any(x in name_lower for x in ["light", "lamp", "luminaire", "fitting"]) and "switch" not in name_lower:
         return "surface_mount_led"
 
-    # Switches
-    if any(x in name_lower for x in ["switch", "lever"]):
-        if any(x in name_lower for x in ["2 way", "2way", "two way"]):
-            return "switch_2way"
-        if any(x in name_lower for x in ["2 lever", "2lever", "two lever"]):
-            return "switch_2lever"
-        if any(x in name_lower for x in ["day", "night", "d/n"]):
-            return "switch_daynight"
-        return "switch_1lever"  # Default to 1-lever
+    # === SWITCHES ===
+    # Day/night switch
+    if any(x in name_lower for x in ["day", "night", "d/n", "daynight"]):
+        return "day_night_switch"
 
-    # Sockets - check most specific first
-    if any(x in name_lower for x in ["1100", "worktop", "counter"]):
-        return "double_socket_1100"
+    # Master switch
+    if "master" in name_lower:
+        return "master_switch"
+
+    # 2-way switch
+    if any(x in name_lower for x in ["2 way", "2way", "two way"]):
+        return "switch_2way"
+
+    # 2-lever switch
+    if any(x in name_lower for x in ["2 lever", "2lever", "two lever"]):
+        return "switch_2lever"
+
+    # 1-lever switch (default)
+    if any(x in name_lower for x in ["switch", "lever", "1 lever", "1lever"]):
+        return "switch_1lever"
+
+    # === SOCKETS ===
+    # Ceiling socket
+    if "ceiling" in name_lower and "socket" in name_lower:
+        return "double_socket_ceiling"
+
+    # Waterproof sockets
     if any(x in name_lower for x in ["waterproof", "wp", "ip44", "ip65", "outdoor socket"]):
         return "waterproof_socket"
+
+    # 1100mm height (worktop)
+    if any(x in name_lower for x in ["1100", "worktop", "counter"]):
+        if "single" in name_lower or "1 gang" in name_lower:
+            return "single_socket_1100"
+        return "double_socket_1100"
+
+    # 300mm height (floor level)
+    if "single" in name_lower or "1 gang" in name_lower:
+        return "single_socket"
     if any(x in name_lower for x in ["double", "twin", "2 gang"]):
         return "double_socket_300"
-    if any(x in name_lower for x in ["single", "1 gang"]):
-        return "single_socket"
+
     # Generic socket catch-all
     if any(x in name_lower for x in ["socket", "plug", "outlet", "receptacle"]):
-        return "double_socket_300"  # Default to double
+        return "double_socket_300"
 
-    # Data points
+    # === DATA POINTS ===
     if any(x in name_lower for x in ["data", "cat5", "cat6", "rj45", "network", "lan"]):
         return "data_point_cat6"
+
+    # === FLOOR BOX ===
     if any(x in name_lower for x in ["floor box", "floorbox"]):
         return "floor_box"
 
-    # Isolators
+    # === ISOLATORS ===
+    if any(x in name_lower for x in ["30a isolator", "isolator 30", "geyser isolator"]):
+        return "isolator_30a"
+    if any(x in name_lower for x in ["20a isolator", "isolator 20", "ac isolator"]):
+        return "isolator_20a"
     if any(x in name_lower for x in ["isolator", "iso ", "disconnect"]):
-        return "isolator"
-    if any(x in name_lower for x in ["a/c", "air con", "aircon", "ac unit"]):
-        return "ac_isolator"
+        return "isolator_20a"  # Default to 20A
 
-    # Default: use normalized name
+    # === EQUIPMENT ===
+    if any(x in name_lower for x in ["a/c", "air con", "aircon", "ac unit", "air condition"]):
+        return "ac_units"
+
+    # Default: use normalized name (will likely be ignored by builder)
     return name.replace(" ", "_").replace("-", "_").lower()[:30]
 
 

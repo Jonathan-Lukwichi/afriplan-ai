@@ -919,22 +919,45 @@ def build_extraction_result(state: MultiPassState) -> ExtractionResult:
             confidence=ItemConfidence.EXTRACTED if fixtures_data else ItemConfidence.INFERRED,
         )
 
-        # Map fixture counts
+        # Map fixture counts - ALL fields from FixtureCounts model
         room.fixtures = FixtureCounts(
+            # === LIGHTS (14 types) ===
             recessed_led_600x1200=int(fixtures_data.get("recessed_led_600x1200") or 0),
             surface_mount_led_18w=int(fixtures_data.get("surface_mount_led") or 0),
+            flood_light_30w=int(fixtures_data.get("flood_light_30w") or 0),
+            flood_light_200w=int(fixtures_data.get("flood_light_200w") or 0),
             downlight_led_6w=int(fixtures_data.get("downlight") or 0),
-            vapor_proof_2x18w=int(fixtures_data.get("vapor_proof") or 0),
-            bulkhead_24w=int(fixtures_data.get("bulkhead") or 0),
+            vapor_proof_2x24w=int(fixtures_data.get("vapor_proof_2x24w") or 0),
+            vapor_proof_2x18w=int(fixtures_data.get("vapor_proof_2x18w") or 0),
+            prismatic_2x18w=int(fixtures_data.get("prismatic_2x18w") or 0),
+            bulkhead_26w=int(fixtures_data.get("bulkhead_26w") or 0),
+            bulkhead_24w=int(fixtures_data.get("bulkhead_24w") or 0),
+            fluorescent_50w_5ft=int(fixtures_data.get("fluorescent_50w_5ft") or 0),
+            pole_light_60w=int(fixtures_data.get("pole_light_60w") or 0),
+            pool_flood_light=int(fixtures_data.get("pool_flood_light") or 0),
+            pool_underwater_light=int(fixtures_data.get("pool_underwater_light") or 0),
+
+            # === POWER SOCKETS (8 types) ===
             double_socket_300=int(fixtures_data.get("double_socket_300") or 0),
-            double_socket_1100=int(fixtures_data.get("double_socket_1100") or 0),
             single_socket_300=int(fixtures_data.get("single_socket") or 0),
+            double_socket_1100=int(fixtures_data.get("double_socket_1100") or 0),
+            single_socket_1100=int(fixtures_data.get("single_socket_1100") or 0),
             double_socket_waterproof=int(fixtures_data.get("waterproof_socket") or 0),
+            double_socket_ceiling=int(fixtures_data.get("double_socket_ceiling") or 0),
             data_points_cat6=int(fixtures_data.get("data_point_cat6") or 0),
+            floor_box=int(fixtures_data.get("floor_box") or 0),
+
+            # === SWITCHES (7 types) ===
             switch_1lever_1way=int(fixtures_data.get("switch_1lever") or 0),
             switch_2lever_1way=int(fixtures_data.get("switch_2lever") or 0),
             switch_1lever_2way=int(fixtures_data.get("switch_2way") or 0),
-            isolator_20a=int(fixtures_data.get("isolator") or 0),
+            day_night_switch=int(fixtures_data.get("day_night_switch") or 0),
+            isolator_30a=int(fixtures_data.get("isolator_30a") or 0),
+            isolator_20a=int(fixtures_data.get("isolator_20a") or 0),
+            master_switch=int(fixtures_data.get("master_switch") or 0),
+
+            # === EQUIPMENT ===
+            ac_units=int(fixtures_data.get("ac_units") or 0),
         )
 
         block.rooms.append(room)
