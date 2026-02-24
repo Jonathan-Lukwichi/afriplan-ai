@@ -471,6 +471,10 @@ def render_step_2_sld():
         st.markdown("### Main Supply Point / Kiosk")
 
         if not st.session_state.supply_point:
+            # Check if method exists (handles Streamlit Cloud caching issue)
+            if not hasattr(pipeline, 'run_supply_point_pass'):
+                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app' to reload latest code.")
+                st.stop()
             with st.spinner("AI extracting supply point info..."):
                 result = pipeline.run_supply_point_pass(st.session_state.sld_pages)
                 if result.success:
@@ -699,6 +703,9 @@ def render_step_3_lighting():
         st.caption("Extract fixture types BEFORE counting per room for higher accuracy")
 
         if not st.session_state.lighting_legend:
+            if not hasattr(pipeline, 'run_lighting_legend_pass'):
+                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
+                st.stop()
             with st.spinner("AI extracting lighting legend (symbols, fixture types, wattages)..."):
                 result = pipeline.run_lighting_legend_pass(st.session_state.lighting_pages)
                 if result.success:
@@ -810,6 +817,9 @@ def render_step_3_lighting():
 
         # Extract using legend
         if current_room not in st.session_state.room_lighting:
+            if not hasattr(pipeline, 'run_room_fixtures_with_legend_pass'):
+                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
+                st.stop()
             with st.spinner(f"AI counting lights in {current_room} using legend..."):
                 result = pipeline.run_room_fixtures_with_legend_pass(
                     current_room,
@@ -935,6 +945,9 @@ def render_step_4_power():
         st.markdown("### Power Legend")
 
         if not st.session_state.power_legend:
+            if not hasattr(pipeline, 'run_power_legend_pass'):
+                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
+                st.stop()
             with st.spinner("AI extracting power legend (sockets, data, isolators)..."):
                 result = pipeline.run_power_legend_pass(st.session_state.power_pages)
                 if result.success:
@@ -1004,6 +1017,9 @@ def render_step_4_power():
 
         # Extract using legend
         if current_room not in st.session_state.room_power:
+            if not hasattr(pipeline, 'run_room_fixtures_with_legend_pass'):
+                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
+                st.stop()
             with st.spinner(f"AI counting sockets in {current_room} using legend..."):
                 result = pipeline.run_room_fixtures_with_legend_pass(
                     current_room,
