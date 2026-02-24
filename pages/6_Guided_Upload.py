@@ -1,18 +1,13 @@
 """
-AfriPlan Electrical v4.11 - Guided Upload
+AfriPlan Electrical v5.0 - Guided Upload (4-Step Document Flow)
 
-Interactive step-by-step extraction with user validation at each stage.
-Target: 70%+ extraction rate through human-in-the-loop validation.
+Redesigned for higher accuracy by matching document types:
+1. Cover Page / Drawing Register → Project info
+2. SLD / Circuit Schedules → DBs, supply point, circuits, cables
+3. Lighting Layout → Legend first → Light fixtures per room
+4. Power Layout → Legend first → Sockets per room
 
-Each step asks for the specific document needed:
-1. Upload COVER PAGE → Extract project info
-2. Confirm project info
-3. Upload SLD PAGES → Detect DBs
-4. Extract DB Schedules (loop)
-5. Upload LAYOUT PAGES → Detect rooms
-6. Extract Room Fixtures (loop)
-7. Cable Routes (from SLD)
-8. Review & Export
+Target: 75%+ extraction rate through legend-based fixture counting.
 """
 
 import streamlit as st
@@ -101,31 +96,41 @@ PROVIDER_MODELS = {
 # ============================================================================
 
 def init_session_state():
-    """Initialize all session state variables."""
+    """Initialize all session state variables for 4-step flow."""
     defaults = {
-        # Navigation
+        # Navigation (5 steps: 4 uploads + 1 review)
         "guided_step": 1,
         "max_completed_step": 0,
 
-        # Document pages by type
+        # Document pages by type (4 separate documents)
         "cover_pages": [],
         "sld_pages": [],
-        "layout_pages": [],
+        "lighting_pages": [],
+        "power_pages": [],
 
         # Pipeline instance
         "interactive_pipeline": None,
 
-        # Extraction results
+        # Step 1: Project Info
         "project_info": {},
+
+        # Step 2: SLD Extraction
+        "supply_point": {},
         "detected_dbs": [],
         "db_schedules": {},
-        "detected_rooms": [],
-        "room_fixtures": {},
         "cable_routes": [],
-
-        # Loop indices
         "current_db_index": 0,
-        "current_room_index": 0,
+
+        # Step 3: Lighting
+        "lighting_legend": {},
+        "detected_rooms": [],
+        "room_lighting": {},
+        "current_lighting_room_index": 0,
+
+        # Step 4: Power
+        "power_legend": {},
+        "room_power": {},
+        "current_power_room_index": 0,
 
         # Final results
         "final_extraction": None,
@@ -195,29 +200,26 @@ def init_pipeline():
 
 
 def render_progress_indicator():
-    """Render 8-step progress indicator."""
+    """Render 5-step progress indicator (4 uploads + review)."""
     step = st.session_state.guided_step
     max_step = st.session_state.max_completed_step
 
     steps = [
-        ("1", "Cover"),
-        ("2", "Project"),
-        ("3", "SLD"),
-        ("4", "Schedules"),
-        ("5", "Layouts"),
-        ("6", "Fixtures"),
-        ("7", "Cables"),
-        ("8", "Export"),
+        ("1", "Cover Page"),
+        ("2", "SLD & Schedules"),
+        ("3", "Lighting Layout"),
+        ("4", "Power Layout"),
+        ("5", "Review & Export"),
     ]
 
-    cols = st.columns(8)
+    cols = st.columns(5)
     for i, (num, name) in enumerate(steps):
         step_num = i + 1
         with cols[i]:
             if step_num == step:
                 st.markdown(f"**:blue[{num}. {name}]**")
             elif step_num <= max_step:
-                st.markdown(f":green[✓ {name}]")
+                st.markdown(f":green[{num}. {name}]")
             else:
                 st.markdown(f":gray[{num}. {name}]")
 
@@ -227,27 +229,53 @@ def render_progress_indicator():
 def render_confidence_badge(confidence: float, label: str = "Confidence"):
     """Render confidence indicator."""
     if confidence >= 0.70:
-        st.success(f"✅ {label}: {confidence*100:.0f}% - High confidence")
+        st.success(f"{label}: {confidence*100:.0f}% - High confidence")
     elif confidence >= 0.40:
-        st.warning(f"⚠️ {label}: {confidence*100:.0f}% - Please review")
+        st.warning(f"{label}: {confidence*100:.0f}% - Please review")
     else:
-        st.error(f"❌ {label}: {confidence*100:.0f}% - Manual input needed")
+        st.error(f"{label}: {confidence*100:.0f}% - Manual input needed")
+
+
+def show_page_thumbnails(pages, max_show=3):
+    """Show thumbnails of uploaded pages."""
+    if not pages:
+        return
+    cols = st.columns(min(max_show, len(pages)))
+    for i, page in enumerate(pages[:max_show]):
+        if page.image_base64:
+            with cols[i]:
+                st.image(
+                    f"data:image/png;base64,{page.image_base64}",
+                    caption=f"Page {i+1}",
+                    use_container_width=True
+                )
 
 
 # ============================================================================
-# STEP 1: UPLOAD COVER PAGE
+# STEP 1: COVER PAGE / DRAWING REGISTER
 # ============================================================================
 
-def render_step_1_cover_upload():
-    """Step 1: Upload cover page to extract project info."""
-    section_header("Step 1: Upload Cover Page", "Upload the cover/title page of your electrical drawings")
+def render_step_1_cover():
+    """Step 1: Upload cover page and extract project info."""
+    section_header("Step 1: Cover Page / Drawing Register",
+                   "Upload the cover page to extract project information")
 
-    st.info("📋 **What to upload:** The cover page or title block that contains project name, client, date, etc.")
+    st.info("""
+    **What to upload:** `01_Cover_Page_Drawing_Register.pdf`
 
+    This document should contain:
+    - Project name and description
+    - Client name
+    - Consultant/Engineer name
+    - Drawing register (list of drawings)
+    - Date and revision info
+    """)
+
+    # File upload
     uploaded_file = st.file_uploader(
-        "📤 Upload Cover Page (PDF or Image)",
+        "Upload Cover Page (PDF or Image)",
         type=["pdf", "png", "jpg", "jpeg"],
-        key="cover_uploader"
+        key="cover_uploader_v2"
     )
 
     if uploaded_file:
@@ -255,522 +283,810 @@ def render_step_1_cover_upload():
             pages = process_uploaded_file(uploaded_file)
             if pages:
                 st.session_state.cover_pages = pages
-                st.success(f"✅ Cover page loaded ({len(pages)} page(s))")
+                st.success(f"Cover page loaded ({len(pages)} page(s))")
+                show_page_thumbnails(pages, max_show=2)
 
-                # Show thumbnail
-                if pages[0].image_base64:
-                    st.image(
-                        f"data:image/png;base64,{pages[0].image_base64}",
-                        caption="Cover Page Preview",
-                        width=400
-                    )
+    # If already uploaded, show extraction form
+    if st.session_state.cover_pages and not st.session_state.project_info:
+        st.markdown("---")
+        st.markdown("### Extract Project Information")
 
-    # Navigation
-    st.markdown("")
-    col1, col2 = st.columns(2)
-
-    with col2:
-        if st.session_state.cover_pages:
-            if st.button("Extract Project Info →", type="primary", use_container_width=True):
-                # Initialize pipeline
-                pipeline = init_pipeline()
-                if pipeline:
-                    st.session_state.interactive_pipeline = pipeline
-                    st.session_state.guided_step = 2
-                    st.session_state.max_completed_step = 1
-                    st.rerun()
-                else:
-                    st.error("Failed to initialize AI. Check API key.")
-        else:
-            st.button("Extract Project Info →", type="primary", use_container_width=True, disabled=True)
-            st.caption("Upload a cover page first")
-
-
-# ============================================================================
-# STEP 2: CONFIRM PROJECT INFO
-# ============================================================================
-
-def render_step_2_project_info():
-    """Step 2: Extract and confirm project information."""
-    section_header("Step 2: Project Information", "Extracted from cover page - verify and edit")
-
-    pipeline = st.session_state.interactive_pipeline
-
-    # Run extraction if not done
-    if not st.session_state.project_info:
-        if st.session_state.cover_pages:
-            with st.spinner("AI is extracting project information..."):
-                result = pipeline.run_project_info_pass(st.session_state.cover_pages)
-                if result.success:
-                    st.session_state.project_info = result.display_data
-                else:
-                    st.session_state.project_info = {}
-
-    # Show confidence
-    confidence = 0.85 if st.session_state.project_info.get("project_name") else 0.3
-    render_confidence_badge(confidence, "Extraction")
-
-    # Editable form
-    with st.form("project_info_form"):
-        st.markdown("##### Edit extracted values:")
-
-        project_name = st.text_input(
-            "Project Name",
-            value=st.session_state.project_info.get("project_name", ""),
-            placeholder="e.g., NewMark Commercial Building"
-        )
-        client_name = st.text_input(
-            "Client Name",
-            value=st.session_state.project_info.get("client_name", ""),
-            placeholder="e.g., ABC Properties (Pty) Ltd"
-        )
-        consultant = st.text_input(
-            "Consultant/Engineer",
-            value=st.session_state.project_info.get("consultant_name", ""),
-            placeholder="e.g., Electro-Tech Consulting"
-        )
-
-        col1, col2 = st.columns(2)
-        with col1:
-            date = st.text_input(
-                "Date",
-                value=st.session_state.project_info.get("date", ""),
-                placeholder="e.g., 2024-01-15"
-            )
-        with col2:
-            revision = st.text_input(
-                "Revision",
-                value=st.session_state.project_info.get("revision", ""),
-                placeholder="e.g., Rev 3"
-            )
-
-        col1, col2 = st.columns(2)
-        with col1:
-            back = st.form_submit_button("← Back", use_container_width=True)
-        with col2:
-            confirm = st.form_submit_button("✓ Confirm & Continue →", type="primary", use_container_width=True)
-
-        if back:
-            st.session_state.guided_step = 1
-            st.rerun()
-
-        if confirm:
-            st.session_state.project_info = {
-                "project_name": project_name,
-                "client_name": client_name,
-                "consultant_name": consultant,
-                "date": date,
-                "revision": revision,
-            }
-            pipeline.apply_project_info(st.session_state.project_info)
-            st.session_state.guided_step = 3
-            st.session_state.max_completed_step = 2
-            st.rerun()
-
-
-# ============================================================================
-# STEP 3: UPLOAD SLD PAGES
-# ============================================================================
-
-def render_step_3_sld_upload():
-    """Step 3: Upload SLD pages to detect distribution boards."""
-    section_header("Step 3: Upload SLD Pages", "Upload Single Line Diagram pages")
-
-    st.info("⚡ **What to upload:** Single Line Diagram (SLD) pages showing distribution boards, circuits, and electrical layout.")
-
-    uploaded_file = st.file_uploader(
-        "📤 Upload SLD Pages (PDF or Images)",
-        type=["pdf", "png", "jpg", "jpeg"],
-        key="sld_uploader"
-    )
-
-    if uploaded_file:
-        with st.spinner("Processing SLD pages..."):
-            pages = process_uploaded_file(uploaded_file)
-            if pages:
-                st.session_state.sld_pages = pages
-                st.success(f"✅ SLD loaded ({len(pages)} page(s))")
-
-                # Show thumbnails
-                cols = st.columns(min(3, len(pages)))
-                for i, page in enumerate(pages[:3]):
-                    if page.image_base64:
-                        with cols[i]:
-                            st.image(
-                                f"data:image/png;base64,{page.image_base64}",
-                                caption=f"Page {i+1}",
-                                use_container_width=True
-                            )
-
-    # Navigation
-    st.markdown("")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("← Back to Project Info", use_container_width=True):
-            st.session_state.guided_step = 2
-            st.rerun()
-
-    with col2:
-        if st.session_state.sld_pages:
-            if st.button("Detect Distribution Boards →", type="primary", use_container_width=True):
-                st.session_state.guided_step = 4
-                st.session_state.max_completed_step = 3
+        if st.button("Extract with AI", type="primary", key="extract_cover"):
+            pipeline = init_pipeline()
+            if pipeline:
+                st.session_state.interactive_pipeline = pipeline
+                with st.spinner("AI extracting project info..."):
+                    result = pipeline.run_project_info_pass(st.session_state.cover_pages)
+                    if result.success:
+                        st.session_state.project_info = result.display_data
+                    else:
+                        st.session_state.project_info = {}
                 st.rerun()
-        else:
-            st.button("Detect Distribution Boards →", type="primary", use_container_width=True, disabled=True)
-            st.caption("Upload SLD pages first")
-
-
-# ============================================================================
-# STEP 4: DETECT & EXTRACT DB SCHEDULES
-# ============================================================================
-
-def render_step_4_db_extraction():
-    """Step 4: Detect DBs and extract schedules one by one."""
-    pipeline = st.session_state.interactive_pipeline
-
-    # First, detect DBs if not done
-    if not st.session_state.detected_dbs:
-        section_header("Step 4: Detect Distribution Boards", "AI scanning SLD pages...")
-
-        with st.spinner("Detecting distribution boards from SLD..."):
-            result = pipeline.run_db_detection_pass(st.session_state.sld_pages)
-            if result.success:
-                st.session_state.detected_dbs = [
-                    db["name"] for db in result.display_data.get("dbs", [])
-                ]
-                pipeline.apply_detected_dbs(st.session_state.detected_dbs)
             else:
-                st.session_state.detected_dbs = []
+                st.error("Failed to initialize AI. Check API key.")
+
+    # Show editable form if extracted
+    if st.session_state.project_info or st.session_state.cover_pages:
+        st.markdown("---")
+        st.markdown("### Project Details (edit if needed)")
+
+        confidence = 0.85 if st.session_state.project_info.get("project_name") else 0.3
+        render_confidence_badge(confidence, "Extraction")
+
+        with st.form("project_info_form_v2"):
+            project_name = st.text_input(
+                "Project Name",
+                value=st.session_state.project_info.get("project_name", ""),
+                placeholder="e.g., THE UPGRADING OF WEDELA RECREATIONAL CLUB"
+            )
+            client_name = st.text_input(
+                "Client Name",
+                value=st.session_state.project_info.get("client_name", ""),
+                placeholder="e.g., ABC Properties (Pty) Ltd"
+            )
+            consultant = st.text_input(
+                "Consultant/Engineer",
+                value=st.session_state.project_info.get("consultant_name", ""),
+                placeholder="e.g., CHONA MALANGA"
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                date = st.text_input(
+                    "Date",
+                    value=st.session_state.project_info.get("date", ""),
+                    placeholder="e.g., 2024-10-10"
+                )
+            with col2:
+                revision = st.text_input(
+                    "Revision",
+                    value=st.session_state.project_info.get("revision", ""),
+                    placeholder="e.g., Rev 1"
+                )
+
+            submitted = st.form_submit_button("Confirm & Continue to SLD", type="primary", use_container_width=True)
+
+            if submitted:
+                st.session_state.project_info = {
+                    "project_name": project_name,
+                    "client_name": client_name,
+                    "consultant_name": consultant,
+                    "date": date,
+                    "revision": revision,
+                }
+                if st.session_state.interactive_pipeline:
+                    st.session_state.interactive_pipeline.apply_project_info(st.session_state.project_info)
+                st.session_state.guided_step = 2
+                st.session_state.max_completed_step = max(1, st.session_state.max_completed_step)
+                st.rerun()
+
+
+# ============================================================================
+# STEP 2: SLD + CIRCUIT SCHEDULES
+# ============================================================================
+
+def render_step_2_sld():
+    """Step 2: Upload SLD and extract DBs, schedules, supply point, cables."""
+    section_header("Step 2: SLD & Circuit Schedules",
+                   "Upload SLD to extract distribution boards, circuits, and cable routes")
+
+    # Sub-step navigation
+    substep = st.session_state.get("sld_substep", "upload")
+
+    # SUBSTEP: Upload
+    if substep == "upload":
+        st.info("""
+        **What to upload:** `02_SLD_Circuit_Schedule.pdf`
+
+        This document should contain:
+        - Single Line Diagram (SLD)
+        - Circuit schedules for each DB
+        - Main supply point / Kiosk metering info
+        - Cable routes between DBs
+        """)
+
+        uploaded_file = st.file_uploader(
+            "Upload SLD & Circuit Schedule (PDF)",
+            type=["pdf", "png", "jpg", "jpeg"],
+            key="sld_uploader_v2"
+        )
+
+        if uploaded_file:
+            with st.spinner("Processing SLD pages..."):
+                pages = process_uploaded_file(uploaded_file)
+                if pages:
+                    st.session_state.sld_pages = pages
+                    st.success(f"SLD loaded ({len(pages)} page(s))")
+                    show_page_thumbnails(pages, max_show=4)
+
+        if st.session_state.sld_pages:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Back to Cover Page", use_container_width=True):
+                    st.session_state.guided_step = 1
+                    st.rerun()
+            with col2:
+                if st.button("Detect Distribution Boards", type="primary", use_container_width=True):
+                    st.session_state["sld_substep"] = "detect_dbs"
+                    st.rerun()
+        return
+
+    # Initialize pipeline if needed
+    pipeline = st.session_state.interactive_pipeline
+    if not pipeline:
+        pipeline = init_pipeline()
+        st.session_state.interactive_pipeline = pipeline
+
+    # SUBSTEP: Detect DBs
+    if substep == "detect_dbs":
+        st.markdown("### Detecting Distribution Boards")
+
+        if not st.session_state.detected_dbs:
+            with st.spinner("AI scanning for distribution boards (including DB-GF, DB-CA, etc.)..."):
+                result = pipeline.run_db_detection_pass(st.session_state.sld_pages)
+                if result.success:
+                    dbs = result.display_data.get("dbs", [])
+                    st.session_state.detected_dbs = [db["name"] for db in dbs]
+                    pipeline.apply_detected_dbs(st.session_state.detected_dbs)
 
         if st.session_state.detected_dbs:
-            st.success(f"✅ Found {len(st.session_state.detected_dbs)} distribution boards")
-            st.rerun()
+            st.success(f"Found {len(st.session_state.detected_dbs)} distribution boards")
+
+            # Show detected DBs with checkboxes
+            st.markdown("**Detected DBs:** (uncheck any false positives)")
+            valid_dbs = []
+            for db in st.session_state.detected_dbs:
+                if st.checkbox(db, value=True, key=f"db_check_{db}"):
+                    valid_dbs.append(db)
+
+            # Add manual DB
+            new_db = st.text_input("Add DB manually", placeholder="e.g., DB-GF, DB-S5")
+            if st.button("+ Add DB") and new_db:
+                if new_db not in valid_dbs:
+                    valid_dbs.append(new_db)
+                    st.session_state.detected_dbs = valid_dbs
+                    st.rerun()
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Back to Upload", use_container_width=True):
+                    st.session_state["sld_substep"] = "upload"
+                    st.rerun()
+            with col2:
+                if st.button("Extract Supply Point", type="primary", use_container_width=True):
+                    st.session_state.detected_dbs = valid_dbs
+                    pipeline.apply_detected_dbs(valid_dbs)
+                    st.session_state["sld_substep"] = "supply_point"
+                    st.rerun()
         else:
             st.warning("No DBs detected. Add manually:")
-            new_db = st.text_input("DB Name", placeholder="e.g., DB-MAIN, DB-S1")
+            new_db = st.text_input("DB Name", placeholder="e.g., DB-GF, MSB, DB-S1")
             if st.button("Add DB") and new_db:
-                st.session_state.detected_dbs.append(new_db)
-                pipeline.apply_detected_dbs(st.session_state.detected_dbs)
+                st.session_state.detected_dbs = [new_db]
                 st.rerun()
         return
 
-    # Then process each DB
-    detected_dbs = st.session_state.detected_dbs
-    current_idx = st.session_state.current_db_index
+    # SUBSTEP: Supply Point
+    if substep == "supply_point":
+        st.markdown("### Main Supply Point / Kiosk")
 
-    if current_idx >= len(detected_dbs):
-        # All done, move to next step
-        pipeline.mark_db_schedules_complete()
-        st.session_state.guided_step = 5
-        st.session_state.max_completed_step = 4
-        st.rerun()
+        if not st.session_state.supply_point:
+            with st.spinner("AI extracting supply point info..."):
+                result = pipeline.run_supply_point_pass(st.session_state.sld_pages)
+                if result.success:
+                    st.session_state.supply_point = result.display_data
+                else:
+                    st.session_state.supply_point = {"supply_found": False}
+
+        supply = st.session_state.supply_point
+        confidence = 0.80 if supply.get("supply_found") else 0.3
+        render_confidence_badge(confidence, "Supply Point")
+
+        with st.form("supply_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                supply_name = st.text_input("Supply Name", value=supply.get("name", "Kiosk Metering"))
+                main_breaker = st.number_input("Main Breaker (A)", value=supply.get("main_breaker_a", 0))
+            with col2:
+                meter_type = st.selectbox("Meter Type", ["ct", "direct", "prepaid"],
+                                          index=["ct", "direct", "prepaid"].index(supply.get("meter_type", "ct")) if supply.get("meter_type") in ["ct", "direct", "prepaid"] else 0)
+                feeds_to = st.text_input("Feeds To", value=supply.get("feeds_to", ""))
+
+            cable_spec = st.text_input("Main Cable Spec", value=supply.get("cable_spec", ""),
+                                       placeholder="e.g., 95mm x 4C PVC SWA PVC")
+
+            submitted = st.form_submit_button("Confirm & Extract DB Schedules", type="primary", use_container_width=True)
+            if submitted:
+                st.session_state.supply_point = {
+                    "supply_found": True,
+                    "name": supply_name,
+                    "main_breaker_a": main_breaker,
+                    "meter_type": meter_type,
+                    "feeds_to": feeds_to,
+                    "cable_spec": cable_spec,
+                }
+                st.session_state["sld_substep"] = "db_schedules"
+                st.session_state.current_db_index = 0
+                st.rerun()
         return
 
-    current_db = detected_dbs[current_idx]
-    section_header(f"Step 4: Extract DB Schedule", f"DB {current_idx + 1} of {len(detected_dbs)}")
+    # SUBSTEP: DB Schedules (loop)
+    if substep == "db_schedules":
+        detected_dbs = st.session_state.detected_dbs
+        current_idx = st.session_state.current_db_index
 
-    st.info(f"📊 **Processing: {current_db}**")
-    st.progress((current_idx + 1) / len(detected_dbs))
+        if current_idx >= len(detected_dbs):
+            # All DBs done, move to cable routes
+            pipeline.mark_db_schedules_complete()
+            st.session_state["sld_substep"] = "cable_routes"
+            st.rerun()
+            return
 
-    # Extract schedule if not done
-    if current_db not in st.session_state.db_schedules:
-        with st.spinner(f"Extracting circuits from {current_db}..."):
-            result = pipeline.run_db_schedule_pass(current_db, st.session_state.sld_pages)
-            if result.success:
-                st.session_state.db_schedules[current_db] = result.display_data
-            else:
+        current_db = detected_dbs[current_idx]
+        st.markdown(f"### DB Schedule: {current_db} ({current_idx + 1}/{len(detected_dbs)})")
+        st.progress((current_idx + 1) / len(detected_dbs))
+
+        # Extract if not done
+        if current_db not in st.session_state.db_schedules:
+            with st.spinner(f"AI extracting circuits from {current_db}..."):
+                result = pipeline.run_db_schedule_pass(current_db, st.session_state.sld_pages)
+                if result.success:
+                    st.session_state.db_schedules[current_db] = result.display_data
+                else:
+                    st.session_state.db_schedules[current_db] = {
+                        "db_name": current_db,
+                        "main_breaker_a": 0,
+                        "circuits": [],
+                        "schedule_found": False,
+                    }
+
+        schedule = st.session_state.db_schedules.get(current_db, {})
+        confidence = 0.75 if schedule.get("schedule_found") else 0.3
+        render_confidence_badge(confidence, "Schedule")
+
+        # Editable fields
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            main_breaker = st.number_input("Main Breaker (A)", value=schedule.get("main_breaker_a", 0), key=f"mb2_{current_db}")
+        with col2:
+            supply_from = st.text_input("Supply From", value=schedule.get("supply_from", ""), key=f"sf2_{current_db}")
+        with col3:
+            total_ways = st.number_input("Total Ways", value=schedule.get("total_ways", 0), key=f"tw2_{current_db}")
+
+        # Circuits table
+        st.markdown("##### Circuits")
+        circuits = schedule.get("circuits", [])
+        if circuits:
+            import pandas as pd
+            df = pd.DataFrame(circuits)
+            edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key=f"circuits2_{current_db}")
+            circuits = edited_df.to_dict('records')
+        else:
+            st.info("No circuits extracted. Add manually or skip.")
+
+        # Navigation
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Back", key="back_db2"):
+                if current_idx > 0:
+                    st.session_state.current_db_index -= 1
+                else:
+                    st.session_state["sld_substep"] = "supply_point"
+                st.rerun()
+        with col2:
+            if st.button("Skip DB", key="skip_db2"):
+                st.session_state.current_db_index += 1
+                st.rerun()
+        with col3:
+            if st.button("Confirm & Next", type="primary", key="confirm_db2"):
                 st.session_state.db_schedules[current_db] = {
                     "db_name": current_db,
-                    "main_breaker_a": 0,
-                    "circuits": [],
-                    "schedule_found": False,
+                    "main_breaker_a": main_breaker,
+                    "supply_from": supply_from,
+                    "total_ways": total_ways,
+                    "circuits": circuits,
+                    "schedule_found": True,
                 }
-
-    schedule = st.session_state.db_schedules.get(current_db, {})
-    confidence = 0.75 if schedule.get("schedule_found") else 0.3
-    render_confidence_badge(confidence, "Schedule")
-
-    # Editable fields
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        main_breaker = st.number_input("Main Breaker (A)", value=schedule.get("main_breaker_a", 0), key=f"mb_{current_db}")
-    with col2:
-        supply_from = st.text_input("Supply From", value=schedule.get("supply_from", ""), key=f"sf_{current_db}")
-    with col3:
-        total_ways = st.number_input("Total Ways", value=schedule.get("total_ways", 0), key=f"tw_{current_db}")
-
-    # Circuits table
-    st.markdown("##### Circuits")
-    circuits = schedule.get("circuits", [])
-    if circuits:
-        import pandas as pd
-        df = pd.DataFrame(circuits)
-        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key=f"circuits_{current_db}")
-        circuits = edited_df.to_dict('records')
-    else:
-        st.info("No circuits extracted. Skip or add manually.")
-
-    # Navigation
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("← Back", key="back_db"):
-            if current_idx > 0:
-                st.session_state.current_db_index -= 1
-            else:
-                st.session_state.guided_step = 3
-            st.rerun()
-    with col2:
-        if st.button("⏭ Skip DB", key="skip_db"):
-            st.session_state.current_db_index += 1
-            st.rerun()
-    with col3:
-        if st.button("✓ Confirm & Next →", type="primary", key="confirm_db"):
-            st.session_state.db_schedules[current_db] = {
-                "db_name": current_db,
-                "main_breaker_a": main_breaker,
-                "supply_from": supply_from,
-                "total_ways": total_ways,
-                "circuits": circuits,
-                "schedule_found": True,
-            }
-            pipeline.apply_db_schedule(current_db, st.session_state.db_schedules[current_db])
-            st.session_state.current_db_index += 1
-            st.rerun()
-
-
-# ============================================================================
-# STEP 5: UPLOAD LAYOUT PAGES
-# ============================================================================
-
-def render_step_5_layout_upload():
-    """Step 5: Upload layout pages to detect rooms."""
-    section_header("Step 5: Upload Layout Pages", "Upload lighting and power layout drawings")
-
-    st.info("🏠 **What to upload:** Floor plan layouts showing lighting fixtures, power points, and room names.")
-
-    uploaded_file = st.file_uploader(
-        "📤 Upload Layout Pages (PDF or Images)",
-        type=["pdf", "png", "jpg", "jpeg"],
-        key="layout_uploader"
-    )
-
-    if uploaded_file:
-        with st.spinner("Processing layout pages..."):
-            pages = process_uploaded_file(uploaded_file)
-            if pages:
-                st.session_state.layout_pages = pages
-                st.success(f"✅ Layouts loaded ({len(pages)} page(s))")
-
-                # Show thumbnails
-                cols = st.columns(min(3, len(pages)))
-                for i, page in enumerate(pages[:3]):
-                    if page.image_base64:
-                        with cols[i]:
-                            st.image(
-                                f"data:image/png;base64,{page.image_base64}",
-                                caption=f"Page {i+1}",
-                                use_container_width=True
-                            )
-
-    # Navigation
-    st.markdown("")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("← Back to DB Schedules", use_container_width=True):
-            st.session_state.guided_step = 4
-            st.session_state.current_db_index = len(st.session_state.detected_dbs) - 1
-            st.rerun()
-
-    with col2:
-        if st.session_state.layout_pages:
-            if st.button("Detect Rooms →", type="primary", use_container_width=True):
-                st.session_state.guided_step = 6
-                st.session_state.max_completed_step = 5
+                pipeline.apply_db_schedule(current_db, st.session_state.db_schedules[current_db])
+                st.session_state.current_db_index += 1
                 st.rerun()
+        return
+
+    # SUBSTEP: Cable Routes
+    if substep == "cable_routes":
+        st.markdown("### Cable Routes Between DBs")
+
+        if not st.session_state.cable_routes:
+            with st.spinner("AI extracting cable routes..."):
+                result = pipeline.run_cable_routes_pass(st.session_state.sld_pages)
+                if result.success:
+                    st.session_state.cable_routes = result.display_data.get("routes", [])
+
+        routes = st.session_state.cable_routes
+        if routes:
+            st.success(f"{len(routes)} cable routes found")
+            import pandas as pd
+            df = pd.DataFrame(routes)
+            edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="cable_routes_editor")
+            st.session_state.cable_routes = edited_df.to_dict('records')
         else:
-            st.button("Detect Rooms →", type="primary", use_container_width=True, disabled=True)
-            st.caption("Upload layout pages first")
+            st.info("No cable routes extracted. You can add manually or continue.")
+            # Manual add option
+            with st.expander("Add Cable Route Manually"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    from_db = st.text_input("From", placeholder="e.g., Kiosk")
+                    to_db = st.text_input("To", placeholder="e.g., DB-GF")
+                with col2:
+                    cable_spec = st.text_input("Cable Spec", placeholder="e.g., 4Cx35mm PVC SWA")
+                    length_m = st.number_input("Length (m)", value=0)
+                if st.button("Add Route"):
+                    st.session_state.cable_routes.append({
+                        "from": from_db, "to": to_db,
+                        "cable_spec": cable_spec, "length_m": length_m
+                    })
+                    st.rerun()
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Back to DB Schedules", use_container_width=True):
+                st.session_state["sld_substep"] = "db_schedules"
+                st.session_state.current_db_index = len(st.session_state.detected_dbs) - 1
+                st.rerun()
+        with col2:
+            if st.button("Continue to Lighting Layout", type="primary", use_container_width=True):
+                pipeline.apply_cable_routes(st.session_state.cable_routes)
+                st.session_state["sld_substep"] = "upload"  # Reset for next time
+                st.session_state.guided_step = 3
+                st.session_state.max_completed_step = max(2, st.session_state.max_completed_step)
+                st.rerun()
 
 
 # ============================================================================
-# STEP 6: DETECT & EXTRACT ROOM FIXTURES
+# STEP 3: LIGHTING LAYOUT
 # ============================================================================
 
-def render_step_6_room_extraction():
-    """Step 6: Detect rooms and extract fixtures one by one."""
+def render_step_3_lighting():
+    """Step 3: Upload lighting layout, extract legend first, then room fixtures."""
+    section_header("Step 3: Lighting Layout",
+                   "Extract lighting legend, then count fixtures per room")
+
+    substep = st.session_state.get("lighting_substep", "upload")
     pipeline = st.session_state.interactive_pipeline
 
-    # First, detect rooms if not done
-    if not st.session_state.detected_rooms:
-        section_header("Step 6: Detect Rooms", "AI scanning layout pages...")
+    # SUBSTEP: Upload
+    if substep == "upload":
+        st.info("""
+        **What to upload:** `03_Lighting_Layout.pdf`
 
-        with st.spinner("Detecting rooms from layouts..."):
-            result = pipeline.run_room_detection_pass(st.session_state.layout_pages)
-            if result.success:
-                st.session_state.detected_rooms = [
-                    room["name"] for room in result.display_data.get("rooms", [])
-                ]
-                pipeline.apply_detected_rooms(st.session_state.detected_rooms)
-            else:
-                st.session_state.detected_rooms = []
+        This document should contain:
+        - Lighting legend (symbol → fixture type)
+        - Floor plan with light fixtures
+        - Room names/labels
+        - Switch positions
+        """)
+
+        uploaded_file = st.file_uploader(
+            "Upload Lighting Layout (PDF)",
+            type=["pdf", "png", "jpg", "jpeg"],
+            key="lighting_uploader_v2"
+        )
+
+        if uploaded_file:
+            with st.spinner("Processing lighting layout..."):
+                pages = process_uploaded_file(uploaded_file)
+                if pages:
+                    st.session_state.lighting_pages = pages
+                    st.success(f"Lighting layout loaded ({len(pages)} page(s))")
+                    show_page_thumbnails(pages, max_show=3)
+
+        if st.session_state.lighting_pages:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Back to SLD", use_container_width=True):
+                    st.session_state.guided_step = 2
+                    st.session_state["sld_substep"] = "cable_routes"
+                    st.rerun()
+            with col2:
+                if st.button("Extract Lighting Legend", type="primary", use_container_width=True):
+                    st.session_state["lighting_substep"] = "legend"
+                    st.rerun()
+        return
+
+    # SUBSTEP: Legend extraction
+    if substep == "legend":
+        st.markdown("### Lighting Legend")
+        st.caption("Extract fixture types BEFORE counting per room for higher accuracy")
+
+        if not st.session_state.lighting_legend:
+            with st.spinner("AI extracting lighting legend (symbols, fixture types, wattages)..."):
+                result = pipeline.run_lighting_legend_pass(st.session_state.lighting_pages)
+                if result.success:
+                    st.session_state.lighting_legend = result.display_data
+                else:
+                    st.session_state.lighting_legend = {"has_legend": False, "light_types": [], "switch_types": []}
+
+        legend = st.session_state.lighting_legend
+        confidence = 0.80 if legend.get("has_legend") else 0.3
+        render_confidence_badge(confidence, "Legend")
+
+        # Show and edit legend
+        st.markdown("##### Light Types")
+        light_types = legend.get("light_types", [])
+        if light_types:
+            import pandas as pd
+            df = pd.DataFrame(light_types)
+            edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="light_types_editor")
+            light_types = edited_df.to_dict('records')
+        else:
+            st.info("No light types found. Add manually if needed.")
+
+        st.markdown("##### Switch Types")
+        switch_types = legend.get("switch_types", [])
+        if switch_types:
+            import pandas as pd
+            df = pd.DataFrame(switch_types)
+            edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="switch_types_editor")
+            switch_types = edited_df.to_dict('records')
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Back to Upload", use_container_width=True):
+                st.session_state["lighting_substep"] = "upload"
+                st.rerun()
+        with col2:
+            if st.button("Detect Rooms", type="primary", use_container_width=True):
+                st.session_state.lighting_legend = {
+                    "has_legend": True,
+                    "light_types": light_types,
+                    "switch_types": switch_types,
+                }
+                st.session_state["lighting_substep"] = "detect_rooms"
+                st.rerun()
+        return
+
+    # SUBSTEP: Detect rooms
+    if substep == "detect_rooms":
+        st.markdown("### Detect Rooms from Lighting Layout")
+
+        if not st.session_state.detected_rooms:
+            with st.spinner("AI detecting rooms..."):
+                result = pipeline.run_room_detection_pass(st.session_state.lighting_pages)
+                if result.success:
+                    rooms = result.display_data.get("rooms", [])
+                    st.session_state.detected_rooms = [r["name"] for r in rooms]
+                    pipeline.apply_detected_rooms(st.session_state.detected_rooms)
 
         if st.session_state.detected_rooms:
-            st.success(f"✅ Found {len(st.session_state.detected_rooms)} rooms")
-            st.rerun()
+            st.success(f"Found {len(st.session_state.detected_rooms)} rooms")
+
+            valid_rooms = []
+            for room in st.session_state.detected_rooms:
+                if st.checkbox(room, value=True, key=f"room_check_{room}"):
+                    valid_rooms.append(room)
+
+            new_room = st.text_input("Add room manually", placeholder="e.g., SUITE 5, KITCHEN")
+            if st.button("+ Add Room") and new_room:
+                valid_rooms.append(new_room)
+                st.session_state.detected_rooms = valid_rooms
+                st.rerun()
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Back to Legend", use_container_width=True):
+                    st.session_state["lighting_substep"] = "legend"
+                    st.rerun()
+            with col2:
+                if st.button("Count Fixtures Per Room", type="primary", use_container_width=True):
+                    st.session_state.detected_rooms = valid_rooms
+                    pipeline.apply_detected_rooms(valid_rooms)
+                    st.session_state["lighting_substep"] = "room_fixtures"
+                    st.session_state.current_lighting_room_index = 0
+                    st.rerun()
         else:
             st.warning("No rooms detected. Add manually:")
-            new_room = st.text_input("Room Name", placeholder="e.g., Office 1, Kitchen")
+            new_room = st.text_input("Room Name", placeholder="e.g., SUITE 1, OFFICE")
             if st.button("Add Room") and new_room:
-                st.session_state.detected_rooms.append(new_room)
-                pipeline.apply_detected_rooms(st.session_state.detected_rooms)
+                st.session_state.detected_rooms = [new_room]
                 st.rerun()
         return
 
-    # Then process each room
-    detected_rooms = st.session_state.detected_rooms
-    current_idx = st.session_state.current_room_index
+    # SUBSTEP: Room fixtures (loop using legend)
+    if substep == "room_fixtures":
+        rooms = st.session_state.detected_rooms
+        current_idx = st.session_state.current_lighting_room_index
 
-    if current_idx >= len(detected_rooms):
-        # All done, move to next step
-        pipeline.mark_room_fixtures_complete()
-        st.session_state.guided_step = 7
-        st.session_state.max_completed_step = 6
-        st.rerun()
-        return
-
-    current_room = detected_rooms[current_idx]
-    section_header(f"Step 6: Extract Room Fixtures", f"Room {current_idx + 1} of {len(detected_rooms)}")
-
-    st.info(f"💡 **Processing: {current_room}**")
-    st.progress((current_idx + 1) / len(detected_rooms))
-
-    # Extract fixtures if not done
-    if current_room not in st.session_state.room_fixtures:
-        with st.spinner(f"Extracting fixtures for {current_room}..."):
-            result = pipeline.run_room_fixtures_pass(current_room, st.session_state.layout_pages)
-            if result.success:
-                st.session_state.room_fixtures[current_room] = result.display_data.get("fixtures", {})
-            else:
-                st.session_state.room_fixtures[current_room] = {}
-
-    fixtures = st.session_state.room_fixtures.get(current_room, {})
-    confidence = 0.70 if fixtures else 0.3
-    render_confidence_badge(confidence, "Fixtures")
-
-    # Editable fields
-    st.markdown("##### Lighting")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        led_panel = st.number_input("LED Panel 600x1200", value=fixtures.get("recessed_led_600x1200", 0), min_value=0, key=f"led_{current_room}")
-    with col2:
-        downlight = st.number_input("Downlights", value=fixtures.get("downlight", 0), min_value=0, key=f"dl_{current_room}")
-    with col3:
-        surface = st.number_input("Surface Mount", value=fixtures.get("surface_mount_led", 0), min_value=0, key=f"sm_{current_room}")
-
-    st.markdown("##### Power Points")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        socket_300 = st.number_input("Double @300mm", value=fixtures.get("double_socket_300", 0), min_value=0, key=f"s300_{current_room}")
-    with col2:
-        socket_1100 = st.number_input("Double @1100mm", value=fixtures.get("double_socket_1100", 0), min_value=0, key=f"s1100_{current_room}")
-    with col3:
-        data_point = st.number_input("Data Points", value=fixtures.get("data_point_cat6", 0), min_value=0, key=f"dp_{current_room}")
-
-    st.markdown("##### Switches")
-    col1, col2 = st.columns(2)
-    with col1:
-        switch_1 = st.number_input("1-Lever", value=fixtures.get("switch_1lever", 0), min_value=0, key=f"sw1_{current_room}")
-    with col2:
-        switch_2 = st.number_input("2-Lever", value=fixtures.get("switch_2lever", 0), min_value=0, key=f"sw2_{current_room}")
-
-    # Navigation
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("← Back", key="back_room"):
-            if current_idx > 0:
-                st.session_state.current_room_index -= 1
-            else:
-                st.session_state.guided_step = 5
+        if current_idx >= len(rooms):
+            pipeline.mark_room_fixtures_complete()
+            st.session_state["lighting_substep"] = "upload"
+            st.session_state.guided_step = 4
+            st.session_state.max_completed_step = max(3, st.session_state.max_completed_step)
             st.rerun()
-    with col2:
-        if st.button("⏭ Skip Room", key="skip_room"):
-            st.session_state.current_room_index += 1
-            st.rerun()
-    with col3:
-        if st.button("✓ Confirm & Next →", type="primary", key="confirm_room"):
-            st.session_state.room_fixtures[current_room] = {
-                "recessed_led_600x1200": led_panel,
-                "downlight": downlight,
-                "surface_mount_led": surface,
-                "double_socket_300": socket_300,
-                "double_socket_1100": socket_1100,
-                "data_point_cat6": data_point,
-                "switch_1lever": switch_1,
-                "switch_2lever": switch_2,
-            }
-            pipeline.apply_room_fixtures(current_room, st.session_state.room_fixtures[current_room])
-            st.session_state.current_room_index += 1
-            st.rerun()
+            return
+
+        current_room = rooms[current_idx]
+        st.markdown(f"### Lighting: {current_room} ({current_idx + 1}/{len(rooms)})")
+        st.progress((current_idx + 1) / len(rooms))
+
+        # Extract using legend
+        if current_room not in st.session_state.room_lighting:
+            with st.spinner(f"AI counting lights in {current_room} using legend..."):
+                result = pipeline.run_room_fixtures_with_legend_pass(
+                    current_room,
+                    st.session_state.lighting_pages,
+                    st.session_state.lighting_legend
+                )
+                if result.success:
+                    st.session_state.room_lighting[current_room] = result.display_data.get("fixtures", {})
+                else:
+                    st.session_state.room_lighting[current_room] = {}
+
+        fixtures = st.session_state.room_lighting.get(current_room, {})
+        confidence = 0.70 if fixtures else 0.3
+        render_confidence_badge(confidence, "Fixtures")
+
+        # Editable based on legend types
+        legend = st.session_state.lighting_legend
+        light_types = legend.get("light_types", [])
+
+        st.markdown("##### Light Fixtures")
+        light_counts = {}
+        cols = st.columns(3)
+        for i, lt in enumerate(light_types[:9]):
+            name = lt.get("name", f"Light {i+1}")
+            key = name.replace(" ", "_").lower()
+            with cols[i % 3]:
+                light_counts[key] = st.number_input(
+                    name,
+                    value=fixtures.get(key, 0),
+                    min_value=0,
+                    key=f"lt_{current_room}_{key}"
+                )
+
+        st.markdown("##### Switches")
+        switch_types = legend.get("switch_types", [])
+        switch_counts = {}
+        cols = st.columns(3)
+        for i, sw in enumerate(switch_types[:6]):
+            name = sw.get("name", f"Switch {i+1}")
+            key = name.replace(" ", "_").lower()
+            with cols[i % 3]:
+                switch_counts[key] = st.number_input(
+                    name,
+                    value=fixtures.get(key, 0),
+                    min_value=0,
+                    key=f"sw_{current_room}_{key}"
+                )
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Back", key="back_lt_room"):
+                if current_idx > 0:
+                    st.session_state.current_lighting_room_index -= 1
+                else:
+                    st.session_state["lighting_substep"] = "detect_rooms"
+                st.rerun()
+        with col2:
+            if st.button("Skip Room", key="skip_lt_room"):
+                st.session_state.current_lighting_room_index += 1
+                st.rerun()
+        with col3:
+            if st.button("Confirm & Next", type="primary", key="confirm_lt_room"):
+                all_fixtures = {**light_counts, **switch_counts}
+                st.session_state.room_lighting[current_room] = all_fixtures
+                pipeline.apply_room_fixtures(current_room, all_fixtures)
+                st.session_state.current_lighting_room_index += 1
+                st.rerun()
 
 
 # ============================================================================
-# STEP 7: CABLE ROUTES
+# STEP 4: POWER LAYOUT
 # ============================================================================
 
-def render_step_7_cable_routes():
-    """Step 7: Extract cable routes from SLD."""
-    section_header("Step 7: Cable Routes", "Extracted from SLD pages")
+def render_step_4_power():
+    """Step 4: Upload power layout, extract legend, then room sockets."""
+    section_header("Step 4: Power Layout",
+                   "Extract power legend, then count sockets per room")
 
+    substep = st.session_state.get("power_substep", "upload")
     pipeline = st.session_state.interactive_pipeline
 
-    # Extract if not done
-    if not st.session_state.cable_routes:
-        with st.spinner("Extracting cable routes..."):
-            result = pipeline.run_cable_routes_pass(st.session_state.sld_pages)
-            if result.success:
-                st.session_state.cable_routes = result.display_data.get("routes", [])
+    # SUBSTEP: Upload
+    if substep == "upload":
+        st.info("""
+        **What to upload:** `04_Power_Layout.pdf`
 
-    routes = st.session_state.cable_routes
-    if routes:
-        st.success(f"✅ {len(routes)} cable routes found")
-        import pandas as pd
-        df = pd.DataFrame(routes)
-        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic")
-        st.session_state.cable_routes = edited_df.to_dict('records')
-    else:
-        st.info("No cable routes extracted. You can skip this step.")
+        This document should contain:
+        - Power legend (sockets, data points, isolators)
+        - Floor plan with socket positions
+        - Equipment connections (A/C, etc.)
+        """)
 
-    # Navigation
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("← Back to Room Fixtures", use_container_width=True):
-            st.session_state.guided_step = 6
-            st.session_state.current_room_index = len(st.session_state.detected_rooms) - 1
+        uploaded_file = st.file_uploader(
+            "Upload Power Layout (PDF)",
+            type=["pdf", "png", "jpg", "jpeg"],
+            key="power_uploader_v2"
+        )
+
+        if uploaded_file:
+            with st.spinner("Processing power layout..."):
+                pages = process_uploaded_file(uploaded_file)
+                if pages:
+                    st.session_state.power_pages = pages
+                    st.success(f"Power layout loaded ({len(pages)} page(s))")
+                    show_page_thumbnails(pages, max_show=3)
+
+        if st.session_state.power_pages:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Back to Lighting", use_container_width=True):
+                    st.session_state.guided_step = 3
+                    st.session_state["lighting_substep"] = "room_fixtures"
+                    st.session_state.current_lighting_room_index = len(st.session_state.detected_rooms) - 1
+                    st.rerun()
+            with col2:
+                if st.button("Extract Power Legend", type="primary", use_container_width=True):
+                    st.session_state["power_substep"] = "legend"
+                    st.rerun()
+        return
+
+    # SUBSTEP: Power legend
+    if substep == "legend":
+        st.markdown("### Power Legend")
+
+        if not st.session_state.power_legend:
+            with st.spinner("AI extracting power legend (sockets, data, isolators)..."):
+                result = pipeline.run_power_legend_pass(st.session_state.power_pages)
+                if result.success:
+                    st.session_state.power_legend = result.display_data
+                else:
+                    st.session_state.power_legend = {"has_legend": False, "socket_types": [], "isolator_types": []}
+
+        legend = st.session_state.power_legend
+        confidence = 0.80 if legend.get("has_legend") else 0.3
+        render_confidence_badge(confidence, "Legend")
+
+        st.markdown("##### Socket Types")
+        socket_types = legend.get("socket_types", [])
+        if socket_types:
+            import pandas as pd
+            df = pd.DataFrame(socket_types)
+            edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="socket_types_editor")
+            socket_types = edited_df.to_dict('records')
+
+        st.markdown("##### Isolator Types")
+        isolator_types = legend.get("isolator_types", [])
+        if isolator_types:
+            import pandas as pd
+            df = pd.DataFrame(isolator_types)
+            edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="isolator_types_editor")
+            isolator_types = edited_df.to_dict('records')
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Back to Upload", use_container_width=True):
+                st.session_state["power_substep"] = "upload"
+                st.rerun()
+        with col2:
+            if st.button("Count Sockets Per Room", type="primary", use_container_width=True):
+                st.session_state.power_legend = {
+                    "has_legend": True,
+                    "socket_types": socket_types,
+                    "isolator_types": isolator_types,
+                }
+                st.session_state["power_substep"] = "room_sockets"
+                st.session_state.current_power_room_index = 0
+                st.rerun()
+        return
+
+    # SUBSTEP: Room sockets (loop - reuse rooms from lighting)
+    if substep == "room_sockets":
+        rooms = st.session_state.detected_rooms  # Reuse from Step 3
+        current_idx = st.session_state.current_power_room_index
+
+        if not rooms:
+            st.warning("No rooms detected. Go back to Lighting Layout to detect rooms.")
+            if st.button("Back to Lighting"):
+                st.session_state.guided_step = 3
+                st.rerun()
+            return
+
+        if current_idx >= len(rooms):
+            st.session_state["power_substep"] = "upload"
+            st.session_state.guided_step = 5
+            st.session_state.max_completed_step = max(4, st.session_state.max_completed_step)
             st.rerun()
-    with col2:
-        if st.button("🎯 Generate BOQ →", type="primary", use_container_width=True):
-            pipeline.apply_cable_routes(st.session_state.cable_routes)
-            st.session_state.guided_step = 8
-            st.session_state.max_completed_step = 7
-            st.rerun()
+            return
+
+        current_room = rooms[current_idx]
+        st.markdown(f"### Power: {current_room} ({current_idx + 1}/{len(rooms)})")
+        st.progress((current_idx + 1) / len(rooms))
+
+        # Extract using legend
+        if current_room not in st.session_state.room_power:
+            with st.spinner(f"AI counting sockets in {current_room} using legend..."):
+                result = pipeline.run_room_fixtures_with_legend_pass(
+                    current_room,
+                    st.session_state.power_pages,
+                    st.session_state.power_legend
+                )
+                if result.success:
+                    st.session_state.room_power[current_room] = result.display_data.get("fixtures", {})
+                else:
+                    st.session_state.room_power[current_room] = {}
+
+        fixtures = st.session_state.room_power.get(current_room, {})
+        confidence = 0.70 if fixtures else 0.3
+        render_confidence_badge(confidence, "Sockets")
+
+        # Editable based on power legend
+        legend = st.session_state.power_legend
+        socket_types = legend.get("socket_types", [])
+
+        st.markdown("##### Sockets & Data Points")
+        socket_counts = {}
+        cols = st.columns(3)
+        for i, st_type in enumerate(socket_types[:9]):
+            name = st_type.get("name", f"Socket {i+1}")
+            key = name.replace(" ", "_").lower()
+            with cols[i % 3]:
+                socket_counts[key] = st.number_input(
+                    name,
+                    value=fixtures.get(key, 0),
+                    min_value=0,
+                    key=f"sock_{current_room}_{key}"
+                )
+
+        st.markdown("##### Isolators & Equipment")
+        isolator_types = legend.get("isolator_types", [])
+        iso_counts = {}
+        cols = st.columns(3)
+        for i, iso in enumerate(isolator_types[:6]):
+            name = iso.get("name", f"Isolator {i+1}")
+            key = name.replace(" ", "_").lower()
+            with cols[i % 3]:
+                iso_counts[key] = st.number_input(
+                    name,
+                    value=fixtures.get(key, 0),
+                    min_value=0,
+                    key=f"iso_{current_room}_{key}"
+                )
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Back", key="back_pwr_room"):
+                if current_idx > 0:
+                    st.session_state.current_power_room_index -= 1
+                else:
+                    st.session_state["power_substep"] = "legend"
+                st.rerun()
+        with col2:
+            if st.button("Skip Room", key="skip_pwr_room"):
+                st.session_state.current_power_room_index += 1
+                st.rerun()
+        with col3:
+            if st.button("Confirm & Next", type="primary", key="confirm_pwr_room"):
+                all_fixtures = {**socket_counts, **iso_counts}
+                st.session_state.room_power[current_room] = all_fixtures
+                pipeline.apply_room_fixtures(current_room, all_fixtures)
+                st.session_state.current_power_room_index += 1
+                st.rerun()
 
 
 # ============================================================================
-# STEP 8: REVIEW & EXPORT
+# STEP 5: REVIEW & EXPORT
 # ============================================================================
 
-def render_step_8_export():
-    """Step 8: Review and export BOQ."""
-    section_header("Step 8: Review & Export", "Final extraction summary")
+def render_step_5_review():
+    """Step 5: Final review and BOQ export."""
+    section_header("Step 5: Review & Export",
+                   "Validate extraction and download BOQ")
 
     pipeline = st.session_state.interactive_pipeline
 
     # Build final result
     if st.session_state.final_extraction is None:
-        with st.spinner("Building BOQ..."):
+        with st.spinner("Building final BOQ..."):
             st.session_state.final_extraction = pipeline.build_final_result()
             validation, _ = validate(st.session_state.final_extraction)
             st.session_state.final_validation = validation
@@ -782,88 +1098,119 @@ def render_step_8_export():
     pricing = st.session_state.final_pricing
     stats = pipeline.get_statistics()
 
-    # Success
-    st.success("🎉 **Extraction Complete!**")
+    # Success banner
+    st.success("**Extraction Complete!** Review the summary below.")
 
-    # Stats
-    st.markdown("### Summary")
-    col1, col2, col3, col4 = st.columns(4)
+    # Summary metrics
+    st.markdown("### Extraction Summary")
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric("DBs", stats["db_schedules_extracted"])
+        st.metric("DBs", stats.get("db_schedules_extracted", 0))
     with col2:
         total_circuits = sum(len(s.get("circuits", [])) for s in st.session_state.db_schedules.values())
         st.metric("Circuits", total_circuits)
     with col3:
-        st.metric("Rooms", stats["room_fixtures_extracted"])
+        st.metric("Rooms", len(st.session_state.detected_rooms))
     with col4:
-        st.metric("Cables", stats["cable_routes"])
+        st.metric("Cable Routes", len(st.session_state.cable_routes))
+    with col5:
+        st.metric("API Cost", f"R{stats.get('total_cost_zar', 0):.2f}")
 
-    # Compliance
+    # Document coverage
+    st.markdown("### Document Coverage")
+    doc_status = [
+        ("Cover Page", bool(st.session_state.cover_pages), bool(st.session_state.project_info.get("project_name"))),
+        ("SLD/Schedules", bool(st.session_state.sld_pages), bool(st.session_state.db_schedules)),
+        ("Lighting Layout", bool(st.session_state.lighting_pages), bool(st.session_state.lighting_legend.get("has_legend"))),
+        ("Power Layout", bool(st.session_state.power_pages), bool(st.session_state.power_legend.get("has_legend"))),
+    ]
+
+    for doc_name, uploaded, extracted in doc_status:
+        if uploaded and extracted:
+            st.markdown(f"- :green[{doc_name}] - Uploaded & Extracted")
+        elif uploaded:
+            st.markdown(f"- :orange[{doc_name}] - Uploaded (partial extraction)")
+        else:
+            st.markdown(f"- :red[{doc_name}] - Not uploaded")
+
+    # Compliance score
     if validation:
         st.markdown("### SANS 10142-1 Compliance")
         score = validation.compliance_score
         if score >= 70:
-            st.success(f"✅ Score: {score:.0f}%")
+            st.success(f"Score: {score:.0f}%")
         elif score >= 40:
-            st.warning(f"⚠️ Score: {score:.0f}%")
+            st.warning(f"Score: {score:.0f}%")
         else:
-            st.error(f"❌ Score: {score:.0f}%")
+            st.error(f"Score: {score:.0f}%")
 
-    # API cost
-    st.markdown("### API Usage")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Tokens", f"{stats['total_tokens']:,}")
-    with col2:
-        st.metric("Cost", f"R{stats['total_cost_zar']:.2f}")
-
-    # Export
+    # Export buttons
     st.markdown("### Export")
     col1, col2 = st.columns(2)
+
     with col1:
         if HAS_OPENPYXL and pricing:
             try:
                 project_name = st.session_state.project_info.get("project_name", "Project")
+                safe_name = "".join(c for c in project_name if c.isalnum() or c in " -_")[:50]
                 excel_bytes = export_professional_bq(pricing, extraction, project_name)
                 st.download_button(
-                    "📥 Download Excel BOQ",
+                    "Download Excel BOQ",
                     data=excel_bytes,
-                    file_name=f"{project_name}_BOQ.xlsx",
+                    file_name=f"{safe_name}_BOQ.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
                     use_container_width=True
                 )
             except Exception as e:
-                st.error(f"Export error: {e}")
+                st.error(f"Excel export error: {e}")
+        else:
+            st.info("Excel export not available")
 
     with col2:
         if pricing:
             try:
                 project_name = st.session_state.project_info.get("project_name", "Project")
+                safe_name = "".join(c for c in project_name if c.isalnum() or c in " -_")[:50]
                 pdf_bytes = generate_pdf_summary(pricing, extraction, validation, project_name, ServiceTier.COMMERCIAL)
                 st.download_button(
-                    "📄 Download PDF Summary",
+                    "Download PDF Summary",
                     data=pdf_bytes,
-                    file_name=f"{project_name}_Summary.pdf",
+                    file_name=f"{safe_name}_Summary.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
             except Exception as e:
-                st.error(f"PDF error: {e}")
+                st.error(f"PDF export error: {e}")
 
     # Start over
     st.markdown("---")
-    if st.button("🔄 Start New Extraction", use_container_width=True):
-        for key in list(st.session_state.keys()):
-            if key.startswith("guided_") or key in [
-                "cover_pages", "sld_pages", "layout_pages",
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Power Layout", use_container_width=True):
+            st.session_state.guided_step = 4
+            st.session_state.final_extraction = None
+            st.session_state.final_validation = None
+            st.session_state.final_pricing = None
+            st.rerun()
+    with col2:
+        if st.button("Start New Extraction", type="secondary", use_container_width=True):
+            # Clear all session state
+            keys_to_clear = [
+                "guided_step", "max_completed_step",
+                "cover_pages", "sld_pages", "lighting_pages", "power_pages",
                 "interactive_pipeline", "project_info",
-                "detected_dbs", "db_schedules", "detected_rooms", "room_fixtures",
-                "cable_routes", "current_db_index", "current_room_index",
-                "final_extraction", "final_validation", "final_pricing"
-            ]:
-                del st.session_state[key]
-        st.rerun()
+                "supply_point", "detected_dbs", "db_schedules", "cable_routes",
+                "current_db_index", "lighting_legend", "detected_rooms",
+                "room_lighting", "current_lighting_room_index",
+                "power_legend", "room_power", "current_power_room_index",
+                "final_extraction", "final_validation", "final_pricing",
+                "sld_substep", "lighting_substep", "power_substep",
+            ]
+            for key in keys_to_clear:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
 
 
 # ============================================================================
@@ -874,8 +1221,8 @@ inject_custom_css()
 init_session_state()
 
 page_header(
-    title="⚡ Guided Upload",
-    subtitle="Step-by-step document upload • 70%+ accuracy target"
+    title="Guided Upload v2.0",
+    subtitle="4-step document flow | Legend-based extraction | 75%+ accuracy target"
 )
 
 if not PIPELINE_AVAILABLE:
@@ -883,42 +1230,39 @@ if not PIPELINE_AVAILABLE:
     st.stop()
 
 if not LLM_API_KEY:
-    st.error("No API key configured. Add GROQ_API_KEY to secrets.toml")
+    st.error("No API key configured. Add GROQ_API_KEY, XAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY to secrets.")
     st.stop()
 
-# Sidebar
-st.sidebar.markdown("### AI Status")
+# Sidebar info
+st.sidebar.markdown("### AI Provider")
 provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", ""))
-st.sidebar.success(f"✓ {provider_name} ({provider_cost})")
+st.sidebar.success(f"{provider_name} ({provider_cost})")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
-**Upload documents step-by-step:**
-1. Cover page → Project info
-2. SLD pages → DB schedules
-3. Layout pages → Room fixtures
-4. Review & Export BOQ
+**4-Step Document Flow:**
+
+1. **Cover Page** → Project info
+2. **SLD + Schedules** → DBs, circuits, cables
+3. **Lighting Layout** → Legend → Fixtures
+4. **Power Layout** → Legend → Sockets
+
+**Key Improvement:** Extract legends BEFORE counting fixtures for higher accuracy.
 """)
 
-# Progress
+# Progress indicator
 render_progress_indicator()
 
 # Render current step
 step = st.session_state.guided_step
 
 if step == 1:
-    render_step_1_cover_upload()
+    render_step_1_cover()
 elif step == 2:
-    render_step_2_project_info()
+    render_step_2_sld()
 elif step == 3:
-    render_step_3_sld_upload()
+    render_step_3_lighting()
 elif step == 4:
-    render_step_4_db_extraction()
+    render_step_4_power()
 elif step == 5:
-    render_step_5_layout_upload()
-elif step == 6:
-    render_step_6_room_extraction()
-elif step == 7:
-    render_step_7_cable_routes()
-elif step == 8:
-    render_step_8_export()
+    render_step_5_review()

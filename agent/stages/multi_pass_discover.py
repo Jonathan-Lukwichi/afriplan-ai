@@ -97,27 +97,48 @@ Respond with ONLY this JSON (no explanation):
 # PASS 2: DB DETECTION
 # ============================================================================
 
-PROMPT_DB_DETECTION = """## TASK: Find All Distribution Boards
+PROMPT_DB_DETECTION = """## TASK: Find ALL Distribution Boards
 
-Scan ALL pages and list every Distribution Board (DB) you can see.
+Scan ALL pages and list EVERY Distribution Board (DB) you can see.
 
-Look for:
-- DB designations: DB-S1, DB-S2, DB-S3, DB-S4, DB-GF, DB-FF, DB-CA, DB-1, DB-2
-- Title blocks showing "SINGLE LINE DIAGRAM" with DB names
-- References to DBs in circuit labels (e.g., "DB-S3 P1")
+IMPORTANT: Look for ALL naming variations:
+
+### Main/Supply Boards (usually fed from Eskom):
+- MSB, Main Switch Board, Main DB
+- Kiosk, Metering Box, Eskom metering
+- "Fed From Eskom metering Box"
+
+### Ground Floor / Common Area Boards:
+- DB-GF, DB-G/F, DB-GND, DB-00, DB Ground, DB-GROUND
+- DB-CA, DB-COMMON, DB Common Area
+- Look for "Fed from..." labels to identify main boards
+
+### Sub-Boards / Suite Boards:
+- DB-S1, DB-S2, DB-S3, DB-S4 (Suites)
+- DB-SUITE 1, DB-SUITE 2, DB-SUITE 3, DB-SUITE 4
+- DB-1, DB-2, DB-3, DB-4 (numbered)
+- DB-FF, DB-1F, DB-2F (floors)
+
+### How to Find DBs:
+1. Look for schedule TABLES with circuit columns (P1, L1, etc.)
+2. Look for single-line diagram symbols (rectangles with lines)
+3. Look for "Supply to DB-XX" annotations
+4. Look for circuit labels like "DB-S3 P1" or "DB-GF L2"
 
 For each DB found, note:
-- The exact DB name
-- Which page it appears on (if visible)
-- Its apparent location (e.g., "Suite 1", "Ground Floor", "Common Area")
+- The exact DB name as shown
+- Its location (Suite 1, Ground Floor, Common Area, etc.)
+- Whether it's a main board (fed from Eskom) or sub-board (fed from another DB)
+- Which DB feeds it if visible
 
 Respond with ONLY this JSON (no explanation):
 {
   "distribution_boards": [
-    {"name": "DB-S1", "location": "Suite 1", "page_hint": "SLD page"},
-    {"name": "DB-GF", "location": "Ground Floor", "page_hint": "SLD page"}
+    {"name": "DB-GF", "location": "Ground Floor", "is_main": true, "fed_from": "Kiosk"},
+    {"name": "DB-CA", "location": "Common Area", "is_main": false, "fed_from": "DB-GF"},
+    {"name": "DB-S1", "location": "Suite 1", "is_main": false, "fed_from": "DB-GF"}
   ],
-  "total_db_count": 2
+  "total_db_count": 3
 }
 """
 
@@ -270,30 +291,288 @@ If you CANNOT find {room_name} clearly, respond with:
 # PASS 6: CABLE ROUTES
 # ============================================================================
 
-PROMPT_CABLE_ROUTES = """## TASK: Extract Cable Routes Between DBs
+PROMPT_CABLE_ROUTES = """## TASK: Extract Cable Routes Between Distribution Boards
 
-Look for cables connecting distribution boards (sub-main cables).
+Find ALL cables connecting distribution boards. This is CRITICAL for sub-main cable costing.
 
-Find cable labels on the single-line diagram like:
-- "4Cx16mm² PVC SWA PVC" between DBs
-- "FROM DB-GF" annotations
-- Cable schedules if present
+### WHERE TO LOOK:
+1. TEXT ON cable lines: "4Cx16mm² PVC SWA", "35mm² x 4C PVC SWA PVC"
+2. Cable annotation boxes near lines
+3. Notes saying "Supply to XX via YYmm² cable"
+4. Labels like "Cable from DB-GF to DB-S1"
+5. Cable schedule tables if present
 
-For each cable run, extract:
-- From (source DB or supply point)
-- To (destination DB)
-- Cable specification
-- Length if shown
+### WHAT TO EXTRACT for each cable:
+- From: Source (Kiosk, MSB, DB-GF, etc.)
+- To: Destination DB name
+- Cable spec: Full specification including size, cores, type
+  - Format: "4Cx16mm² PVC SWA PVC" or "35mm² x 4C PVC SWA PVC"
+  - SWA = Steel Wire Armoured (for underground)
+- Earth conductor: Look for "+ 25mm² BCEW" or "25mm² green/yellow"
+- Length: If visible on drawing or in notes
+- Underground: true if buried, false if surface/trunking
+
+### ALSO LOOK FOR:
+- Underground sleeves mentioned (50mm, 75mm, 110mm)
+- Trench notes (e.g., "600mm deep cable trench")
+- Solar cable sleeves (often 50mm)
 
 Respond with ONLY this JSON (no explanation):
 {
   "cable_routes": [
-    {"from": "MSB", "to": "DB-GF", "cable_spec": "4Cx35mm² PVC SWA PVC", "length_m": null},
-    {"from": "DB-GF", "to": "DB-S1", "cable_spec": "4Cx16mm² PVC SWA PVC", "length_m": 25},
-    {"from": "DB-GF", "to": "DB-S2", "cable_spec": "4Cx16mm² PVC SWA PVC", "length_m": 30}
+    {
+      "from": "Kiosk",
+      "to": "DB-GF",
+      "cable_spec": "4Cx35mm² PVC SWA PVC",
+      "earth_spec": "25mm² BCEW",
+      "length_m": 30,
+      "is_underground": true
+    },
+    {
+      "from": "DB-GF",
+      "to": "DB-S1",
+      "cable_spec": "4Cx16mm² PVC SWA PVC",
+      "earth_spec": null,
+      "length_m": null,
+      "is_underground": false
+    }
   ],
-  "total_routes": 3
+  "underground_sleeves": [
+    {"size_mm": 110, "qty": 2, "purpose": "Main supply cables"},
+    {"size_mm": 50, "qty": 3, "purpose": "Solar cables"}
+  ],
+  "total_routes": 2
 }
+"""
+
+
+# ============================================================================
+# NEW PASS: SUPPLY POINT (kiosk/metering)
+# ============================================================================
+
+PROMPT_SUPPLY_POINT = """## TASK: Extract Main Supply Point / Metering
+
+Find the incoming supply/metering point on the SLD. This is where Eskom power enters.
+
+### LOOK FOR:
+- "Kiosk", "Kiosk Metering", "Metering Box"
+- "MSB", "Main Switch Board"
+- "Fed from Eskom", "LV Cable from transformer"
+- "Eskom metering Box"
+- Main incoming cable specification
+
+### EXTRACT:
+- Name of supply point
+- Main breaker/switch size (400A, 200A, 100A, etc.)
+- Metering type (CT meter, prepaid, direct)
+- Which DB it feeds (usually DB-GF or DB-CA)
+- Cable specification to first DB
+- Cable length if noted
+
+Respond with ONLY this JSON (no explanation):
+{
+  "supply_found": true,
+  "name": "Kiosk Metering",
+  "main_breaker_a": 400,
+  "meter_type": "ct",
+  "feeds_to": "DB-GF",
+  "cable_spec": "95mm² x 4C PVC SWA PVC",
+  "cable_length_m": 30
+}
+
+If NO supply point visible:
+{
+  "supply_found": false,
+  "reason": "No incoming supply shown on SLD"
+}
+"""
+
+
+# ============================================================================
+# NEW PASS: LIGHTING LEGEND
+# ============================================================================
+
+PROMPT_LEGEND_LIGHTING = """## TASK: Extract Lighting Legend
+
+Find the LEGEND or KEY on the lighting layout drawing. Extract ALL lighting fixture types.
+
+### LOOK FOR LEGEND BOX containing:
+- Symbol drawings with descriptions
+- "LIGHTS" or "LIGHTING" section
+- Wattage specifications
+
+### COMMON LIGHT TYPES to identify:
+1. LED Panels: 600x1200 (3x18W=54W), 600x600 (40W)
+2. Downlights: 6W, 9W, 12W LED (small circles)
+3. Surface mount: 18W, 36W ceiling lights
+4. Flood lights: 30W, 50W, 200W (outdoor)
+5. Bulkheads: 24W, 26W (wall mounted)
+6. Emergency lights: self-contained 3hr
+7. Vapor proof: 2x18W, 2x24W (wet areas)
+8. Pole lights: 60W on 2.3m poles
+
+### ALSO EXTRACT SWITCHES:
+- 1-lever, 1-way switch @ 1200mm AFFL
+- 2-lever, 1-way switch @ 1200mm AFFL
+- Day/Night switch (D/N) @ 2000mm AFFL
+- 2-way switch
+
+### CHECK FOR QTYS column in legend (if shown)
+
+Respond with ONLY this JSON (no explanation):
+{
+  "has_legend": true,
+  "light_types": [
+    {"symbol": "rect_1200", "name": "600x1200 Recessed 3x18W LED", "wattage_w": 54},
+    {"symbol": "circle_rays", "name": "6W LED Downlight", "wattage_w": 6},
+    {"symbol": "surface", "name": "18W LED Ceiling Light", "wattage_w": 18},
+    {"symbol": "flood", "name": "30W LED Flood Light", "wattage_w": 30}
+  ],
+  "switch_types": [
+    {"symbol": "1L1W", "name": "1-lever 1-way switch", "height_mm": 1200},
+    {"symbol": "2L1W", "name": "2-lever 1-way switch", "height_mm": 1200},
+    {"symbol": "DN", "name": "Day/Night switch", "height_mm": 2000}
+  ],
+  "qtys_visible": {"downlight": 36, "panel_1200": 28}
+}
+
+If NO legend visible:
+{
+  "has_legend": false,
+  "reason": "No legend found on page"
+}
+"""
+
+
+# ============================================================================
+# NEW PASS: POWER LEGEND
+# ============================================================================
+
+PROMPT_LEGEND_POWER = """## TASK: Extract Power/Plugs Legend
+
+Find the LEGEND or KEY on the power/plugs layout drawing. Extract ALL socket and equipment types.
+
+### LOOK FOR LEGEND BOX containing:
+- "POWER SOCKETS" or "PLUGS" section
+- Socket symbols with heights
+- Equipment symbols
+
+### COMMON SOCKET TYPES:
+1. 16A Double switched socket @300mm AFFL (floor level)
+2. 16A Double switched socket @1100mm AFFL (worktop)
+3. 16A Single switched socket @300mm
+4. Waterproof socket IP44/IP65
+5. Floor box
+6. Data socket CAT 6
+
+### ISOLATORS & EQUIPMENT:
+1. 20A Isolator switch @ 2000mm AFFL
+2. 30A Isolator switch @ 2000mm AFFL
+3. A/C - Air conditioning connection
+4. Geyser connection
+
+### CONTAINMENT (if shown):
+1. 2-compartment steel grey power skirting (100x50mm)
+2. 20mm PVC conduit
+3. 200mm galvanized cable tray
+4. 150mm wire mesh basket
+5. P8000 trunking
+
+Respond with ONLY this JSON (no explanation):
+{
+  "has_legend": true,
+  "socket_types": [
+    {"symbol": "DS300", "name": "16A Double Switched Socket", "height_mm": 300},
+    {"symbol": "DS1100", "name": "16A Double Switched Socket", "height_mm": 1100},
+    {"symbol": "DATA", "name": "CAT 6 Data Socket", "height_mm": 300}
+  ],
+  "isolator_types": [
+    {"symbol": "ISO20", "name": "20A Isolator Switch", "height_mm": 2000},
+    {"symbol": "ISO30", "name": "30A Isolator Switch", "height_mm": 2000}
+  ],
+  "equipment": [
+    {"symbol": "AC", "name": "Air Conditioning Unit"},
+    {"symbol": "GY", "name": "Geyser Connection"}
+  ],
+  "containment": [
+    {"type": "skirting", "spec": "2-compartment 100x50mm"},
+    {"type": "conduit", "spec": "20mm PVC"},
+    {"type": "tray", "spec": "200mm galvanized cable tray"}
+  ]
+}
+
+If NO legend visible:
+{
+  "has_legend": false,
+  "reason": "No legend found on page"
+}
+"""
+
+
+# ============================================================================
+# IMPROVED: Room fixtures with legend context
+# ============================================================================
+
+def get_room_fixtures_prompt_with_legend(room_name: str, legend_types: dict) -> str:
+    """Generate room-specific prompt using EXTRACTED legend types."""
+
+    # Build fixture lists from legend
+    light_list = ", ".join([lt.get("name", "") for lt in legend_types.get("light_types", [])])
+    socket_list = ", ".join([st.get("name", "") for st in legend_types.get("socket_types", [])])
+    switch_list = ", ".join([sw.get("name", "") for sw in legend_types.get("switch_types", [])])
+
+    if not light_list:
+        light_list = "600x1200 LED panel, 6W downlight, 18W surface mount, flood light"
+    if not socket_list:
+        socket_list = "double socket @300mm, double socket @1100mm, data CAT 6"
+    if not switch_list:
+        switch_list = "1-lever switch, 2-lever switch"
+
+    return f"""## TASK: Count Fixtures in "{room_name}"
+
+You are counting electrical fixtures for ONLY this room: **{room_name}**
+
+Using the legend symbols from this drawing, count each fixture type in {room_name}.
+
+### LIGHT TYPES to count:
+{light_list}
+
+### SOCKET TYPES to count:
+{socket_list}
+
+### SWITCH TYPES to count:
+{switch_list}
+
+For EACH type, count how many symbols appear INSIDE "{room_name}" boundary.
+Also note circuit references if visible (e.g., "DB-S1 L1").
+
+Respond with ONLY this JSON (no explanation):
+{{
+  "room_name": "{room_name}",
+  "found_in_drawing": true,
+  "fixtures": {{
+    "led_panel_600x1200": 0,
+    "downlight_6w": 0,
+    "surface_mount_18w": 0,
+    "flood_light": 0,
+    "double_socket_300": 0,
+    "double_socket_1100": 0,
+    "single_socket": 0,
+    "data_cat6": 0,
+    "switch_1lever": 0,
+    "switch_2lever": 0,
+    "isolator_20a": 0,
+    "isolator_30a": 0
+  }},
+  "circuit_refs": ["DB-S1 L1", "DB-S1 P1"]
+}}
+
+If {room_name} NOT clearly visible:
+{{
+  "room_name": "{room_name}",
+  "found_in_drawing": false,
+  "reason": "Room not found"
+}}
 """
 
 

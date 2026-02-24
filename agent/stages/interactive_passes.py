@@ -17,8 +17,9 @@ from agent.models import (
 from agent.stages.multi_pass_discover import (
     run_pass, ExtractionPass, MultiPassState, PassResult,
     PROMPT_PROJECT_INFO, PROMPT_DB_DETECTION, PROMPT_ROOM_DETECTION,
-    PROMPT_CABLE_ROUTES, get_db_schedule_prompt, get_room_fixtures_prompt,
-    build_extraction_result,
+    PROMPT_CABLE_ROUTES, PROMPT_SUPPLY_POINT, PROMPT_LEGEND_LIGHTING,
+    PROMPT_LEGEND_POWER, get_db_schedule_prompt, get_room_fixtures_prompt,
+    get_room_fixtures_prompt_with_legend, build_extraction_result,
 )
 
 
@@ -575,6 +576,282 @@ class InteractivePipeline:
         self.state.cable_routes = routes
         if ExtractionPass.CABLE_ROUTES not in self.state.passes_completed:
             self.state.passes_completed.append(ExtractionPass.CABLE_ROUTES)
+
+    # ==========================================
+    # NEW: SUPPLY POINT PASS
+    # ==========================================
+
+    def run_supply_point_pass(
+        self,
+        pages: Optional[List[PageInfo]] = None
+    ) -> InteractivePassResult:
+        """
+        Extract main supply/metering point from SLD pages.
+
+        Args:
+            pages: SLD pages to process.
+
+        Returns:
+            InteractivePassResult with supply point data
+        """
+        if pages is None:
+            pages = self.get_pages_by_category("SLD")
+
+        if not pages:
+            return InteractivePassResult(
+                success=False,
+                confidence=0.0,
+                raw_data={},
+                display_data={
+                    "supply_found": False,
+                    "name": "",
+                    "main_breaker_a": 0,
+                },
+                error="No SLD pages provided"
+            )
+
+        result = run_pass(
+            ExtractionPass.DB_DETECTION,  # Reuse pass type for now
+            PROMPT_SUPPLY_POINT,
+            pages,
+            self.client,
+            self.model,
+            self.provider,
+        )
+
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        supply_found = data.get("supply_found", False)
+
+        display_data = {
+            "supply_found": supply_found,
+            "name": data.get("name", ""),
+            "main_breaker_a": data.get("main_breaker_a", 0),
+            "meter_type": data.get("meter_type", ""),
+            "feeds_to": data.get("feeds_to", ""),
+            "cable_spec": data.get("cable_spec", ""),
+            "cable_length_m": data.get("cable_length_m"),
+        }
+
+        # Update running totals
+        self.state.total_tokens += result.tokens_used
+        self.state.total_cost += result.cost_zar
+
+        return InteractivePassResult(
+            success=supply_found,
+            confidence=0.85 if supply_found else 0.3,
+            raw_data=data,
+            display_data=display_data,
+            tokens_used=result.tokens_used,
+            cost_zar=result.cost_zar,
+            error=result.error,
+        )
+
+    # ==========================================
+    # NEW: LIGHTING LEGEND PASS
+    # ==========================================
+
+    def run_lighting_legend_pass(
+        self,
+        pages: Optional[List[PageInfo]] = None
+    ) -> InteractivePassResult:
+        """
+        Extract lighting legend from layout pages.
+
+        Args:
+            pages: Lighting layout pages to process.
+
+        Returns:
+            InteractivePassResult with legend data
+        """
+        if not pages:
+            return InteractivePassResult(
+                success=False,
+                confidence=0.0,
+                raw_data={},
+                display_data={"has_legend": False, "light_types": [], "switch_types": []},
+                error="No lighting pages provided"
+            )
+
+        result = run_pass(
+            ExtractionPass.ROOM_DETECTION,  # Reuse pass type for now
+            PROMPT_LEGEND_LIGHTING,
+            pages,
+            self.client,
+            self.model,
+            self.provider,
+        )
+
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        has_legend = data.get("has_legend", False)
+        light_types = data.get("light_types", [])
+        switch_types = data.get("switch_types", [])
+
+        display_data = {
+            "has_legend": has_legend,
+            "light_types": light_types,
+            "switch_types": switch_types,
+            "qtys_visible": data.get("qtys_visible", {}),
+        }
+
+        # Update running totals
+        self.state.total_tokens += result.tokens_used
+        self.state.total_cost += result.cost_zar
+
+        return InteractivePassResult(
+            success=has_legend and len(light_types) > 0,
+            confidence=0.9 if has_legend else 0.3,
+            raw_data=data,
+            display_data=display_data,
+            tokens_used=result.tokens_used,
+            cost_zar=result.cost_zar,
+            error=result.error,
+        )
+
+    # ==========================================
+    # NEW: POWER LEGEND PASS
+    # ==========================================
+
+    def run_power_legend_pass(
+        self,
+        pages: Optional[List[PageInfo]] = None
+    ) -> InteractivePassResult:
+        """
+        Extract power/plugs legend from layout pages.
+
+        Args:
+            pages: Power layout pages to process.
+
+        Returns:
+            InteractivePassResult with legend data
+        """
+        if not pages:
+            return InteractivePassResult(
+                success=False,
+                confidence=0.0,
+                raw_data={},
+                display_data={"has_legend": False, "socket_types": [], "isolator_types": []},
+                error="No power pages provided"
+            )
+
+        result = run_pass(
+            ExtractionPass.ROOM_DETECTION,  # Reuse pass type for now
+            PROMPT_LEGEND_POWER,
+            pages,
+            self.client,
+            self.model,
+            self.provider,
+        )
+
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        has_legend = data.get("has_legend", False)
+        socket_types = data.get("socket_types", [])
+        isolator_types = data.get("isolator_types", [])
+        equipment = data.get("equipment", [])
+        containment = data.get("containment", [])
+
+        display_data = {
+            "has_legend": has_legend,
+            "socket_types": socket_types,
+            "isolator_types": isolator_types,
+            "equipment": equipment,
+            "containment": containment,
+        }
+
+        # Update running totals
+        self.state.total_tokens += result.tokens_used
+        self.state.total_cost += result.cost_zar
+
+        return InteractivePassResult(
+            success=has_legend and len(socket_types) > 0,
+            confidence=0.9 if has_legend else 0.3,
+            raw_data=data,
+            display_data=display_data,
+            tokens_used=result.tokens_used,
+            cost_zar=result.cost_zar,
+            error=result.error,
+        )
+
+    # ==========================================
+    # IMPROVED: Room fixtures with legend
+    # ==========================================
+
+    def run_room_fixtures_with_legend_pass(
+        self,
+        room_name: str,
+        pages: Optional[List[PageInfo]] = None,
+        legend_types: Optional[Dict] = None
+    ) -> InteractivePassResult:
+        """
+        Count fixtures in ONE room using extracted legend types.
+
+        Args:
+            room_name: Name of the room to extract
+            pages: Layout pages to process.
+            legend_types: Dict with light_types, socket_types from legend pass
+
+        Returns:
+            InteractivePassResult with fixture counts
+        """
+        if not pages:
+            return InteractivePassResult(
+                success=False,
+                confidence=0.0,
+                raw_data={},
+                display_data={
+                    "room_name": room_name,
+                    "found_in_drawing": False,
+                    "fixtures": {},
+                },
+                error="No layout pages provided"
+            )
+
+        # Use legend-aware prompt if legend provided
+        if legend_types:
+            prompt = get_room_fixtures_prompt_with_legend(room_name, legend_types)
+        else:
+            prompt = get_room_fixtures_prompt(room_name)
+
+        result = run_pass(
+            ExtractionPass.ROOM_FIXTURES,
+            prompt,
+            pages,
+            self.client,
+            self.model,
+            self.provider,
+        )
+
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        found = data.get("found_in_drawing", False)
+        fixtures = data.get("fixtures", {})
+
+        display_data = {
+            "room_name": room_name,
+            "found_in_drawing": found,
+            "fixtures": fixtures,
+            "circuit_refs": data.get("circuit_refs", []),
+        }
+
+        # Update running totals
+        self.state.total_tokens += result.tokens_used
+        self.state.total_cost += result.cost_zar
+
+        return InteractivePassResult(
+            success=found,
+            confidence=0.80 if found else 0.3,  # Higher confidence with legend
+            raw_data=data,
+            display_data=display_data,
+            tokens_used=result.tokens_used,
+            cost_zar=result.cost_zar,
+            error=result.error,
+        )
 
     # ==========================================
     # RESULT BUILDING
