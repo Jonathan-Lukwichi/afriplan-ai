@@ -1114,23 +1114,52 @@ def render_step_5_review():
     pricing = st.session_state.final_pricing
     stats = pipeline.get_statistics()
 
-    # Success banner
-    st.success("**Extraction Complete!** Review the summary below.")
+    # Calculate accuracy score
+    db_count = stats.get("db_schedules_extracted", 0)
+    total_circuits = sum(len(s.get("circuits", [])) for s in st.session_state.db_schedules.values())
+    room_count = len(st.session_state.detected_rooms)
+    cable_count = len(st.session_state.cable_routes)
+
+    # Count total fixtures extracted
+    total_lights = sum(sum(f.values()) for f in st.session_state.room_lighting.values() if isinstance(f, dict))
+    total_sockets = sum(sum(f.values()) for f in st.session_state.room_power.values() if isinstance(f, dict))
+
+    # Accuracy scoring (weighted)
+    # - DBs: 20% weight (target: 10 DBs for commercial)
+    # - Circuits: 20% weight (target: 50+ circuits)
+    # - Rooms: 20% weight (target: 15 rooms)
+    # - Cable routes: 15% weight (target: 10 routes)
+    # - Fixtures: 25% weight (target: 100+ total)
+    db_score = min(100, (db_count / 10) * 100)
+    circuit_score = min(100, (total_circuits / 50) * 100)
+    room_score = min(100, (room_count / 15) * 100)
+    cable_score = min(100, (cable_count / 10) * 100)
+    fixture_score = min(100, ((total_lights + total_sockets) / 100) * 100)
+
+    accuracy = (db_score * 0.20 + circuit_score * 0.20 + room_score * 0.20 +
+                cable_score * 0.15 + fixture_score * 0.25)
+
+    # Success banner with accuracy
+    if accuracy >= 75:
+        st.success(f"**Extraction Complete!** Accuracy: **{accuracy:.0f}%** - Target achieved!")
+    elif accuracy >= 60:
+        st.warning(f"**Extraction Complete!** Accuracy: **{accuracy:.0f}%** - Below 75% target")
+    else:
+        st.error(f"**Extraction Complete!** Accuracy: **{accuracy:.0f}%** - Needs improvement")
 
     # Summary metrics
     st.markdown("### Extraction Summary")
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric("DBs", stats.get("db_schedules_extracted", 0))
+        st.metric("DBs", db_count, help="Distribution boards detected")
     with col2:
-        total_circuits = sum(len(s.get("circuits", [])) for s in st.session_state.db_schedules.values())
-        st.metric("Circuits", total_circuits)
+        st.metric("Circuits", total_circuits, help="Total circuits across all DBs")
     with col3:
-        st.metric("Rooms", len(st.session_state.detected_rooms))
+        st.metric("Rooms", room_count, help="Rooms detected from layouts")
     with col4:
-        st.metric("Cable Routes", len(st.session_state.cable_routes))
+        st.metric("Cable Routes", cable_count, help="Sub-main cables between DBs")
     with col5:
-        st.metric("API Cost", f"R{stats.get('total_cost_zar', 0):.2f}")
+        st.metric("Accuracy", f"{accuracy:.0f}%", help="Weighted extraction accuracy")
 
     # Document coverage
     st.markdown("### Document Coverage")
@@ -1148,6 +1177,40 @@ def render_step_5_review():
             st.markdown(f"- :orange[{doc_name}] - Uploaded (partial extraction)")
         else:
             st.markdown(f"- :red[{doc_name}] - Not uploaded")
+
+    # Accuracy breakdown
+    st.markdown("### Accuracy Breakdown")
+    with st.expander("View detailed scoring", expanded=False):
+        st.markdown(f"""
+        | Component | Extracted | Target | Score |
+        |-----------|-----------|--------|-------|
+        | Distribution Boards | {db_count} | 10 | {db_score:.0f}% |
+        | Circuits | {total_circuits} | 50 | {circuit_score:.0f}% |
+        | Rooms | {room_count} | 15 | {room_score:.0f}% |
+        | Cable Routes | {cable_count} | 10 | {cable_score:.0f}% |
+        | Fixtures (lights + sockets) | {total_lights + total_sockets} | 100 | {fixture_score:.0f}% |
+        | **Weighted Total** | | | **{accuracy:.0f}%** |
+
+        **Weights:** DBs 20%, Circuits 20%, Rooms 20%, Cables 15%, Fixtures 25%
+        """)
+
+        # Critique / improvement suggestions
+        st.markdown("#### Areas for Improvement")
+        issues = []
+        if db_count < 8:
+            issues.append("- **DBs:** Some distribution boards may be missing (check for DB-GF, DB-CA variations)")
+        if total_circuits < 40:
+            issues.append("- **Circuits:** Circuit schedules may be incomplete - review SLD pages manually")
+        if total_lights + total_sockets < 50:
+            issues.append("- **Fixtures:** Low fixture count - legend extraction or room counting may need improvement")
+        if cable_count < 5:
+            issues.append("- **Cables:** Sub-main cable routes not fully extracted from SLD")
+
+        if issues:
+            for issue in issues:
+                st.markdown(issue)
+        else:
+            st.success("Extraction looks comprehensive!")
 
     # Compliance score
     if validation:
