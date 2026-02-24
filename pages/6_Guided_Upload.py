@@ -25,7 +25,17 @@ from typing import List, Dict, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.styles import inject_custom_css
-from utils.components import page_header, section_header
+from utils.components import page_header, section_header, glass_card, metric_card
+
+# Category colors for page thumbnails
+CATEGORY_COLORS = {
+    "Cover": "#9333EA",   # Purple
+    "SLD": "#00D4FF",     # Cyan
+    "Lighting": "#F59E0B", # Amber
+    "Power": "#22C55E",   # Green
+    "Legend": "#EC4899",  # Pink
+    "Other": "#64748B",   # Gray
+}
 
 # Page categories for user tagging
 PAGE_CATEGORIES = ["Cover", "SLD", "Lighting", "Power", "Legend", "Other"]
@@ -194,62 +204,115 @@ def get_confidence_color(confidence: float) -> str:
         return "#EF4444"  # Red
 
 
-def render_confidence_badge(confidence: float):
-    """Render a confidence score badge."""
+def render_confidence_badge(confidence: float, label_prefix: str = "Extraction"):
+    """Render a premium confidence score badge."""
     color = get_confidence_color(confidence)
     if confidence >= 0.70:
         label = "High"
+        icon = "✓"
     elif confidence >= 0.40:
         label = "Medium"
+        icon = "◐"
     else:
         label = "Low"
+        icon = "⚠"
 
     st.markdown(f"""
-    <div style="display: inline-block; padding: 4px 12px; border-radius: 12px;
-                background: {color}20; border: 1px solid {color}40; margin-bottom: 1rem;">
-        <span style="color: {color}; font-weight: 600;">
-            {label} Confidence: {confidence*100:.0f}%
-        </span>
+    <div style="display: inline-flex; align-items: center; gap: 12px;
+                padding: 10px 20px; border-radius: 12px;
+                background: linear-gradient(135deg, {color}15, {color}08);
+                border: 1px solid {color}50; margin-bottom: 1.5rem;
+                box-shadow: 0 4px 12px {color}20;">
+        <div style="font-size: 1.4rem;">{icon}</div>
+        <div>
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 0.9rem;
+                        font-weight: 700; color: {color};">
+                {confidence*100:.0f}% {label}
+            </div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
+                {label_prefix} Confidence
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 def render_progress_indicator():
-    """Render the 8-step progress indicator."""
+    """Render premium 8-step progress indicator with connected nodes."""
     step = st.session_state.guided_step
     max_step = st.session_state.max_completed_step
 
     steps = [
-        ("1", "Upload"),
-        ("2", "Project"),
-        ("3", "DBs"),
-        ("4", "Schedules"),
-        ("5", "Rooms"),
-        ("6", "Fixtures"),
-        ("7", "Cables"),
-        ("8", "Export"),
+        ("📤", "Upload"),
+        ("📋", "Project"),
+        ("⚡", "DBs"),
+        ("📊", "Schedules"),
+        ("🏠", "Rooms"),
+        ("💡", "Fixtures"),
+        ("🔌", "Cables"),
+        ("📥", "Export"),
     ]
 
-    cols = st.columns(8)
-    for i, (num, name) in enumerate(steps):
-        step_num = i + 1
-        with cols[i]:
-            if step_num == step:
-                color = "#00D4FF"
-                icon = "●"
-            elif step_num <= max_step:
-                color = "#22C55E"
-                icon = "✓"
-            else:
-                color = "#64748b"
-                icon = "○"
+    # Build progress HTML with connected dots
+    progress_html = """
+    <div style="display: flex; align-items: center; justify-content: space-between;
+                padding: 1rem 0.5rem; margin-bottom: 1rem;
+                background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                border-radius: 16px; border: 1px solid rgba(0,212,255,0.1);
+                position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
+                    background: linear-gradient(90deg, transparent, #00D4FF, transparent);"></div>
+    """
 
-            st.markdown(f"""
-            <div style="text-align: center;">
-                <div style="color: {color}; font-size: 1.2rem; font-weight: bold;">{icon}</div>
-                <div style="color: {color}; font-size: 0.7rem;">{name}</div>
+    for i, (icon, name) in enumerate(steps):
+        step_num = i + 1
+        is_current = step_num == step
+        is_completed = step_num <= max_step
+        is_future = step_num > max_step and step_num != step
+
+        if is_current:
+            node_bg = "linear-gradient(135deg, #00D4FF, #0099FF)"
+            node_border = "rgba(0,212,255,0.8)"
+            text_color = "#00D4FF"
+            node_shadow = "0 0 20px rgba(0,212,255,0.5)"
+        elif is_completed:
+            node_bg = "linear-gradient(135deg, #22C55E, #16A34A)"
+            node_border = "rgba(34,197,94,0.8)"
+            text_color = "#22C55E"
+            node_shadow = "0 0 10px rgba(34,197,94,0.3)"
+        else:
+            node_bg = "rgba(30,41,59,0.8)"
+            node_border = "rgba(71,85,105,0.5)"
+            text_color = "#64748b"
+            node_shadow = "none"
+
+        # Connection line (except for first step)
+        if i > 0:
+            line_color = "#22C55E" if step_num <= max_step + 1 else "#1e293b"
+            progress_html += f"""
+            <div style="flex: 1; height: 2px; background: {line_color};
+                        margin: 0 -5px; z-index: 1;"></div>
+            """
+
+        progress_html += f"""
+        <div style="display: flex; flex-direction: column; align-items: center; z-index: 2;">
+            <div style="width: 44px; height: 44px; border-radius: 50%;
+                        background: {node_bg}; border: 2px solid {node_border};
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 1.2rem; box-shadow: {node_shadow};">
+                {icon}
             </div>
-            """, unsafe_allow_html=True)
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        font-weight: 600; text-transform: uppercase;
+                        letter-spacing: 1px; color: {text_color}; margin-top: 6px;">
+                {name}
+            </div>
+        </div>
+        """
+
+    progress_html += "</div>"
+    st.markdown(progress_html, unsafe_allow_html=True)
 
 
 def init_pipeline():
@@ -300,17 +363,29 @@ def init_pipeline():
 
 def render_step_1_upload_categorize():
     """Step 1: Upload document and categorize pages."""
-    section_header("Step 1: Upload & Categorize Pages", "Tag each page by type")
+    section_header("Step 1: Upload & Categorize Pages", "Tag each page by type for accurate extraction")
 
-    # File upload
+    # Upload area with styled container
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                border: 2px dashed rgba(0,212,255,0.3); border-radius: 16px;
+                padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📤</div>
+        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                    text-transform: uppercase; letter-spacing: 2px; font-size: 12px;">
+            Upload Electrical Drawings
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     uploaded_file = st.file_uploader(
         "Upload electrical drawing (PDF, PNG, JPG)",
         type=["pdf", "png", "jpg", "jpeg"],
-        key="guided_uploader"
+        key="guided_uploader",
+        label_visibility="collapsed"
     )
 
     if uploaded_file and not st.session_state.guided_pages:
-        # Process upload
         with st.spinner("Processing document..."):
             doc_set, result = ingest([
                 (uploaded_file.getvalue(), uploaded_file.name, uploaded_file.type)
@@ -318,14 +393,12 @@ def render_step_1_upload_categorize():
 
             if result.success:
                 st.session_state.guided_doc_set = doc_set
-                # Flatten all pages from all documents
                 all_pages = []
                 for doc in doc_set.documents:
                     all_pages.extend(doc.pages)
                 st.session_state.guided_pages = all_pages
                 st.session_state.guided_filename = uploaded_file.name
 
-                # Initialize categories based on auto-detection
                 for page in all_pages:
                     category = map_page_type_to_category(page.page_type)
                     st.session_state.page_categories[page.page_number] = category
@@ -336,71 +409,121 @@ def render_step_1_upload_categorize():
 
     # Display page thumbnails if we have pages
     if st.session_state.guided_pages:
-        st.success(f"**{len(st.session_state.guided_pages)} pages** loaded from {st.session_state.guided_filename}")
+        # Success banner
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05));
+                    border: 1px solid rgba(34,197,94,0.3); border-radius: 12px;
+                    padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex;
+                    align-items: center; gap: 12px;">
+            <span style="font-size: 1.5rem;">✅</span>
+            <div>
+                <div style="font-family: 'Orbitron', sans-serif; color: #22C55E; font-weight: 700;">
+                    {len(st.session_state.guided_pages)} Pages Loaded
+                </div>
+                <div style="font-family: 'Inter', sans-serif; color: #94a3b8; font-size: 13px;">
+                    {st.session_state.guided_filename}
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("### Categorize Each Page")
-        st.markdown("*The AI auto-detected categories. Review and correct if needed.*")
+        st.markdown("""
+        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                    text-transform: uppercase; letter-spacing: 2px; font-size: 12px;
+                    margin-bottom: 1rem;">
+            ⚡ AI Auto-Detected Categories — Review & Correct If Needed
+        </div>
+        """, unsafe_allow_html=True)
 
-        # 3-column grid
+        # 3-column grid with styled cards
         cols = st.columns(3)
 
         for i, page in enumerate(st.session_state.guided_pages):
             col_idx = i % 3
+            current_cat = st.session_state.page_categories.get(page.page_number, "Other")
+            cat_color = CATEGORY_COLORS.get(current_cat, "#64748B")
 
             with cols[col_idx]:
-                # Container for each page
-                with st.container():
-                    # Thumbnail
-                    if page.image_base64:
-                        st.image(
-                            f"data:image/png;base64,{page.image_base64}",
-                            caption=f"Page {page.page_number}",
-                            width=200
-                        )
-                    else:
-                        st.markdown(f"**Page {page.page_number}**")
+                # Styled page card
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, rgba(17,24,39,0.95), rgba(15,23,42,0.8));
+                            border: 1px solid {cat_color}40; border-radius: 12px;
+                            margin-bottom: 1rem; overflow: hidden;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                    <div style="height: 4px; background: {cat_color};"></div>
+                    <div style="padding: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between;
+                                    align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-family: 'Orbitron', sans-serif; font-size: 12px;
+                                        color: #f1f5f9; font-weight: 600;">
+                                Page {page.page_number}
+                            </span>
+                            <span style="padding: 2px 8px; border-radius: 4px;
+                                        background: {cat_color}20; color: {cat_color};
+                                        font-size: 10px; font-weight: 600;">
+                                {current_cat}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                    # Category selector
-                    current_cat = st.session_state.page_categories.get(
-                        page.page_number, "Other"
+                if page.image_base64:
+                    st.image(
+                        f"data:image/png;base64,{page.image_base64}",
+                        use_container_width=True
                     )
-                    new_cat = st.selectbox(
-                        f"Category for Page {page.page_number}",
-                        PAGE_CATEGORIES,
-                        index=PAGE_CATEGORIES.index(current_cat) if current_cat in PAGE_CATEGORIES else 5,
-                        key=f"cat_{page.page_number}",
-                        label_visibility="collapsed"
-                    )
-                    st.session_state.page_categories[page.page_number] = new_cat
 
-        # Category summary
+                new_cat = st.selectbox(
+                    f"Category for Page {page.page_number}",
+                    PAGE_CATEGORIES,
+                    index=PAGE_CATEGORIES.index(current_cat) if current_cat in PAGE_CATEGORIES else 5,
+                    key=f"cat_{page.page_number}",
+                    label_visibility="collapsed"
+                )
+                st.session_state.page_categories[page.page_number] = new_cat
+
+        # Category summary with premium styling
         st.markdown("---")
-        st.markdown("### Category Summary")
+        st.markdown("""
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 1.1rem;
+                    color: #00D4FF; text-align: center; margin-bottom: 1rem;">
+            CATEGORY SUMMARY
+        </div>
+        """, unsafe_allow_html=True)
+
         summary_cols = st.columns(6)
         for i, cat in enumerate(PAGE_CATEGORIES):
             count = sum(1 for v in st.session_state.page_categories.values() if v == cat)
+            cat_color = CATEGORY_COLORS.get(cat, "#64748B")
             with summary_cols[i]:
-                color = "#22C55E" if count > 0 else "#64748b"
                 st.markdown(f"""
-                <div style="text-align: center; padding: 0.5rem; border-radius: 8px;
-                            background: {color}15; border: 1px solid {color}40;">
-                    <div style="font-size: 1.5rem; font-weight: bold; color: {color};">{count}</div>
-                    <div style="font-size: 0.8rem; color: #94a3b8;">{cat}</div>
+                <div style="text-align: center; padding: 1rem 0.5rem; border-radius: 12px;
+                            background: linear-gradient(135deg, {cat_color}15, {cat_color}05);
+                            border: 1px solid {cat_color}30;
+                            box-shadow: 0 4px 12px {cat_color}10;">
+                    <div style="font-family: 'Orbitron', sans-serif; font-size: 1.8rem;
+                                font-weight: 800; color: {cat_color};
+                                text-shadow: 0 0 20px {cat_color}40;">{count}</div>
+                    <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                                text-transform: uppercase; letter-spacing: 1px;
+                                color: #94a3b8; margin-top: 4px;">{cat}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
         # Continue button
-        st.markdown("---")
-        if st.button("Continue to Extraction →", type="primary", use_container_width=True):
-            # Initialize pipeline with categorized pages
-            pipeline = init_pipeline()
-            if pipeline:
-                st.session_state.interactive_pipeline = pipeline
-                st.session_state.guided_step = 2
-                st.session_state.max_completed_step = 1
-                st.rerun()
-            else:
-                st.error("Failed to initialize pipeline. Check API key configuration.")
+        st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("⚡ Continue to Extraction →", type="primary", use_container_width=True):
+                pipeline = init_pipeline()
+                if pipeline:
+                    st.session_state.interactive_pipeline = pipeline
+                    st.session_state.guided_step = 2
+                    st.session_state.max_completed_step = 1
+                    st.rerun()
+                else:
+                    st.error("Failed to initialize pipeline. Check API key configuration.")
 
 
 # ============================================================================
@@ -409,7 +532,7 @@ def render_step_1_upload_categorize():
 
 def render_step_2_project_info():
     """Step 2: Extract and validate project information."""
-    section_header("Step 2: Extract Project Information", "From cover page")
+    section_header("Step 2: Extract Project Information", "Extracted from cover page")
 
     pipeline: InteractivePipeline = st.session_state.interactive_pipeline
 
@@ -441,50 +564,69 @@ def render_step_2_project_info():
                 "revision": "",
             }
 
-    # Display editable fields
+    # Display confidence badge
     confidence = 0.85 if st.session_state.project_info.get("project_name") else 0.3
-    render_confidence_badge(confidence)
+    render_confidence_badge(confidence, "Project Info")
+
+    # Glass card for form
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                backdrop-filter: blur(12px); border: 1px solid rgba(0,212,255,0.15);
+                border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
+                    background: linear-gradient(90deg, transparent, #00D4FF, transparent);"></div>
+        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                    text-transform: uppercase; letter-spacing: 2px; font-size: 11px;
+                    margin-bottom: 1rem;">
+            📋 Verify & Edit Extracted Data
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.form("project_info_form"):
-        st.markdown("**Edit the extracted values if needed:**")
-
+        st.markdown("##### Project Details")
         project_name = st.text_input(
-            "Project Name",
-            value=st.session_state.project_info.get("project_name", "")
+            "🏗️ Project Name",
+            value=st.session_state.project_info.get("project_name", ""),
+            placeholder="e.g., NewMark Commercial Building"
         )
         client_name = st.text_input(
-            "Client Name",
-            value=st.session_state.project_info.get("client_name", "")
+            "👤 Client Name",
+            value=st.session_state.project_info.get("client_name", ""),
+            placeholder="e.g., NewMark Properties (Pty) Ltd"
         )
         consultant_name = st.text_input(
-            "Consultant/Engineer",
-            value=st.session_state.project_info.get("consultant_name", "")
+            "⚡ Consultant/Engineer",
+            value=st.session_state.project_info.get("consultant_name", ""),
+            placeholder="e.g., Electro-Tech Consulting"
         )
 
         col1, col2 = st.columns(2)
         with col1:
             date = st.text_input(
-                "Date",
-                value=st.session_state.project_info.get("date", "")
+                "📅 Date",
+                value=st.session_state.project_info.get("date", ""),
+                placeholder="e.g., 2024-01-15"
             )
         with col2:
             revision = st.text_input(
-                "Revision",
-                value=st.session_state.project_info.get("revision", "")
+                "🔄 Revision",
+                value=st.session_state.project_info.get("revision", ""),
+                placeholder="e.g., Rev 3"
             )
 
+        st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
-            back = st.form_submit_button("← Back", use_container_width=True)
+            back = st.form_submit_button("← Back to Categorize", use_container_width=True)
         with col2:
-            confirm = st.form_submit_button("Confirm & Continue →", type="primary", use_container_width=True)
+            confirm = st.form_submit_button("✓ Confirm & Continue →", type="primary", use_container_width=True)
 
         if back:
             st.session_state.guided_step = 1
             st.rerun()
 
         if confirm:
-            # Save validated data
             validated_data = {
                 "project_name": project_name,
                 "client_name": client_name,
@@ -506,7 +648,7 @@ def render_step_2_project_info():
 
 def render_step_3_db_detection():
     """Step 3: Detect and validate distribution boards."""
-    section_header("Step 3: Detect Distribution Boards", "From SLD pages")
+    section_header("Step 3: Detect Distribution Boards", "Extracted from SLD pages")
 
     pipeline: InteractivePipeline = st.session_state.interactive_pipeline
 
@@ -521,49 +663,90 @@ def render_step_3_db_detection():
                     st.session_state.detected_dbs = [
                         db["name"] for db in result.display_data.get("dbs", [])
                     ]
-                    st.success(f"Found {len(st.session_state.detected_dbs)} distribution boards")
                 else:
-                    st.warning("No DBs detected. Add them manually below.")
                     st.session_state.detected_dbs = []
         else:
             st.warning("No SLD pages found. Add DBs manually.")
             st.session_state.detected_dbs = []
 
-    # Display with checkboxes
+    # Confidence badge
     confidence = 0.92 if st.session_state.detected_dbs else 0.3
-    render_confidence_badge(confidence)
+    render_confidence_badge(confidence, "DB Detection")
 
-    st.markdown(f"**{len(st.session_state.detected_dbs)} DBs detected.** Select which ones to process:")
+    # DB count banner
+    db_count = len(st.session_state.detected_dbs)
+    color = "#22C55E" if db_count > 0 else "#F59E0B"
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {color}15, {color}05);
+                border: 1px solid {color}30; border-radius: 12px;
+                padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 2rem;">⚡</span>
+            <div>
+                <div style="font-family: 'Orbitron', sans-serif; color: {color};
+                            font-size: 1.5rem; font-weight: 800;">{db_count} DBs Found</div>
+                <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                    Select which boards to process
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Checkbox for each DB
+    # DB selection as styled cards
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #f1f5f9;
+                font-weight: 600; margin-bottom: 0.5rem;">
+        Distribution Boards
+    </div>
+    """, unsafe_allow_html=True)
+
     selected_dbs = []
-    for db_name in st.session_state.detected_dbs:
-        if st.checkbox(db_name, value=True, key=f"db_select_{db_name}"):
-            selected_dbs.append(db_name)
+    cols = st.columns(2)
+    for i, db_name in enumerate(st.session_state.detected_dbs):
+        with cols[i % 2]:
+            checked = st.checkbox(f"⚡ {db_name}", value=True, key=f"db_select_{db_name}")
+            if checked:
+                selected_dbs.append(db_name)
 
-    # Add new DB
-    st.markdown("---")
-    st.markdown("**Add Missing DB:**")
+    # Add new DB section
+    st.markdown("""
+    <div style="margin-top: 1.5rem; padding-top: 1rem;
+                border-top: 1px solid rgba(100,116,139,0.2);">
+        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                    text-transform: uppercase; letter-spacing: 2px;
+                    font-size: 11px; margin-bottom: 0.75rem;">
+            ➕ Add Missing Distribution Board
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns([3, 1])
     with col1:
-        new_db_name = st.text_input("DB Name (e.g., DB-S5)", key="new_db_input", label_visibility="collapsed")
+        new_db_name = st.text_input(
+            "DB Name",
+            key="new_db_input",
+            label_visibility="collapsed",
+            placeholder="e.g., DB-S5, MAIN-DB, DB-GROUND"
+        )
     with col2:
-        if st.button("Add", use_container_width=True):
+        if st.button("➕ Add", use_container_width=True):
             if new_db_name and new_db_name not in st.session_state.detected_dbs:
                 st.session_state.detected_dbs.append(new_db_name)
                 st.rerun()
 
-    # Navigation
-    st.markdown("---")
+    # Navigation buttons
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("← Back", use_container_width=True):
+        if st.button("← Back to Project Info", use_container_width=True):
             st.session_state.guided_step = 2
             st.rerun()
 
     with col2:
-        if st.button("Confirm & Continue →", type="primary", use_container_width=True):
+        if st.button("✓ Confirm DBs & Continue →", type="primary", use_container_width=True):
             if selected_dbs:
                 pipeline.apply_detected_dbs(selected_dbs)
                 st.session_state.detected_dbs = selected_dbs
@@ -586,7 +769,6 @@ def render_step_4_db_schedules():
     current_idx = st.session_state.current_db_index
 
     if current_idx >= len(detected_dbs):
-        # All DBs processed, move to next step
         pipeline.mark_db_schedules_complete()
         st.session_state.guided_step = 5
         st.session_state.max_completed_step = 4
@@ -594,9 +776,44 @@ def render_step_4_db_schedules():
         return
 
     current_db = detected_dbs[current_idx]
-    section_header(f"Step 4: Extract DB Schedule ({current_idx + 1}/{len(detected_dbs)})", f"Processing {current_db}")
+    section_header(f"Step 4: Extract DB Schedule", f"Processing DB {current_idx + 1} of {len(detected_dbs)}")
 
-    # Check if we already have this DB's schedule
+    # Progress indicator for DBs
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,212,255,0.02));
+                border: 1px solid rgba(0,212,255,0.2); border-radius: 12px;
+                padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 2rem;">📊</span>
+                <div>
+                    <div style="font-family: 'Orbitron', sans-serif; color: #00D4FF;
+                                font-size: 1.3rem; font-weight: 700;">{current_db}</div>
+                    <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                                font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                        Distribution Board Schedule
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+                            color: #f1f5f9; font-weight: 700;">
+                    {current_idx + 1}/{len(detected_dbs)}
+                </div>
+                <div style="font-family: 'Rajdhani', sans-serif; color: #64748b;
+                            font-size: 11px; text-transform: uppercase;">Progress</div>
+            </div>
+        </div>
+        <div style="margin-top: 1rem; height: 6px; background: rgba(30,41,59,0.8);
+                    border-radius: 3px; overflow: hidden;">
+            <div style="width: {((current_idx + 1) / len(detected_dbs)) * 100}%; height: 100%;
+                        background: linear-gradient(90deg, #00D4FF, #0099FF);
+                        border-radius: 3px;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Extract schedule if not done
     if current_db not in st.session_state.db_schedules:
         sld_pages = get_categorized_pages("SLD")
         with st.spinner(f"Extracting circuit schedule for {current_db}..."):
@@ -605,7 +822,6 @@ def render_step_4_db_schedules():
             if result.success:
                 st.session_state.db_schedules[current_db] = result.display_data
             else:
-                st.warning(f"Could not extract schedule for {current_db}. Fill in manually or skip.")
                 st.session_state.db_schedules[current_db] = {
                     "db_name": current_db,
                     "main_breaker_a": 0,
@@ -616,23 +832,49 @@ def render_step_4_db_schedules():
 
     schedule = st.session_state.db_schedules.get(current_db, {})
     confidence = 0.78 if schedule.get("schedule_found") else 0.3
-    render_confidence_badge(confidence)
+    render_confidence_badge(confidence, "Schedule")
 
-    # Display editable fields
-    st.markdown("**DB Header Information:**")
+    # DB Header in glass card
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #f1f5f9;
+                font-weight: 600; margin-bottom: 0.5rem;">
+        ⚡ DB Header Information
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        main_breaker = st.number_input("Main Breaker (A)", value=schedule.get("main_breaker_a", 0), key=f"mb_{current_db}")
+        main_breaker = st.number_input(
+            "Main Breaker (A)",
+            value=schedule.get("main_breaker_a", 0),
+            key=f"mb_{current_db}",
+            help="Main incoming breaker size in Amps"
+        )
     with col2:
-        supply_from = st.text_input("Supply From", value=schedule.get("supply_from", ""), key=f"sf_{current_db}")
+        supply_from = st.text_input(
+            "Supply From",
+            value=schedule.get("supply_from", ""),
+            key=f"sf_{current_db}",
+            placeholder="e.g., MSB-A"
+        )
     with col3:
-        total_ways = st.number_input("Total Ways", value=schedule.get("total_ways", 0), key=f"tw_{current_db}")
+        total_ways = st.number_input(
+            "Total Ways",
+            value=schedule.get("total_ways", 0),
+            key=f"tw_{current_db}",
+            help="Number of circuit breaker ways"
+        )
 
     # Circuits table
-    st.markdown("**Circuits:**")
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #f1f5f9;
+                font-weight: 600; margin: 1.5rem 0 0.5rem 0;">
+        🔌 Circuit Breakers
+    </div>
+    """, unsafe_allow_html=True)
+
     circuits = schedule.get("circuits", [])
     if circuits:
-        # Create editable dataframe
         import pandas as pd
         df = pd.DataFrame(circuits)
         edited_df = st.data_editor(
@@ -643,14 +885,14 @@ def render_step_4_db_schedules():
         )
         circuits = edited_df.to_dict('records')
     else:
-        st.info("No circuits extracted. Add manually if needed.")
+        st.info("No circuits extracted. Add manually using the table below or skip this DB.")
 
     # Navigation
-    st.markdown("---")
+    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("← Back", use_container_width=True):
+        if st.button("← Back", key="back_step4", use_container_width=True):
             if current_idx > 0:
                 st.session_state.current_db_index = current_idx - 1
             else:
@@ -658,16 +900,14 @@ def render_step_4_db_schedules():
             st.rerun()
 
     with col2:
-        if st.button("Skip DB", use_container_width=True):
-            # Remove from schedules and move to next
+        if st.button("⏭ Skip DB", key="skip_db", use_container_width=True):
             if current_db in st.session_state.db_schedules:
                 del st.session_state.db_schedules[current_db]
             st.session_state.current_db_index = current_idx + 1
             st.rerun()
 
     with col3:
-        if st.button("Confirm DB & Continue →", type="primary", use_container_width=True):
-            # Save updated schedule
+        if st.button("✓ Confirm & Next →", key="confirm_db", type="primary", use_container_width=True):
             updated_schedule = {
                 "db_name": current_db,
                 "main_breaker_a": main_breaker,
@@ -688,7 +928,7 @@ def render_step_4_db_schedules():
 
 def render_step_5_room_detection():
     """Step 5: Detect rooms from layout pages."""
-    section_header("Step 5: Detect Rooms & Areas", "From layout pages")
+    section_header("Step 5: Detect Rooms & Areas", "Extracted from layout pages")
 
     pipeline: InteractivePipeline = st.session_state.interactive_pipeline
 
@@ -706,52 +946,90 @@ def render_step_5_room_detection():
                     st.session_state.detected_rooms = [
                         room["name"] for room in result.display_data.get("rooms", [])
                     ]
-                    st.success(f"Found {len(st.session_state.detected_rooms)} rooms")
                 else:
-                    st.warning("No rooms detected. Add them manually below.")
                     st.session_state.detected_rooms = []
         else:
             st.warning("No layout pages found. Add rooms manually.")
             st.session_state.detected_rooms = []
 
-    # Display with checkboxes
+    # Confidence badge
     confidence = 0.88 if st.session_state.detected_rooms else 0.3
-    render_confidence_badge(confidence)
+    render_confidence_badge(confidence, "Room Detection")
 
-    st.markdown(f"**{len(st.session_state.detected_rooms)} rooms detected.** Select which ones to process:")
+    # Room count banner
+    room_count = len(st.session_state.detected_rooms)
+    color = "#F59E0B" if room_count > 0 else "#64748b"
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {color}15, {color}05);
+                border: 1px solid {color}30; border-radius: 12px;
+                padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 2rem;">🏠</span>
+            <div>
+                <div style="font-family: 'Orbitron', sans-serif; color: {color};
+                            font-size: 1.5rem; font-weight: 800;">{room_count} Rooms Found</div>
+                <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                    Select rooms to extract fixtures from
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Show in 2 columns
+    # Room selection
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #f1f5f9;
+                font-weight: 600; margin-bottom: 0.5rem;">
+        Detected Rooms
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     selected_rooms = []
     for i, room_name in enumerate(st.session_state.detected_rooms):
         with col1 if i % 2 == 0 else col2:
-            if st.checkbox(room_name, value=True, key=f"room_select_{room_name}"):
+            if st.checkbox(f"🏠 {room_name}", value=True, key=f"room_select_{room_name}"):
                 selected_rooms.append(room_name)
 
     # Add new room
-    st.markdown("---")
-    st.markdown("**Add Missing Room:**")
+    st.markdown("""
+    <div style="margin-top: 1.5rem; padding-top: 1rem;
+                border-top: 1px solid rgba(100,116,139,0.2);">
+        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                    text-transform: uppercase; letter-spacing: 2px;
+                    font-size: 11px; margin-bottom: 0.75rem;">
+            ➕ Add Missing Room
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns([3, 1])
     with col1:
-        new_room_name = st.text_input("Room Name", key="new_room_input", label_visibility="collapsed")
+        new_room_name = st.text_input(
+            "Room Name",
+            key="new_room_input",
+            label_visibility="collapsed",
+            placeholder="e.g., Office 101, Kitchen, Store Room"
+        )
     with col2:
-        if st.button("Add", key="add_room_btn", use_container_width=True):
+        if st.button("➕ Add", key="add_room_btn", use_container_width=True):
             if new_room_name and new_room_name not in st.session_state.detected_rooms:
                 st.session_state.detected_rooms.append(new_room_name)
                 st.rerun()
 
     # Navigation
-    st.markdown("---")
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("← Back", key="back_step5", use_container_width=True):
+        if st.button("← Back to DB Schedules", key="back_step5", use_container_width=True):
             st.session_state.guided_step = 4
             st.session_state.current_db_index = len(st.session_state.detected_dbs) - 1
             st.rerun()
 
     with col2:
-        if st.button("Confirm & Continue →", key="confirm_step5", type="primary", use_container_width=True):
+        if st.button("✓ Confirm Rooms & Continue →", key="confirm_step5", type="primary", use_container_width=True):
             if selected_rooms:
                 pipeline.apply_detected_rooms(selected_rooms)
                 st.session_state.detected_rooms = selected_rooms
@@ -774,7 +1052,6 @@ def render_step_6_room_fixtures():
     current_idx = st.session_state.current_room_index
 
     if current_idx >= len(detected_rooms):
-        # All rooms processed, move to next step
         pipeline.mark_room_fixtures_complete()
         st.session_state.guided_step = 7
         st.session_state.max_completed_step = 6
@@ -782,9 +1059,44 @@ def render_step_6_room_fixtures():
         return
 
     current_room = detected_rooms[current_idx]
-    section_header(f"Step 6: Extract Room Fixtures ({current_idx + 1}/{len(detected_rooms)})", f"Processing {current_room}")
+    section_header(f"Step 6: Extract Room Fixtures", f"Processing Room {current_idx + 1} of {len(detected_rooms)}")
 
-    # Check if we already have this room's fixtures
+    # Progress indicator for rooms
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.02));
+                border: 1px solid rgba(245,158,11,0.2); border-radius: 12px;
+                padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 2rem;">💡</span>
+                <div>
+                    <div style="font-family: 'Orbitron', sans-serif; color: #F59E0B;
+                                font-size: 1.3rem; font-weight: 700;">{current_room}</div>
+                    <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                                font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                        Fixture Count Extraction
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+                            color: #f1f5f9; font-weight: 700;">
+                    {current_idx + 1}/{len(detected_rooms)}
+                </div>
+                <div style="font-family: 'Rajdhani', sans-serif; color: #64748b;
+                            font-size: 11px; text-transform: uppercase;">Progress</div>
+            </div>
+        </div>
+        <div style="margin-top: 1rem; height: 6px; background: rgba(30,41,59,0.8);
+                    border-radius: 3px; overflow: hidden;">
+            <div style="width: {((current_idx + 1) / len(detected_rooms)) * 100}%; height: 100%;
+                        background: linear-gradient(90deg, #F59E0B, #D97706);
+                        border-radius: 3px;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Extract fixtures if not done
     if current_room not in st.session_state.room_fixtures:
         lighting_pages = get_categorized_pages("Lighting")
         power_pages = get_categorized_pages("Power")
@@ -796,41 +1108,101 @@ def render_step_6_room_fixtures():
             if result.success:
                 st.session_state.room_fixtures[current_room] = result.display_data.get("fixtures", {})
             else:
-                st.warning(f"Could not extract fixtures for {current_room}. Fill in manually or skip.")
                 st.session_state.room_fixtures[current_room] = {}
 
     fixtures = st.session_state.room_fixtures.get(current_room, {})
     confidence = 0.72 if fixtures else 0.3
-    render_confidence_badge(confidence)
+    render_confidence_badge(confidence, "Fixtures")
 
-    # Display editable fixture counts
-    st.markdown("**Lights:**")
+    # Fixtures input sections
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #F59E0B;
+                font-weight: 600; margin-bottom: 0.5rem;">
+        💡 Lighting Fixtures
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        led_panel = st.number_input("LED Panel 600x1200", value=fixtures.get("recessed_led_600x1200", 0), key=f"led_{current_room}")
+        led_panel = st.number_input(
+            "LED Panel 600x1200",
+            value=fixtures.get("recessed_led_600x1200", 0),
+            key=f"led_{current_room}",
+            min_value=0
+        )
     with col2:
-        downlight = st.number_input("Downlights", value=fixtures.get("downlight", 0), key=f"dl_{current_room}")
+        downlight = st.number_input(
+            "Downlights",
+            value=fixtures.get("downlight", 0),
+            key=f"dl_{current_room}",
+            min_value=0
+        )
     with col3:
-        surface = st.number_input("Surface Mount", value=fixtures.get("surface_mount_led", 0), key=f"sm_{current_room}")
+        surface = st.number_input(
+            "Surface Mount",
+            value=fixtures.get("surface_mount_led", 0),
+            key=f"sm_{current_room}",
+            min_value=0
+        )
 
-    st.markdown("**Sockets:**")
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #22C55E;
+                font-weight: 600; margin: 1rem 0 0.5rem 0;">
+        🔌 Power Points
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        socket_300 = st.number_input("Double @300mm", value=fixtures.get("double_socket_300", 0), key=f"s300_{current_room}")
+        socket_300 = st.number_input(
+            "Double @300mm",
+            value=fixtures.get("double_socket_300", 0),
+            key=f"s300_{current_room}",
+            min_value=0,
+            help="Floor-level sockets"
+        )
     with col2:
-        socket_1100 = st.number_input("Double @1100mm", value=fixtures.get("double_socket_1100", 0), key=f"s1100_{current_room}")
+        socket_1100 = st.number_input(
+            "Double @1100mm",
+            value=fixtures.get("double_socket_1100", 0),
+            key=f"s1100_{current_room}",
+            min_value=0,
+            help="Worktop-level sockets"
+        )
     with col3:
-        data_point = st.number_input("Data Points", value=fixtures.get("data_point_cat6", 0), key=f"dp_{current_room}")
+        data_point = st.number_input(
+            "Data Points",
+            value=fixtures.get("data_point_cat6", 0),
+            key=f"dp_{current_room}",
+            min_value=0,
+            help="CAT6 data outlets"
+        )
 
-    st.markdown("**Switches:**")
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #00D4FF;
+                font-weight: 600; margin: 1rem 0 0.5rem 0;">
+        🔲 Switches
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     with col1:
-        switch_1 = st.number_input("1-Lever Switch", value=fixtures.get("switch_1lever", 0), key=f"sw1_{current_room}")
+        switch_1 = st.number_input(
+            "1-Lever Switch",
+            value=fixtures.get("switch_1lever", 0),
+            key=f"sw1_{current_room}",
+            min_value=0
+        )
     with col2:
-        switch_2 = st.number_input("2-Lever Switch", value=fixtures.get("switch_2lever", 0), key=f"sw2_{current_room}")
+        switch_2 = st.number_input(
+            "2-Lever Switch",
+            value=fixtures.get("switch_2lever", 0),
+            key=f"sw2_{current_room}",
+            min_value=0
+        )
 
     # Navigation
-    st.markdown("---")
+    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -842,15 +1214,14 @@ def render_step_6_room_fixtures():
             st.rerun()
 
     with col2:
-        if st.button("Skip Room", key="skip_room", use_container_width=True):
+        if st.button("⏭ Skip Room", key="skip_room", use_container_width=True):
             if current_room in st.session_state.room_fixtures:
                 del st.session_state.room_fixtures[current_room]
             st.session_state.current_room_index = current_idx + 1
             st.rerun()
 
     with col3:
-        if st.button("Confirm Room & Continue →", key="confirm_room", type="primary", use_container_width=True):
-            # Save updated fixtures
+        if st.button("✓ Confirm & Next →", key="confirm_room", type="primary", use_container_width=True):
             updated_fixtures = {
                 "recessed_led_600x1200": led_panel,
                 "downlight": downlight,
@@ -892,11 +1263,37 @@ def render_step_7_cable_routes():
             st.session_state.cable_routes = []
 
     confidence = 0.85 if st.session_state.cable_routes else 0.4
-    render_confidence_badge(confidence)
+    render_confidence_badge(confidence, "Cable Routes")
 
-    st.markdown(f"**{len(st.session_state.cable_routes)} cable routes detected.**")
+    # Cable routes banner
+    route_count = len(st.session_state.cable_routes)
+    color = "#22C55E" if route_count > 0 else "#64748b"
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {color}15, {color}05);
+                border: 1px solid {color}30; border-radius: 12px;
+                padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 2rem;">🔌</span>
+            <div>
+                <div style="font-family: 'Orbitron', sans-serif; color: {color};
+                            font-size: 1.5rem; font-weight: 800;">{route_count} Cable Routes</div>
+                <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                    Main feeder cables between distribution points
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Display as editable table
+    st.markdown("""
+    <div style="font-family: 'Rajdhani', sans-serif; color: #f1f5f9;
+                font-weight: 600; margin-bottom: 0.5rem;">
+        🔌 Cable Schedule
+    </div>
+    """, unsafe_allow_html=True)
+
     if st.session_state.cable_routes:
         import pandas as pd
         df = pd.DataFrame(st.session_state.cable_routes)
@@ -908,20 +1305,20 @@ def render_step_7_cable_routes():
         )
         st.session_state.cable_routes = edited_df.to_dict('records')
     else:
-        st.info("No cable routes extracted. You can add them manually in the table editor.")
+        st.info("No cable routes extracted. You can add them manually using the data editor above.")
 
     # Navigation
-    st.markdown("---")
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("← Back", key="back_step7", use_container_width=True):
+        if st.button("← Back to Room Fixtures", key="back_step7", use_container_width=True):
             st.session_state.guided_step = 6
             st.session_state.current_room_index = len(st.session_state.detected_rooms) - 1
             st.rerun()
 
     with col2:
-        if st.button("Finalize Extraction →", key="finalize", type="primary", use_container_width=True):
+        if st.button("🎯 Finalize Extraction →", key="finalize", type="primary", use_container_width=True):
             pipeline.apply_cable_routes(st.session_state.cable_routes)
             st.session_state.guided_step = 8
             st.session_state.max_completed_step = 7
@@ -934,7 +1331,7 @@ def render_step_7_cable_routes():
 
 def render_step_8_review_export():
     """Step 8: Review and export final results."""
-    section_header("Step 8: Review & Export", "Final extraction summary")
+    section_header("Step 8: Review & Export", "Final extraction summary & BOQ generation")
 
     pipeline: InteractivePipeline = st.session_state.interactive_pipeline
 
@@ -943,11 +1340,9 @@ def render_step_8_review_export():
         with st.spinner("Building final extraction result..."):
             st.session_state.final_extraction = pipeline.build_final_result()
 
-            # Run validation
             validation, _ = validate(st.session_state.final_extraction)
             st.session_state.final_validation = validation
 
-            # Run pricing
             pricing, _ = price(st.session_state.final_extraction, validation, None, None)
             st.session_state.final_pricing = pricing
 
@@ -957,45 +1352,166 @@ def render_step_8_review_export():
 
     # Statistics
     stats = pipeline.get_statistics()
+    total_circuits = sum(
+        len(s.get("circuits", [])) for s in st.session_state.db_schedules.values()
+    )
 
-    st.markdown("### Extraction Summary")
+    # Success banner
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05));
+                border: 1px solid rgba(34,197,94,0.3); border-radius: 16px;
+                padding: 1.5rem; margin-bottom: 2rem; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎉</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+                    color: #22C55E; font-weight: 800; margin-bottom: 0.5rem;">
+            Extraction Complete!
+        </div>
+        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                    text-transform: uppercase; letter-spacing: 2px; font-size: 12px;">
+            Guided Upload Successfully Processed
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Extraction Statistics - styled metric cards
+    st.markdown("""
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 1rem;
+                color: #00D4FF; text-align: center; margin-bottom: 1rem;">
+        EXTRACTION SUMMARY
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("DBs Extracted", stats["db_schedules_extracted"])
-    with col2:
-        total_circuits = sum(
-            len(s.get("circuits", [])) for s in st.session_state.db_schedules.values()
-        )
-        st.metric("Total Circuits", total_circuits)
-    with col3:
-        st.metric("Rooms Processed", stats["room_fixtures_extracted"])
-    with col4:
-        st.metric("Cable Routes", stats["cable_routes"])
-
-    # Compliance score
-    if validation:
-        st.markdown("### SANS 10142-1 Compliance")
-        score = validation.compliance_score
-        color = get_confidence_color(score / 100)
         st.markdown(f"""
-        <div style="background: {color}15; border: 1px solid {color}40;
-                    border-radius: 12px; padding: 1rem; margin: 1rem 0;">
-            <div style="font-size: 2rem; font-weight: bold; color: {color};">{score:.0f}%</div>
-            <div style="color: #94a3b8;">Compliance Score</div>
+        <div style="background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,212,255,0.05));
+                    border: 1px solid rgba(0,212,255,0.3); border-radius: 12px;
+                    padding: 1rem; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem;
+                        font-weight: 800; color: #00D4FF;">{stats["db_schedules_extracted"]}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;">
+                DBs Extracted
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05));
+                    border: 1px solid rgba(34,197,94,0.3); border-radius: 12px;
+                    padding: 1rem; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem;
+                        font-weight: 800; color: #22C55E;">{total_circuits}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;">
+                Total Circuits
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05));
+                    border: 1px solid rgba(245,158,11,0.3); border-radius: 12px;
+                    padding: 1rem; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem;
+                        font-weight: 800; color: #F59E0B;">{stats["room_fixtures_extracted"]}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;">
+                Rooms Processed
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(147,51,234,0.15), rgba(147,51,234,0.05));
+                    border: 1px solid rgba(147,51,234,0.3); border-radius: 12px;
+                    padding: 1rem; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 2rem;
+                        font-weight: 800; color: #9333EA;">{stats["cable_routes"]}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;">
+                Cable Routes
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # Cost summary
-    st.markdown("### API Usage")
+    # Compliance score
+    if validation:
+        st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+        score = validation.compliance_score
+        color = get_confidence_color(score / 100)
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, {color}15, {color}05);
+                    border: 1px solid {color}40; border-radius: 16px;
+                    padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 2.5rem;">⚡</div>
+                    <div>
+                        <div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+                                    text-transform: uppercase; letter-spacing: 2px; font-size: 11px;">
+                            SANS 10142-1 Compliance
+                        </div>
+                        <div style="font-family: 'Orbitron', sans-serif; font-size: 1.2rem;
+                                    color: #f1f5f9; font-weight: 700;">
+                            Electrical Installation Standards
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-family: 'Orbitron', sans-serif; font-size: 2.5rem;
+                                font-weight: 800; color: {color};
+                                text-shadow: 0 0 30px {color}50;">{score:.0f}%</div>
+                    <div style="font-family: 'Rajdhani', sans-serif; color: #64748b;
+                                font-size: 11px; text-transform: uppercase;">Score</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # API Usage
+    st.markdown("""
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 1rem;
+                color: #00D4FF; text-align: center; margin: 1.5rem 0 1rem 0;">
+        API USAGE
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Total Tokens", f"{stats['total_tokens']:,}")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                    border: 1px solid rgba(71,85,105,0.3); border-radius: 12px;
+                    padding: 1rem; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+                        font-weight: 700; color: #f1f5f9;">{stats['total_tokens']:,}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: 1px; color: #64748b;">
+                Total Tokens
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Estimated Cost", f"R{stats['total_cost_zar']:.2f}")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(15,23,42,0.7));
+                    border: 1px solid rgba(71,85,105,0.3); border-radius: 12px;
+                    padding: 1rem; text-align: center;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+                        font-weight: 700; color: #22C55E;">R{stats['total_cost_zar']:.2f}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size: 11px;
+                        text-transform: uppercase; letter-spacing: 1px; color: #64748b;">
+                Estimated Cost
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # Export buttons
-    st.markdown("---")
-    st.markdown("### Export Options")
+    # Export buttons section
+    st.markdown("""
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 1rem;
+                color: #00D4FF; text-align: center; margin: 2rem 0 1rem 0;">
+        EXPORT OPTIONS
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -1019,7 +1535,7 @@ def render_step_8_review_export():
             except Exception as e:
                 st.error(f"Excel export error: {e}")
         else:
-            st.warning("Excel export not available.")
+            st.warning("Excel export not available (install openpyxl).")
 
     with col2:
         if pricing:
@@ -1043,7 +1559,7 @@ def render_step_8_review_export():
                 st.error(f"PDF export error: {e}")
 
     # Navigation
-    st.markdown("---")
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
 
     with col1:
@@ -1055,8 +1571,7 @@ def render_step_8_review_export():
             st.rerun()
 
     with col2:
-        if st.button("Start New Extraction", key="start_new", use_container_width=True):
-            # Clear all state
+        if st.button("🔄 Start New Extraction", key="start_new", use_container_width=True):
             for key in list(st.session_state.keys()):
                 if key.startswith("guided_") or key in [
                     "page_categories", "interactive_pipeline", "project_info",
@@ -1079,10 +1594,10 @@ inject_custom_css()
 # Initialize session state
 init_session_state()
 
-# Page header
+# Page header with premium styling
 page_header(
-    title="Guided Upload",
-    subtitle="Step-by-step extraction with validation"
+    title="⚡ Guided Upload",
+    subtitle="Interactive step-by-step extraction • 70%+ accuracy target"
 )
 
 # Check if pipeline is available
@@ -1094,14 +1609,46 @@ if not LLM_API_KEY:
     st.error("No API key configured. Add GROQ_API_KEY to secrets.toml")
     st.stop()
 
-# Provider info
+# Sidebar with enhanced styling
+st.sidebar.markdown("""
+<div style="font-family: 'Orbitron', sans-serif; font-size: 14px;
+            color: #00D4FF; font-weight: 700; margin-bottom: 1rem;">
+    PIPELINE STATUS
+</div>
+""", unsafe_allow_html=True)
+
 provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", ""))
-st.sidebar.markdown("### Pipeline Status")
-st.sidebar.success(f"✓ {provider_name} ({provider_cost})")
+st.sidebar.markdown(f"""
+<div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05));
+            border: 1px solid rgba(34,197,94,0.3); border-radius: 10px;
+            padding: 0.75rem 1rem; margin-bottom: 1rem;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #22C55E;">✓</span>
+        <div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-weight: 600;
+                        color: #f1f5f9; font-size: 14px;">{provider_name}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; color: #22C55E;
+                        font-size: 12px;">{provider_cost}</div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Sidebar info
+st.sidebar.markdown("""
+<div style="font-family: 'Rajdhani', sans-serif; color: #94a3b8;
+            font-size: 12px; padding: 0.75rem; background: rgba(30,41,59,0.5);
+            border-radius: 8px; margin-top: 1rem;">
+    <strong style="color: #00D4FF;">How it works:</strong><br>
+    1. Upload & categorize pages<br>
+    2. Extract data step-by-step<br>
+    3. Validate at each stage<br>
+    4. Export professional BOQ
+</div>
+""", unsafe_allow_html=True)
 
 # Progress indicator
 render_progress_indicator()
-st.markdown("---")
 
 # Render current step
 step = st.session_state.guided_step
