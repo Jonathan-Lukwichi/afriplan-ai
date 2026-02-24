@@ -291,7 +291,7 @@ def convert_deterministic_to_display(det_result: DeterministicPipelineResult) ->
             "db_name": db_name,
             "main_breaker_a": sld.main_breaker_a,
             "supply_from": sld.supply_from,
-            "total_ways": sld.total_ways,
+            "total_ways": sld.total_circuits + sld.spare_circuits,  # SLDExtraction uses total_circuits + spare_circuits
             "circuits": circuits,
             "schedule_found": True,
         }
