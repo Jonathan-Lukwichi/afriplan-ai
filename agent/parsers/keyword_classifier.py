@@ -98,7 +98,7 @@ class KeywordClassifier:
         rules.append(ClassificationRule(
             name="register_explicit",
             keywords=["drawing register", "drwg register", "drawing list"],
-            weight=2.0,
+            weight=3.0,  # Higher weight - explicit register title is definitive
             match_type="any",
             target_type=PageType.REGISTER,
         ))
@@ -112,7 +112,14 @@ class KeywordClassifier:
         rules.append(ClassificationRule(
             name="register_keywords",
             keywords=["project name", "client", "consultant", "revision"],
-            weight=0.8,
+            weight=1.0,  # Slightly increased
+            match_type="any",
+            target_type=PageType.REGISTER,
+        ))
+        rules.append(ClassificationRule(
+            name="register_project_client",
+            keywords=["project:", "client:"],
+            weight=1.2,  # PROJECT: and CLIENT: labels are strong indicators
             match_type="any",
             target_type=PageType.REGISTER,
         ))
