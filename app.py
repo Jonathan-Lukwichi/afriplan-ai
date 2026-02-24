@@ -1,13 +1,14 @@
 """
-AfriPlan Electrical v4.2 — Main Application
+AfriPlan Electrical v4.11 — Main Application
 
 SA Electrical Quotation Platform - Quantity Take-Off Accelerator
-Simplified workflow: Upload → Extract → Export
 
-v4.2 Simplified Pipeline:
-INGEST → CLASSIFY → EXTRACT → VALIDATE → OUTPUT
+Two upload modes:
+- Smart Upload: Fast automated extraction (38% accuracy with Llama 4)
+- Guided Upload: Step-by-step extraction with user validation (70%+ target)
 
-No editing in-app - contractor fills prices in exported Excel file.
+v4.11 Pipeline:
+INGEST → CLASSIFY → DISCOVER (Multi-Pass) → VALIDATE → PRICE → OUTPUT
 """
 
 import streamlit as st
@@ -34,15 +35,21 @@ smart_upload = st.Page(
     icon="📤"
 )
 
+guided_upload = st.Page(
+    "pages/6_Guided_Upload.py",
+    title="Guided Upload",
+    icon="📋"
+)
+
 profile = st.Page(
     "pages/5_Profile.py",
     title="Settings",
     icon="⚙️"
 )
 
-# Navigation (v4.2 - simplified)
+# Navigation (v4.11 - with Guided Upload)
 pg = st.navigation({
-    "Main": [welcome, smart_upload],
+    "Main": [welcome, smart_upload, guided_upload],
     "Settings": [profile],
 })
 

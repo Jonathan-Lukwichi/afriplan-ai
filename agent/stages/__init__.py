@@ -23,6 +23,12 @@ from .multi_pass_discover import (
     PassResult,
 )
 
+# v4.11 - Interactive step-by-step extraction
+from .interactive_passes import (
+    InteractivePipeline,
+    InteractivePassResult,
+)
+
 __all__ = [
     "ingest",
     "classify",
@@ -39,4 +45,7 @@ __all__ = [
     "MultiPassState",
     "ExtractionPass",
     "PassResult",
+    # v4.11 - Interactive extraction
+    "InteractivePipeline",
+    "InteractivePassResult",
 ]
