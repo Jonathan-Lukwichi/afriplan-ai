@@ -65,6 +65,8 @@ from agent.prompts.lighting_layout_prompt import get_prompt as get_lighting_prom
 from agent.prompts.plugs_layout_prompt import get_plugs_layout_prompt
 from agent.prompts.page_classifier_prompt import get_page_classifier_prompt
 from agent.prompts.legend_prompt import get_legend_prompt
+# v4.10 - SLD-First Strategy
+from agent.prompts.schedule_table_prompt import get_schedule_table_prompt, get_quick_db_detection_prompt
 
 # Extraction models by provider
 DISCOVER_MODELS = {
@@ -219,6 +221,178 @@ def _call_vision_llm(
         return response_text, tokens_used, cost_zar
 
 
+# ============================================================================
+# v4.10 - SLD-FIRST STRATEGY
+# ============================================================================
+#
+# The key insight is that SLD schedule tables contain OFFICIAL point counts.
+# Instead of trying to count symbols on layout drawings, we extract the
+# schedule table data FIRST, then use layouts only for room name validation.
+#
+# This solves the 26% extraction rate problem by:
+# 1. Scanning ALL pages for schedule tables (not just classified SLD pages)
+# 2. Using a FOCUSED prompt that only extracts table data (less distraction)
+# 3. Making the "No Of Point" row the authoritative fixture count
+# ============================================================================
+
+
+def _extract_schedule_tables_first(
+    all_pages: List,
+    client: object,
+    model: str,
+) -> Tuple[Dict[str, Any], int, float]:
+    """
+    v4.10 - SLD-First Strategy: Scan ALL pages for circuit schedule tables.
+
+    This is the FIRST extraction pass. It looks for schedule tables on
+    EVERY page, not just pages classified as SLD. This catches cases where
+    the page classifier incorrectly labeled an SLD page.
+
+    The circuit schedule table is the PRIMARY source of truth for:
+    - DB names and configurations
+    - Circuit counts and IDs
+    - Point counts (NO OF POINT row)
+    - Cable sizes and breaker ratings
+
+    Args:
+        all_pages: All document pages to scan
+        client: API client for vision LLM
+        model: Model to use for extraction
+
+    Returns:
+        Tuple of (schedule_data, tokens_used, cost_zar)
+    """
+    prompt = f"""{SYSTEM_PROMPT}
+
+{get_schedule_table_prompt()}
+"""
+
+    response_text, tokens, cost = _call_vision_llm(
+        client, all_pages[:8], prompt, model, max_tokens=8192
+    )
+
+    parsed = parse_json_safely(response_text) or {}
+    return parsed, tokens, cost
+
+
+def _merge_schedule_table_data(
+    extraction: ExtractionResult,
+    schedule_data: Dict[str, Any],
+) -> int:
+    """
+    Merge schedule table extraction data into ExtractionResult.
+
+    This creates/updates distribution boards and circuits from the
+    authoritative schedule table data.
+
+    Args:
+        extraction: The ExtractionResult to update
+        schedule_data: Data extracted from schedule tables
+
+    Returns:
+        Number of DBs added/updated
+    """
+    dbs_added = 0
+
+    for db_data in schedule_data.get("distribution_boards", []):
+        db_name = db_data.get("name", "")
+        if not db_name:
+            continue
+
+        # Find or create building block
+        block = None
+        if extraction.building_blocks:
+            block = extraction.building_blocks[0]
+        else:
+            block = BuildingBlock(name="Main Building")
+            extraction.building_blocks.append(block)
+
+        # Check if DB already exists
+        existing_db = None
+        for db in block.distribution_boards:
+            if db.name == db_name:
+                existing_db = db
+                break
+
+        if existing_db:
+            # Update existing DB with schedule table data
+            db = existing_db
+        else:
+            # Create new DB
+            db = DistributionBoard(
+                name=db_name,
+                description=db_data.get("description", ""),
+                location=db_data.get("location", ""),
+                building_block=block.name,
+                supply_from=db_data.get("supply_from", ""),
+                supply_cable_size_mm2=float(db_data.get("supply_cable_size_mm2") or 0),
+                supply_cable_length_m=float(db_data.get("supply_cable_length_m") or 0),
+                main_breaker_a=int(db_data.get("main_breaker_a") or 0),
+                main_breaker_type=db_data.get("main_breaker_type") or "mccb",
+                earth_leakage=db_data.get("earth_leakage") or False,
+                surge_protection=db_data.get("surge_protection") or False,
+                spare_ways=int(db_data.get("spare_count") or db_data.get("spare_ways") or 0),
+                confidence=_parse_confidence(db_data.get("confidence") or "extracted"),
+            )
+            block.distribution_boards.append(db)
+            dbs_added += 1
+
+        # Add circuits from schedule table
+        for ckt_data in db_data.get("circuits", []):
+            circuit_id = ckt_data.get("id", "")
+            if not circuit_id:
+                continue
+
+            # Check if circuit already exists
+            existing_circuit = None
+            for ckt in db.circuits:
+                if ckt.id == circuit_id:
+                    existing_circuit = ckt
+                    break
+
+            if existing_circuit:
+                # Update existing circuit with schedule table data (authoritative)
+                existing_circuit.wattage_w = float(ckt_data.get("wattage_w") or existing_circuit.wattage_w)
+                existing_circuit.cable_size_mm2 = float(ckt_data.get("cable_size_mm2") or existing_circuit.cable_size_mm2)
+                existing_circuit.breaker_a = int(ckt_data.get("breaker_a") or existing_circuit.breaker_a)
+                existing_circuit.num_points = int(ckt_data.get("num_points") or existing_circuit.num_points)
+                existing_circuit.confidence = ItemConfidence.EXTRACTED  # Schedule table is authoritative
+            else:
+                # Determine circuit type from ID
+                circuit_type = "power"
+                if circuit_id.upper().startswith("L"):
+                    circuit_type = "lighting"
+                elif circuit_id.upper().startswith("AC"):
+                    circuit_type = "air_con"
+                elif circuit_id.upper().startswith("G"):
+                    circuit_type = "geyser"
+                elif circuit_id.upper().startswith("PP"):
+                    circuit_type = "pool_pump"
+                elif circuit_id.upper().startswith("HP"):
+                    circuit_type = "heat_pump"
+                elif "SPARE" in circuit_id.upper():
+                    circuit_type = "spare"
+
+                circuit = Circuit(
+                    id=circuit_id,
+                    type=ckt_data.get("type") or circuit_type,
+                    description=ckt_data.get("description") or "",
+                    wattage_w=float(ckt_data.get("wattage_w") or 0),
+                    wattage_formula=ckt_data.get("wattage_formula") or "",
+                    cable_size_mm2=float(ckt_data.get("cable_size_mm2") or 2.5),
+                    cable_cores=int(ckt_data.get("cable_cores") or 3),
+                    cable_type=ckt_data.get("cable_type") or "GP WIRE",
+                    breaker_a=int(ckt_data.get("breaker_a") or 20),
+                    breaker_poles=int(ckt_data.get("breaker_poles") or 1),
+                    num_points=int(ckt_data.get("num_points") or 0),
+                    is_spare="SPARE" in circuit_id.upper() or ckt_data.get("is_spare") or False,
+                    confidence=_parse_confidence(ckt_data.get("confidence") or "extracted"),
+                )
+                db.circuits.append(circuit)
+
+    return dbs_added
+
+
 def discover(
     doc_set: DocumentSet,
     tier: ServiceTier,
@@ -277,7 +451,37 @@ def discover(
         for block_name in building_blocks:
             extraction.building_blocks.append(BuildingBlock(name=block_name))
 
-        # Process pages by type
+        # ====================================================================
+        # v4.10 - SLD-FIRST STRATEGY
+        # ====================================================================
+        # CRITICAL: Extract schedule tables from ALL pages FIRST.
+        # This catches DBs even if pages are misclassified.
+        # The schedule table "No Of Point" row is the AUTHORITATIVE fixture count.
+        # ====================================================================
+        if client:
+            try:
+                warnings.append("v4.10: Applying SLD-First Strategy - scanning ALL pages for schedule tables")
+                schedule_data, sched_tokens, sched_cost = _extract_schedule_tables_first(
+                    doc_set.all_pages[:8],  # Scan first 8 pages
+                    client,
+                    extraction_model,
+                )
+                total_tokens += sched_tokens
+                total_cost += sched_cost
+
+                dbs_found = _merge_schedule_table_data(extraction, schedule_data)
+
+                if dbs_found > 0:
+                    warnings.append(f"v4.10: Found {dbs_found} DBs via schedule table extraction")
+                    extraction.pages_with_data += 1
+
+                # Track if schedule tables were found (affects confidence calculation)
+                extraction.metadata.has_schedule_tables = schedule_data.get("page_has_schedule_table", False)
+
+            except Exception as e:
+                errors.append(f"v4.10 SLD-First extraction failed: {str(e)}")
+
+        # Process pages by type (continues with original extraction)
         register_pages = doc_set.pages_by_type(PageType.REGISTER)  # v5.0 - Cover sheet metadata
         sld_pages = doc_set.pages_by_type(PageType.SLD)
         lighting_pages = doc_set.pages_by_type(PageType.LAYOUT_LIGHTING)

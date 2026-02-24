@@ -1,5 +1,5 @@
 """
-AfriPlan Electrical v4.1 — AI Agent Package
+AfriPlan Electrical v4.10 — AI Agent Package
 
 7-Stage Pipeline for Quantity Take-Off Acceleration:
 1. INGEST - Document preprocessing (PyMuPDF + Pillow)
@@ -20,6 +20,13 @@ v4.1 Philosophy:
 - Primary output: Quantity-only BQ (contractor fills prices)
 - Secondary output: Estimated BQ (ballpark reference only)
 - ItemConfidence: EXTRACTED (green), INFERRED (yellow), ESTIMATED (red), MANUAL (blue)
+
+v4.10 - SLD-First Strategy:
+- Circuit schedule tables are the PRIMARY source of truth
+- The "No Of Point" row gives OFFICIAL fixture counts
+- SLD extraction happens FIRST, before layout processing
+- Layout drawings are used for room names and verification only
+- This fixes the 26% extraction rate problem on layout-heavy drawings
 """
 
 from agent.models import (
@@ -135,4 +142,4 @@ __all__ = [
     'generate_output',
 ]
 
-__version__ = '4.1.0'
+__version__ = '4.10.0'

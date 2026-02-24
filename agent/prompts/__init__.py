@@ -1,5 +1,5 @@
 """
-AfriPlan AI v4.2 - Prompts Package
+AfriPlan AI v4.10 - Prompts Package
 
 Contains specialized prompts for each service tier:
 - system_prompt: Shared SA electrical domain knowledge
@@ -13,6 +13,10 @@ v4.2 additions:
 - plugs_layout_prompt: Dedicated plugs/sockets extraction
 - lighting_layout_prompt: Dedicated lighting extraction
 - sld_prompt: SLD/circuit schedule extraction
+
+v4.10 additions:
+- schedule_table_prompt: FOCUSED prompt for circuit schedule table extraction
+  (SLD-First Strategy - extract schedule tables before anything else)
 """
 
 from agent.prompts.system_prompt import SA_ELECTRICAL_SYSTEM_PROMPT
@@ -38,6 +42,13 @@ from agent.prompts.lighting_layout_prompt import (
     get_prompt as get_lighting_prompt
 )
 
+# v4.10 - SLD-First Strategy
+from agent.prompts.schedule_table_prompt import (
+    get_schedule_table_prompt,
+    get_quick_db_detection_prompt,
+    SCHEDULE_TABLE_SCHEMA,
+)
+
 __all__ = [
     # System
     'SA_ELECTRICAL_SYSTEM_PROMPT',
@@ -54,4 +65,8 @@ __all__ = [
     'get_plugs_prompt',
     'get_lighting_layout_prompt',
     'get_lighting_prompt',
+    # v4.10 - SLD-First Strategy
+    'get_schedule_table_prompt',
+    'get_quick_db_detection_prompt',
+    'SCHEDULE_TABLE_SCHEMA',
 ]

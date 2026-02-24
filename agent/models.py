@@ -537,6 +537,9 @@ class ProjectMetadata(BaseModel):
     consultant_email: str = ""
     site_address: str = ""
 
+    # v4.10 - SLD-First Strategy tracking
+    has_schedule_tables: bool = False  # True if schedule tables were found in extraction
+
 
 class Circuit(BaseModel):
     id: str = ""
