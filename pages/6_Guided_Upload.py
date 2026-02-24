@@ -199,6 +199,62 @@ def init_pipeline():
         return None
 
 
+def map_fixture_to_standard_key(name: str) -> str:
+    """Map a legend fixture name to a standard key for build_extraction_result."""
+    name_lower = name.lower()
+
+    # Lighting fixtures
+    if "600x1200" in name_lower or "1200" in name_lower or "panel" in name_lower:
+        return "recessed_led_600x1200"
+    if "600x600" in name_lower:
+        return "recessed_led_600x600"
+    if "downlight" in name_lower or "down light" in name_lower:
+        return "downlight"
+    if "surface" in name_lower or "ceiling" in name_lower:
+        return "surface_mount_led"
+    if "vapor" in name_lower or "vapour" in name_lower:
+        return "vapor_proof"
+    if "bulkhead" in name_lower or "wall" in name_lower:
+        return "bulkhead"
+    if "flood" in name_lower or "outdoor" in name_lower:
+        return "flood_light"
+    if "emergency" in name_lower:
+        return "emergency_light"
+
+    # Switches
+    if "1-lever" in name_lower or "1 lever" in name_lower or "single" in name_lower:
+        if "2-way" in name_lower or "2 way" in name_lower:
+            return "switch_2way"
+        return "switch_1lever"
+    if "2-lever" in name_lower or "2 lever" in name_lower:
+        return "switch_2lever"
+    if "day" in name_lower and "night" in name_lower:
+        return "switch_daynight"
+
+    # Sockets
+    if "double" in name_lower:
+        if "1100" in name_lower or "worktop" in name_lower:
+            return "double_socket_1100"
+        if "water" in name_lower or "ip" in name_lower:
+            return "waterproof_socket"
+        return "double_socket_300"
+    if "single" in name_lower:
+        return "single_socket"
+    if "data" in name_lower or "cat" in name_lower:
+        return "data_point_cat6"
+    if "floor" in name_lower and "box" in name_lower:
+        return "floor_box"
+
+    # Isolators
+    if "isolator" in name_lower or "iso" in name_lower:
+        return "isolator"
+    if "a/c" in name_lower or "air con" in name_lower:
+        return "ac_isolator"
+
+    # Default: use normalized name
+    return name.replace(" ", "_").replace("-", "_").lower()[:30]
+
+
 def render_progress_indicator():
     """Render 5-step progress indicator (4 uploads + review)."""
     step = st.session_state.guided_step
@@ -844,11 +900,11 @@ def render_step_3_lighting():
         cols = st.columns(3)
         for i, lt in enumerate(light_types[:9]):
             name = lt.get("name", f"Light {i+1}")
-            key = f"light_{i}"  # Use index for unique keys
+            std_key = map_fixture_to_standard_key(name)  # Map to standard key
             with cols[i % 3]:
-                light_counts[key] = st.number_input(
+                light_counts[std_key] = st.number_input(
                     name,
-                    value=fixtures.get(key, 0),
+                    value=fixtures.get(std_key, 0),
                     min_value=0,
                     key=f"ltg_light_{current_room}_{i}"
                 )
@@ -859,11 +915,11 @@ def render_step_3_lighting():
         cols = st.columns(3)
         for i, sw in enumerate(switch_types[:6]):
             name = sw.get("name", f"Switch {i+1}")
-            key = f"switch_{i}"  # Use index for unique keys
+            std_key = map_fixture_to_standard_key(name)  # Map to standard key
             with cols[i % 3]:
-                switch_counts[key] = st.number_input(
+                switch_counts[std_key] = st.number_input(
                     name,
-                    value=fixtures.get(key, 0),
+                    value=fixtures.get(std_key, 0),
                     min_value=0,
                     key=f"ltg_sw_{current_room}_{i}"
                 )
@@ -1044,11 +1100,11 @@ def render_step_4_power():
         cols = st.columns(3)
         for i, st_type in enumerate(socket_types[:9]):
             name = st_type.get("name", f"Socket {i+1}")
-            key = f"socket_{i}"  # Use index for unique keys
+            std_key = map_fixture_to_standard_key(name)  # Map to standard key
             with cols[i % 3]:
-                socket_counts[key] = st.number_input(
+                socket_counts[std_key] = st.number_input(
                     name,
-                    value=fixtures.get(key, 0),
+                    value=fixtures.get(std_key, 0),
                     min_value=0,
                     key=f"pwr_sock_{current_room}_{i}"
                 )
@@ -1059,11 +1115,11 @@ def render_step_4_power():
         cols = st.columns(3)
         for i, iso in enumerate(isolator_types[:6]):
             name = iso.get("name", f"Isolator {i+1}")
-            key = f"isolator_{i}"  # Use index for unique keys
+            std_key = map_fixture_to_standard_key(name)  # Map to standard key
             with cols[i % 3]:
-                iso_counts[key] = st.number_input(
+                iso_counts[std_key] = st.number_input(
                     name,
-                    value=fixtures.get(key, 0),
+                    value=fixtures.get(std_key, 0),
                     min_value=0,
                     key=f"pwr_iso_{current_room}_{i}"
                 )

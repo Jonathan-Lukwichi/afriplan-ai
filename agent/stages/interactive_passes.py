@@ -497,12 +497,17 @@ class InteractivePipeline:
     def apply_room_fixtures(self, room_name: str, fixtures_data: Dict) -> None:
         """
         Apply user-validated room fixtures to state.
+        MERGES with existing data (so lighting + power can be added separately).
 
         Args:
             room_name: Name of the room
             fixtures_data: Dict with fixture counts
         """
-        self.state.room_fixtures[room_name] = fixtures_data
+        if room_name in self.state.room_fixtures:
+            # Merge with existing data (don't overwrite)
+            self.state.room_fixtures[room_name].update(fixtures_data)
+        else:
+            self.state.room_fixtures[room_name] = fixtures_data
 
     def mark_room_fixtures_complete(self) -> None:
         """Mark room fixtures pass as complete after processing all rooms."""
