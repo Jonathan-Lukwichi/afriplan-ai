@@ -844,13 +844,13 @@ def render_step_3_lighting():
         cols = st.columns(3)
         for i, lt in enumerate(light_types[:9]):
             name = lt.get("name", f"Light {i+1}")
-            key = name.replace(" ", "_").lower()
+            key = f"light_{i}"  # Use index for unique keys
             with cols[i % 3]:
                 light_counts[key] = st.number_input(
                     name,
                     value=fixtures.get(key, 0),
                     min_value=0,
-                    key=f"lt_{current_room}_{key}"
+                    key=f"ltg_light_{current_room}_{i}"
                 )
 
         st.markdown("##### Switches")
@@ -859,13 +859,13 @@ def render_step_3_lighting():
         cols = st.columns(3)
         for i, sw in enumerate(switch_types[:6]):
             name = sw.get("name", f"Switch {i+1}")
-            key = name.replace(" ", "_").lower()
+            key = f"switch_{i}"  # Use index for unique keys
             with cols[i % 3]:
                 switch_counts[key] = st.number_input(
                     name,
                     value=fixtures.get(key, 0),
                     min_value=0,
-                    key=f"sw_{current_room}_{key}"
+                    key=f"ltg_sw_{current_room}_{i}"
                 )
 
         col1, col2, col3 = st.columns(3)
@@ -1044,13 +1044,13 @@ def render_step_4_power():
         cols = st.columns(3)
         for i, st_type in enumerate(socket_types[:9]):
             name = st_type.get("name", f"Socket {i+1}")
-            key = name.replace(" ", "_").lower()
+            key = f"socket_{i}"  # Use index for unique keys
             with cols[i % 3]:
                 socket_counts[key] = st.number_input(
                     name,
                     value=fixtures.get(key, 0),
                     min_value=0,
-                    key=f"sock_{current_room}_{key}"
+                    key=f"pwr_sock_{current_room}_{i}"
                 )
 
         st.markdown("##### Isolators & Equipment")
@@ -1059,13 +1059,13 @@ def render_step_4_power():
         cols = st.columns(3)
         for i, iso in enumerate(isolator_types[:6]):
             name = iso.get("name", f"Isolator {i+1}")
-            key = name.replace(" ", "_").lower()
+            key = f"isolator_{i}"  # Use index for unique keys
             with cols[i % 3]:
                 iso_counts[key] = st.number_input(
                     name,
                     value=fixtures.get(key, 0),
                     min_value=0,
-                    key=f"iso_{current_room}_{key}"
+                    key=f"pwr_iso_{current_room}_{i}"
                 )
 
         col1, col2, col3 = st.columns(3)
