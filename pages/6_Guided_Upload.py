@@ -120,6 +120,9 @@ def init_session_state():
         # Extraction mode: "ai" or "local"
         "extraction_mode": "ai",
 
+        # Upload mode: "guided" (4-step) or "quick" (single upload)
+        "upload_mode": "guided",
+
         # Navigation (5 steps: 4 uploads + 1 review)
         "guided_step": 1,
         "max_completed_step": 0,
@@ -135,6 +138,10 @@ def init_session_state():
         "sld_bytes": None,
         "lighting_bytes": None,
         "power_bytes": None,
+
+        # Quick upload - single combined document
+        "combined_bytes": None,
+        "quick_upload_result": None,
 
         # Pipeline instances
         "interactive_pipeline": None,  # AI-based
@@ -603,6 +610,226 @@ def show_page_thumbnails(pages, max_show=3):
                     caption=f"Page {i+1}",
                     use_container_width=True
                 )
+
+
+# ============================================================================
+# QUICK UPLOAD MODE (Single Document - Automatic Split)
+# ============================================================================
+
+def render_quick_upload():
+    """
+    Quick Upload mode: Single combined PDF, automatic page splitting & classification.
+    Only available in Local mode (deterministic pipeline).
+    """
+    section_header("Quick Upload (Local Mode)",
+                   "Upload combined PDF - automatic page splitting & classification")
+
+    st.info("""
+    **Upload a single PDF** containing all pages (cover, SLD, lighting, power layouts).
+
+    The deterministic pipeline will automatically:
+    1. 📥 **INGEST** - Convert PDF to pages
+    2. 🏷️ **CLASSIFY** - Detect page types (Register, SLD, Lighting, Plugs)
+    3. ✂️ **CROP** - Identify regions (title block, legend, schedule)
+    4. 📊 **EXTRACT** - Pull data from each page type
+    5. 🔗 **MERGE** - Aggregate to project-level results
+    """)
+
+    # File upload
+    uploaded_file = st.file_uploader(
+        "Upload Combined PDF",
+        type=["pdf"],
+        key="quick_upload_file"
+    )
+
+    if uploaded_file:
+        st.session_state.combined_bytes = uploaded_file.getvalue()
+        st.success(f"Uploaded: {uploaded_file.name} ({len(st.session_state.combined_bytes) / 1024:.1f} KB)")
+
+    if st.session_state.combined_bytes and not st.session_state.quick_upload_result:
+        if st.button("🚀 Process Document (Local)", type="primary", use_container_width=True):
+            with st.spinner("Running 5-stage deterministic pipeline..."):
+                # Show progress stages
+                progress_container = st.empty()
+
+                # Run deterministic pipeline
+                det_result = process_with_deterministic_pipeline(
+                    st.session_state.combined_bytes,
+                    uploaded_file.name if uploaded_file else "document.pdf"
+                )
+
+                if det_result:
+                    st.session_state.quick_upload_result = det_result
+                    st.session_state.deterministic_result = det_result
+                    st.rerun()
+
+    # Show results
+    if st.session_state.quick_upload_result:
+        render_quick_upload_results()
+
+
+def render_quick_upload_results():
+    """Display results from quick upload processing."""
+    det_result = st.session_state.quick_upload_result
+
+    if not det_result or not det_result.success:
+        st.error("Extraction failed. Try the 4-step guided upload instead.")
+        if det_result and det_result.errors:
+            for err in det_result.errors[:3]:
+                st.error(f"Error: {err}")
+        return
+
+    # Success banner
+    st.success("✅ Document processed successfully!")
+
+    # Pipeline stages summary
+    st.markdown("### Pipeline Stages")
+    render_deterministic_progress("MERGE", 1.0)
+
+    # Show stage timings
+    if det_result.stage_results:
+        cols = st.columns(5)
+        for i, stage in enumerate(det_result.stage_results[:5]):
+            with cols[i]:
+                st.metric(
+                    stage.stage_name,
+                    f"{stage.processing_time_ms}ms",
+                    f"{stage.items_processed} items"
+                )
+
+    # Page classification summary
+    st.markdown("### Page Classification")
+    if det_result.pages:
+        page_types = {}
+        for page in det_result.pages:
+            ptype = page.classification.page_type.value if page.classification else "unknown"
+            page_types[ptype] = page_types.get(ptype, 0) + 1
+
+        cols = st.columns(len(page_types))
+        for i, (ptype, count) in enumerate(page_types.items()):
+            with cols[i]:
+                icon = {"register": "📋", "sld": "⚡", "layout_lighting": "💡",
+                        "layout_plugs": "🔌", "unknown": "❓"}.get(ptype, "📄")
+                st.metric(f"{icon} {ptype.replace('_', ' ').title()}", count)
+
+    # Extraction summary
+    st.markdown("### Extraction Summary")
+    project = det_result.project_result
+
+    if project:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Project Name", project.project_name or "Not found")
+        with col2:
+            st.metric("DBs Found", len(project.sld_pages))
+        with col3:
+            total_circuits = sum(
+                len(p.sld_data.circuits) if p.sld_data else 0
+                for p in project.sld_pages
+            )
+            st.metric("Circuits", total_circuits)
+        with col4:
+            room_count = sum(
+                len(p.layout_data.room_labels) if p.layout_data else 0
+                for p in project.lighting_pages + project.plugs_pages
+            )
+            st.metric("Rooms", room_count)
+
+        # Detailed results in expanders
+        if project.sld_pages:
+            with st.expander("⚡ SLD / Circuit Schedules", expanded=True):
+                for sld_page in project.sld_pages:
+                    if sld_page.sld_data:
+                        st.markdown(f"**{sld_page.sld_data.db_name or 'DB'}** - "
+                                    f"Main: {sld_page.sld_data.main_breaker_a}A, "
+                                    f"{len(sld_page.sld_data.circuits)} circuits")
+                        if sld_page.sld_data.circuits:
+                            import pandas as pd
+                            df = pd.DataFrame([{
+                                "Circuit": c.circuit_id,
+                                "Description": c.description,
+                                "Points": c.num_points,
+                                "Wattage": c.wattage_w,
+                                "Breaker": f"{c.breaker_a}A" if c.breaker_a else "",
+                                "Wire": c.wire_size_mm2,
+                            } for c in sld_page.sld_data.circuits])
+                            st.dataframe(df, use_container_width=True)
+
+        if project.lighting_pages:
+            with st.expander("💡 Lighting Layout"):
+                for lt_page in project.lighting_pages:
+                    if lt_page.layout_data:
+                        st.markdown(f"**Page {lt_page.page_number}** - "
+                                    f"Rooms: {', '.join(lt_page.layout_data.room_labels[:5])}")
+                        if lt_page.layout_data.legend_items:
+                            st.markdown(f"Legend: {', '.join(lt_page.layout_data.legend_items[:10])}")
+
+        if project.plugs_pages:
+            with st.expander("🔌 Power Layout"):
+                for pw_page in project.plugs_pages:
+                    if pw_page.layout_data:
+                        st.markdown(f"**Page {pw_page.page_number}** - "
+                                    f"Rooms: {', '.join(pw_page.layout_data.room_labels[:5])}")
+
+        # Populate session state for export
+        display = convert_deterministic_to_display(det_result)
+        st.session_state.project_info = display.get("project_info", {})
+        st.session_state.detected_dbs = display.get("detected_dbs", [])
+        st.session_state.db_schedules = display.get("db_schedules", {})
+        st.session_state.detected_rooms = display.get("rooms", [])
+
+    # Warnings
+    if det_result.warnings:
+        with st.expander(f"⚠️ Warnings ({len(det_result.warnings)})", expanded=False):
+            for warn in det_result.warnings[:10]:
+                st.warning(f"{warn.message}")
+
+    # Export buttons
+    st.markdown("### Export")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        # Build extraction result for export
+        if st.button("Generate BOQ", type="primary", use_container_width=True):
+            st.session_state.final_extraction = build_extraction_from_session_state()
+            try:
+                validation, _ = validate(st.session_state.final_extraction)
+                st.session_state.final_validation = validation
+                pricing, _ = price(st.session_state.final_extraction, validation, None, None)
+                st.session_state.final_pricing = pricing
+                st.success("BOQ generated!")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    with col2:
+        if st.session_state.final_pricing and HAS_OPENPYXL:
+            try:
+                project_name = st.session_state.project_info.get("project_name", "Project")
+                safe_name = "".join(c for c in project_name if c.isalnum() or c in " -_")[:50]
+                excel_bytes = export_professional_bq(
+                    st.session_state.final_pricing,
+                    st.session_state.final_extraction,
+                    project_name
+                )
+                st.download_button(
+                    "📥 Download Excel BOQ",
+                    data=excel_bytes,
+                    file_name=f"{safe_name}_BOQ.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"Excel error: {e}")
+
+    with col3:
+        if st.button("🔄 Start Over", use_container_width=True):
+            st.session_state.combined_bytes = None
+            st.session_state.quick_upload_result = None
+            st.session_state.deterministic_result = None
+            st.session_state.final_extraction = None
+            st.session_state.final_validation = None
+            st.session_state.final_pricing = None
+            st.rerun()
 
 
 # ============================================================================
@@ -2000,6 +2227,7 @@ def render_step_5_review():
                 "guided_step", "max_completed_step",
                 "cover_pages", "sld_pages", "lighting_pages", "power_pages",
                 "cover_bytes", "sld_bytes", "lighting_bytes", "power_bytes",
+                "combined_bytes", "quick_upload_result",
                 "interactive_pipeline", "deterministic_pipeline", "deterministic_result",
                 "project_info",
                 "supply_point", "detected_dbs", "db_schedules", "cable_routes",
@@ -2068,7 +2296,7 @@ if selected_mode != st.session_state.extraction_mode:
     st.session_state.final_pricing = None
     st.session_state.deterministic_result = None
 
-# Show mode-specific info
+# Show mode-specific info and upload mode option
 if st.session_state.extraction_mode == "local":
     st.sidebar.info("""
     **Local Mode (No AI)**
@@ -2079,14 +2307,27 @@ if st.session_state.extraction_mode == "local":
     ✅ Offline - Works without internet
 
     **Method:** Regex, keywords, OpenCV
-
-    **Best for:**
-    - Standard SA electrical drawings
-    - Quick estimates
-    - Privacy-sensitive projects
     """)
+
+    # Upload mode selection (only for local mode)
+    st.sidebar.markdown("### 📤 Upload Mode")
+    upload_mode = st.sidebar.radio(
+        "Choose upload style:",
+        options=["quick", "guided"],
+        format_func=lambda x: "⚡ Quick Upload (Single PDF)" if x == "quick" else "📝 4-Step Guided",
+        key="upload_mode_radio",
+        help="**Quick:** Upload one combined PDF, auto-split. **Guided:** Upload 4 separate documents."
+    )
+
+    if upload_mode != st.session_state.upload_mode:
+        st.session_state.upload_mode = upload_mode
+        # Reset state when changing upload mode
+        st.session_state.quick_upload_result = None
+        st.session_state.combined_bytes = None
 else:
-    # AI mode
+    # AI mode - only guided upload available
+    st.session_state.upload_mode = "guided"
+
     st.sidebar.markdown("### AI Provider")
     provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", ""))
     st.sidebar.success(f"{provider_name} ({provider_cost})")
@@ -2098,11 +2339,6 @@ else:
     ✅ Better at complex layouts
     ✅ Understands context
     ⚠️ Requires API key
-
-    **Best for:**
-    - Complex commercial drawings
-    - Non-standard formats
-    - Maximum accuracy
     """)
 
 st.sidebar.markdown("---")
@@ -2117,19 +2353,23 @@ st.sidebar.markdown("""
 **Key Improvement:** Extract legends BEFORE counting fixtures for higher accuracy.
 """)
 
-# Progress indicator
-render_progress_indicator()
+# Render based on upload mode
+if st.session_state.upload_mode == "quick" and st.session_state.extraction_mode == "local":
+    # Quick Upload mode - single PDF, automatic processing
+    render_quick_upload()
+else:
+    # Guided 4-step upload mode
+    render_progress_indicator()
 
-# Render current step
-step = st.session_state.guided_step
+    step = st.session_state.guided_step
 
-if step == 1:
-    render_step_1_cover()
-elif step == 2:
-    render_step_2_sld()
-elif step == 3:
-    render_step_3_lighting()
-elif step == 4:
-    render_step_4_power()
-elif step == 5:
-    render_step_5_review()
+    if step == 1:
+        render_step_1_cover()
+    elif step == 2:
+        render_step_2_sld()
+    elif step == 3:
+        render_step_3_lighting()
+    elif step == 4:
+        render_step_4_power()
+    elif step == 5:
+        render_step_5_review()
