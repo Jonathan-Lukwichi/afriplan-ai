@@ -269,39 +269,39 @@ def convert_deterministic_to_display(det_result: DeterministicPipelineResult) ->
     }
 
     # Extract DB info from SLD pages
-    for sld_page in project.sld_pages:
-        if sld_page.sld_data:
-            db_name = sld_page.sld_data.db_name or f"DB-{len(display['detected_dbs'])+1}"
-            if db_name not in display["detected_dbs"]:
-                display["detected_dbs"].append(db_name)
+    # project.sld_pages is List[SLDExtraction] directly (not PageExtractionResult)
+    for sld in project.sld_pages:
+        db_name = sld.db_name or f"DB-{len(display['detected_dbs'])+1}"
+        if db_name not in display["detected_dbs"]:
+            display["detected_dbs"].append(db_name)
 
-            # Build schedule from circuits
-            circuits = []
-            for circuit in sld_page.sld_data.circuits:
-                circuits.append({
-                    "circuit_id": circuit.circuit_id,
-                    "description": circuit.description,
-                    "points": circuit.num_points,
-                    "wattage_w": circuit.wattage_w,
-                    "breaker_a": circuit.breaker_a,
-                    "wire_size": circuit.wire_size_mm2,
-                })
+        # Build schedule from circuits
+        circuits = []
+        for circuit in sld.circuits:
+            circuits.append({
+                "circuit_id": circuit.circuit_id,
+                "description": circuit.description,
+                "points": circuit.num_points,
+                "wattage_w": circuit.wattage_w,
+                "breaker_a": circuit.breaker_a,
+                "wire_size": circuit.wire_size_mm2,
+            })
 
-            display["db_schedules"][db_name] = {
-                "db_name": db_name,
-                "main_breaker_a": sld_page.sld_data.main_breaker_a,
-                "supply_from": sld_page.sld_data.supply_from,
-                "total_ways": sld_page.sld_data.total_ways,
-                "circuits": circuits,
-                "schedule_found": True,
-            }
+        display["db_schedules"][db_name] = {
+            "db_name": db_name,
+            "main_breaker_a": sld.main_breaker_a,
+            "supply_from": sld.supply_from,
+            "total_ways": sld.total_ways,
+            "circuits": circuits,
+            "schedule_found": True,
+        }
 
     # Extract room info from layout pages
-    for layout_page in project.lighting_pages + project.plugs_pages:
-        if layout_page.layout_data:
-            for room in layout_page.layout_data.room_labels:
-                if room not in display["rooms"]:
-                    display["rooms"].append(room)
+    # project.lighting_pages/plugs_pages are List[LayoutExtraction] directly
+    for layout in project.lighting_pages + project.plugs_pages:
+        for room in layout.room_labels:
+            if room not in display["rooms"]:
+                display["rooms"].append(room)
 
     # Note: Detailed fixture counts per room would require additional processing
     # The deterministic pipeline extracts at page level, not room level
@@ -723,53 +723,54 @@ def render_quick_upload_results():
         with col2:
             st.metric("DBs Found", len(project.sld_pages))
         with col3:
+            # project.sld_pages is List[SLDExtraction] directly
             total_circuits = sum(
-                len(p.sld_data.circuits) if p.sld_data else 0
-                for p in project.sld_pages
+                len(sld.circuits) for sld in project.sld_pages
             )
             st.metric("Circuits", total_circuits)
         with col4:
+            # project.lighting_pages/plugs_pages are List[LayoutExtraction] directly
             room_count = sum(
-                len(p.layout_data.room_labels) if p.layout_data else 0
-                for p in project.lighting_pages + project.plugs_pages
+                len(layout.room_labels)
+                for layout in project.lighting_pages + project.plugs_pages
             )
             st.metric("Rooms", room_count)
 
         # Detailed results in expanders
         if project.sld_pages:
             with st.expander("⚡ SLD / Circuit Schedules", expanded=True):
-                for sld_page in project.sld_pages:
-                    if sld_page.sld_data:
-                        st.markdown(f"**{sld_page.sld_data.db_name or 'DB'}** - "
-                                    f"Main: {sld_page.sld_data.main_breaker_a}A, "
-                                    f"{len(sld_page.sld_data.circuits)} circuits")
-                        if sld_page.sld_data.circuits:
-                            import pandas as pd
-                            df = pd.DataFrame([{
-                                "Circuit": c.circuit_id,
-                                "Description": c.description,
-                                "Points": c.num_points,
-                                "Wattage": c.wattage_w,
-                                "Breaker": f"{c.breaker_a}A" if c.breaker_a else "",
-                                "Wire": c.wire_size_mm2,
-                            } for c in sld_page.sld_data.circuits])
-                            st.dataframe(df, use_container_width=True)
+                for sld in project.sld_pages:
+                    # sld is SLDExtraction directly, not PageExtractionResult
+                    st.markdown(f"**{sld.db_name or 'DB'}** - "
+                                f"Main: {sld.main_breaker_a}A, "
+                                f"{len(sld.circuits)} circuits")
+                    if sld.circuits:
+                        import pandas as pd
+                        df = pd.DataFrame([{
+                            "Circuit": c.circuit_id,
+                            "Description": c.description,
+                            "Points": c.num_points,
+                            "Wattage": c.wattage_w,
+                            "Breaker": f"{c.breaker_a}A" if c.breaker_a else "",
+                            "Wire": c.wire_size_mm2,
+                        } for c in sld.circuits])
+                        st.dataframe(df, use_container_width=True)
 
         if project.lighting_pages:
             with st.expander("💡 Lighting Layout"):
-                for lt_page in project.lighting_pages:
-                    if lt_page.layout_data:
-                        st.markdown(f"**Page {lt_page.page_number}** - "
-                                    f"Rooms: {', '.join(lt_page.layout_data.room_labels[:5])}")
-                        if lt_page.layout_data.legend_items:
-                            st.markdown(f"Legend: {', '.join(lt_page.layout_data.legend_items[:10])}")
+                for i, layout in enumerate(project.lighting_pages):
+                    # layout is LayoutExtraction directly
+                    st.markdown(f"**Lighting {i+1}** - "
+                                f"Rooms: {', '.join(layout.room_labels[:5])}")
+                    if layout.legend_items:
+                        st.markdown(f"Legend: {', '.join(layout.legend_items[:10])}")
 
         if project.plugs_pages:
             with st.expander("🔌 Power Layout"):
-                for pw_page in project.plugs_pages:
-                    if pw_page.layout_data:
-                        st.markdown(f"**Page {pw_page.page_number}** - "
-                                    f"Rooms: {', '.join(pw_page.layout_data.room_labels[:5])}")
+                for i, layout in enumerate(project.plugs_pages):
+                    # layout is LayoutExtraction directly
+                    st.markdown(f"**Power {i+1}** - "
+                                f"Rooms: {', '.join(layout.room_labels[:5])}")
 
         # Populate session state for export
         display = convert_deterministic_to_display(det_result)
@@ -1409,11 +1410,12 @@ def render_step_3_lighting():
                     st.session_state.detected_rooms = display.get("rooms", [])
 
                     # Build legend from extracted legend items
+                    # Use page_results (List[PageExtractionResult]) which has layout_data
                     light_types = []
                     switch_types = []
-                    for page in det_result.pages:
-                        if page.layout_data:
-                            for item in page.layout_data.legend_items:
+                    for page_result in det_result.page_results:
+                        if page_result.layout_data:
+                            for item in page_result.layout_data.legend_items:
                                 item_lower = item.lower()
                                 if any(x in item_lower for x in ["light", "downlight", "led", "panel", "flood"]):
                                     light_types.append({"name": item, "symbol": "", "wattage_w": 0})
@@ -1735,11 +1737,12 @@ def render_step_4_power():
                 )
                 if det_result and det_result.success:
                     # Extract power data from result
+                    # Use page_results (List[PageExtractionResult]) which has layout_data
                     socket_types = []
                     isolator_types = []
-                    for page in det_result.pages:
-                        if page.layout_data:
-                            for item in page.layout_data.legend_items:
+                    for page_result in det_result.page_results:
+                        if page_result.layout_data:
+                            for item in page_result.layout_data.legend_items:
                                 item_lower = item.lower()
                                 if any(x in item_lower for x in ["socket", "plug", "outlet", "data", "cat"]):
                                     socket_types.append({"name": item, "symbol": "", "height_mm": 300})
@@ -1989,29 +1992,29 @@ def render_step_5_review():
                         rooms = []
 
                         # Convert SLD data to ExtractionResult format
-                        for sld_page in project.sld_pages:
-                            if sld_page.sld_data:
-                                circuits = []
-                                for c in sld_page.sld_data.circuits:
-                                    circuits.append(Circuit(
-                                        circuit_id=c.circuit_id,
-                                        description=c.description,
-                                        breaker_a=c.breaker_a or 10,
-                                        wire_size_mm2=c.wire_size_mm2 or "1.5",
-                                        points=c.num_points or 0,
-                                    ))
-                                dbs.append(DistributionBoard(
-                                    name=sld_page.sld_data.db_name or "DB",
-                                    main_breaker_a=sld_page.sld_data.main_breaker_a or 100,
-                                    total_ways=sld_page.sld_data.total_ways or 12,
-                                    circuits=circuits,
+                        # project.sld_pages is List[SLDExtraction] directly
+                        for sld in project.sld_pages:
+                            circuits = []
+                            for c in sld.circuits:
+                                circuits.append(Circuit(
+                                    circuit_id=c.circuit_id,
+                                    description=c.description,
+                                    breaker_a=c.breaker_a or 10,
+                                    wire_size_mm2=c.wire_size_mm2 or "1.5",
+                                    points=c.num_points or 0,
                                 ))
+                            dbs.append(DistributionBoard(
+                                name=sld.db_name or "DB",
+                                main_breaker_a=sld.main_breaker_a or 100,
+                                total_ways=sld.total_ways or 12,
+                                circuits=circuits,
+                            ))
 
                         # Convert layout data to rooms
+                        # project.lighting_pages/plugs_pages are List[LayoutExtraction] directly
                         room_names = set()
-                        for layout_page in project.lighting_pages + project.plugs_pages:
-                            if layout_page.layout_data:
-                                room_names.update(layout_page.layout_data.room_labels)
+                        for layout in project.lighting_pages + project.plugs_pages:
+                            room_names.update(layout.room_labels)
 
                         for room_name in room_names:
                             rooms.append(Room(
