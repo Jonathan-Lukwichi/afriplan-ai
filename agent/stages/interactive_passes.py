@@ -141,12 +141,15 @@ class InteractivePipeline:
             self.provider,
         )
 
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
         display_data = {
-            "project_name": result.data.get("project_name", ""),
-            "client_name": result.data.get("client_name", ""),
-            "consultant_name": result.data.get("consultant_name", ""),
-            "date": result.data.get("date", ""),
-            "revision": result.data.get("revision", ""),
+            "project_name": data.get("project_name", ""),
+            "client_name": data.get("client_name", ""),
+            "consultant_name": data.get("consultant_name", ""),
+            "date": data.get("date", ""),
+            "revision": data.get("revision", ""),
         }
 
         # Update running totals
@@ -156,7 +159,7 @@ class InteractivePipeline:
         return InteractivePassResult(
             success=result.success and bool(display_data.get("project_name")),
             confidence=0.85 if result.success and display_data.get("project_name") else 0.3,
-            raw_data=result.data,
+            raw_data=data,
             display_data=display_data,
             tokens_used=result.tokens_used,
             cost_zar=result.cost_zar,
@@ -214,7 +217,10 @@ class InteractivePipeline:
             self.provider,
         )
 
-        dbs = result.data.get("distribution_boards", [])
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        dbs = data.get("distribution_boards", [])
         db_list = [
             {"name": db.get("name", ""), "location": db.get("location", "")}
             for db in dbs if db.get("name")
@@ -227,7 +233,7 @@ class InteractivePipeline:
         return InteractivePassResult(
             success=result.success and len(db_list) > 0,
             confidence=0.92 if len(db_list) > 0 else 0.3,
-            raw_data=result.data,
+            raw_data=data,
             display_data={"dbs": db_list, "count": len(db_list)},
             tokens_used=result.tokens_used,
             cost_zar=result.cost_zar,
@@ -289,17 +295,20 @@ class InteractivePipeline:
             self.provider,
         )
 
-        schedule_found = result.data.get("schedule_found", False)
-        circuits = result.data.get("circuits", [])
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        schedule_found = data.get("schedule_found", False)
+        circuits = data.get("circuits", [])
 
         display_data = {
             "db_name": db_name,
-            "main_breaker_a": result.data.get("main_breaker_a", 0),
-            "supply_from": result.data.get("supply_from", ""),
-            "supply_cable_mm2": result.data.get("supply_cable_mm2", 0),
+            "main_breaker_a": data.get("main_breaker_a", 0),
+            "supply_from": data.get("supply_from", ""),
+            "supply_cable_mm2": data.get("supply_cable_mm2", 0),
             "circuits": circuits,
-            "spare_count": result.data.get("spare_count", 0),
-            "total_ways": result.data.get("total_ways", len(circuits)),
+            "spare_count": data.get("spare_count", 0),
+            "total_ways": data.get("total_ways", len(circuits)),
             "schedule_found": schedule_found,
         }
 
@@ -310,7 +319,7 @@ class InteractivePipeline:
         return InteractivePassResult(
             success=schedule_found,
             confidence=0.78 if schedule_found else 0.3,
-            raw_data=result.data,
+            raw_data=data,
             display_data=display_data,
             tokens_used=result.tokens_used,
             cost_zar=result.cost_zar,
@@ -372,7 +381,10 @@ class InteractivePipeline:
             self.provider,
         )
 
-        rooms = result.data.get("rooms", [])
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        rooms = data.get("rooms", [])
         room_list = [
             {
                 "name": r.get("name", ""),
@@ -390,7 +402,7 @@ class InteractivePipeline:
         return InteractivePassResult(
             success=result.success and len(room_list) > 0,
             confidence=0.88 if len(room_list) > 0 else 0.3,
-            raw_data=result.data,
+            raw_data=data,
             display_data={"rooms": room_list, "count": len(room_list)},
             tokens_used=result.tokens_used,
             cost_zar=result.cost_zar,
@@ -454,14 +466,17 @@ class InteractivePipeline:
             self.provider,
         )
 
-        found = result.data.get("found_in_drawing", False)
-        fixtures = result.data.get("fixtures", {})
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        found = data.get("found_in_drawing", False)
+        fixtures = data.get("fixtures", {})
 
         display_data = {
             "room_name": room_name,
             "found_in_drawing": found,
             "fixtures": fixtures,
-            "circuit_refs": result.data.get("circuit_refs", []),
+            "circuit_refs": data.get("circuit_refs", []),
         }
 
         # Update running totals
@@ -471,7 +486,7 @@ class InteractivePipeline:
         return InteractivePassResult(
             success=found,
             confidence=0.72 if found else 0.3,
-            raw_data=result.data,
+            raw_data=data,
             display_data=display_data,
             tokens_used=result.tokens_used,
             cost_zar=result.cost_zar,
@@ -531,7 +546,10 @@ class InteractivePipeline:
             self.provider,
         )
 
-        routes = result.data.get("cable_routes", [])
+        # Defensive: ensure data is always a dict
+        data = result.data if result.data is not None else {}
+
+        routes = data.get("cable_routes", [])
 
         # Update running totals
         self.state.total_tokens += result.tokens_used
@@ -540,7 +558,7 @@ class InteractivePipeline:
         return InteractivePassResult(
             success=len(routes) > 0,
             confidence=0.85 if routes else 0.4,
-            raw_data=result.data,
+            raw_data=data,
             display_data={"routes": routes, "count": len(routes)},
             tokens_used=result.tokens_used,
             cost_zar=result.cost_zar,
