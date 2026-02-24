@@ -1344,3 +1344,407 @@ TIER_DISPLAY = {
 
 def get_tier_display_info(tier: ServiceTier) -> dict:
     return TIER_DISPLAY.get(tier, TIER_DISPLAY[ServiceTier.UNKNOWN])
+
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  DETERMINISTIC PIPELINE MODELS (v5.0 - No AI)                                ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+# These models support the local-only, deterministic extraction pipeline.
+# No AI API calls required. Uses keyword matching, regex, and OpenCV.
+
+
+class DetectionMethod(str, Enum):
+    """How a region or value was detected."""
+    KEYWORD_BBOX = "keyword_bbox"           # Found via keyword proximity
+    CONTOUR_DETECTED = "contour_detected"   # OpenCV line/contour detection
+    TABLE_DETECTED = "table_detected"       # Table structure detected
+    DEFAULT_HEURISTIC = "default_heuristic" # Geometric default position
+    TEXT_DENSITY = "text_density"           # High text concentration area
+    MANUAL = "manual"                       # User-defined region
+
+
+class ExtractionWarning(BaseModel):
+    """Warning generated during deterministic extraction."""
+    code: str = ""                          # e.g., "REGION_NOT_FOUND", "PARSE_FAILED"
+    message: str = ""
+    severity: Severity = Severity.WARNING
+    page_number: int = 0
+    source_stage: str = ""                  # "ingest", "classify", "crop", "extract", "merge"
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class BoundingBox(BaseModel):
+    """
+    Bounding box for page regions.
+    Stores both pixel coordinates and normalized (0-1) coordinates.
+    """
+    # Pixel coordinates (for cropping)
+    x0: float = 0.0
+    y0: float = 0.0
+    x1: float = 0.0
+    y1: float = 0.0
+
+    # Normalized coordinates (0-1 range, for display)
+    x0_norm: float = 0.0
+    y0_norm: float = 0.0
+    x1_norm: float = 0.0
+    y1_norm: float = 0.0
+
+    # Page dimensions (for conversion)
+    page_width: int = 0
+    page_height: int = 0
+
+    # Detection metadata
+    detection_method: DetectionMethod = DetectionMethod.DEFAULT_HEURISTIC
+    confidence: float = 0.5
+
+    @computed_field
+    @property
+    def width(self) -> float:
+        return self.x1 - self.x0
+
+    @computed_field
+    @property
+    def height(self) -> float:
+        return self.y1 - self.y0
+
+    @computed_field
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+
+    @computed_field
+    @property
+    def center(self) -> tuple:
+        return ((self.x0 + self.x1) / 2, (self.y0 + self.y1) / 2)
+
+    def normalize(self) -> None:
+        """Compute normalized coordinates from pixel coordinates."""
+        if self.page_width > 0 and self.page_height > 0:
+            self.x0_norm = self.x0 / self.page_width
+            self.y0_norm = self.y0 / self.page_height
+            self.x1_norm = self.x1 / self.page_width
+            self.y1_norm = self.y1 / self.page_height
+
+
+class TextBlock(BaseModel):
+    """A text block extracted from PDF with position."""
+    text: str = ""
+    bbox: BoundingBox = Field(default_factory=BoundingBox)
+    font_size: float = 0.0
+    font_name: str = ""
+    is_bold: bool = False
+    line_number: int = 0
+
+
+class PageRegions(BaseModel):
+    """
+    Detected regions on a page.
+    Each region is a bounding box + detection method.
+    """
+    title_block: Optional[BoundingBox] = None
+    legend: Optional[BoundingBox] = None
+    schedule: Optional[BoundingBox] = None
+    main_drawing: Optional[BoundingBox] = None
+    notes: Optional[BoundingBox] = None
+
+    # All detected regions (for debugging)
+    all_regions: Dict[str, BoundingBox] = Field(default_factory=dict)
+
+    # Detection metadata
+    detection_successful: bool = False
+    method_used: str = "default_heuristic"
+    warnings: List[ExtractionWarning] = Field(default_factory=list)
+
+
+class PageClassification(BaseModel):
+    """Result of deterministic page classification."""
+    page_type: PageType = PageType.UNKNOWN
+    confidence: float = 0.0
+    matched_rules: List[str] = Field(default_factory=list)  # Which rules triggered
+    drawing_number: str = ""
+    drawing_title: str = ""
+    building_block: str = ""
+
+    # Text analysis
+    keyword_scores: Dict[str, float] = Field(default_factory=dict)
+    dominant_keywords: List[str] = Field(default_factory=list)
+
+
+class DocumentPage(BaseModel):
+    """
+    A single page from a PDF document with all extracted data.
+    This is the core unit for deterministic processing.
+    """
+    # Identity
+    page_id: str = ""                       # Unique ID: filename_pageN
+    page_index: int = 0                     # 0-based index
+    page_number: int = 1                    # 1-based number (for display)
+    source_document: str = ""               # Original filename
+
+    # Dimensions
+    width_px: int = 0
+    height_px: int = 0
+    dpi: int = 200
+
+    # Raw content
+    raw_text: str = ""
+    text_blocks: List[TextBlock] = Field(default_factory=list)
+    image_base64: str = ""                  # Rendered page image
+
+    # Classification
+    classification: PageClassification = Field(default_factory=PageClassification)
+
+    # Regions
+    regions: PageRegions = Field(default_factory=PageRegions)
+
+    # Processing state
+    processed: bool = False
+    extraction_complete: bool = False
+    warnings: List[ExtractionWarning] = Field(default_factory=list)
+
+
+class RegisterRow(BaseModel):
+    """A single row from a drawing register."""
+    drawing_number: str = ""
+    drawing_title: str = ""
+    revision: str = ""
+    date: str = ""
+    status: str = ""
+    notes: str = ""
+
+    # Parsing confidence
+    confidence: float = 0.5
+    raw_text: str = ""
+
+
+class RegisterExtraction(BaseModel):
+    """Extraction result for a REGISTER page."""
+    project_name: str = ""
+    client_name: str = ""
+    consultant_name: str = ""
+    rows: List[RegisterRow] = Field(default_factory=list)
+    total_drawings: int = 0
+
+    # Warnings
+    parse_warnings: List[str] = Field(default_factory=list)
+    source_page: int = 0
+
+
+class SLDCircuitRow(BaseModel):
+    """A circuit row extracted from an SLD schedule."""
+    circuit_id: str = ""                    # L1, P1, AC1, ISO1, etc.
+    circuit_type: str = ""                  # lighting, power, isolator, etc.
+    description: str = ""
+    wattage_w: float = 0.0
+    wire_size_mm2: float = 0.0
+    breaker_a: int = 0
+    num_points: int = 0
+    is_spare: bool = False
+    is_3phase: bool = False
+    notes: str = ""
+
+    # Parsing confidence
+    confidence: float = 0.5
+    raw_text: str = ""
+
+
+class SLDExtraction(BaseModel):
+    """Extraction result for an SLD page."""
+    drawing_number: str = ""
+    drawing_title: str = ""
+
+    # Distribution board info
+    db_name: str = ""
+    db_location: str = ""
+    main_breaker_a: int = 0
+    supply_from: str = ""
+    supply_cable_mm2: float = 0.0
+
+    # Circuits
+    circuits: List[SLDCircuitRow] = Field(default_factory=list)
+    total_circuits: int = 0
+    spare_circuits: int = 0
+    total_wattage_w: float = 0.0
+
+    # References found
+    db_refs: List[str] = Field(default_factory=list)       # All DB references found
+    cable_refs: List[str] = Field(default_factory=list)    # Cable specifications found
+    feeder_refs: List[str] = Field(default_factory=list)   # Feeder cable references
+
+    # Warnings
+    parse_warnings: List[str] = Field(default_factory=list)
+    source_page: int = 0
+
+    @computed_field
+    @property
+    def lighting_circuits(self) -> int:
+        return len([c for c in self.circuits if c.circuit_type == "lighting"])
+
+    @computed_field
+    @property
+    def power_circuits(self) -> int:
+        return len([c for c in self.circuits if c.circuit_type == "power"])
+
+
+class LayoutExtraction(BaseModel):
+    """
+    Extraction result for layout pages (lighting/plugs).
+    For deterministic mode, focuses on text labels and references.
+    """
+    drawing_number: str = ""
+    drawing_title: str = ""
+    layout_type: str = ""                   # "lighting" or "plugs"
+
+    # Room labels found
+    room_labels: List[str] = Field(default_factory=list)
+
+    # Circuit references found
+    circuit_refs: List[str] = Field(default_factory=list)  # DB-S1 L1, DB-S2 P1, etc.
+
+    # Equipment/fixture labels
+    equipment_labels: List[str] = Field(default_factory=list)  # A/C, geyser, etc.
+
+    # Notes and specs
+    notes: List[str] = Field(default_factory=list)
+    mounting_heights: List[str] = Field(default_factory=list)  # @300mm, @1100mm
+    cable_sizes: List[str] = Field(default_factory=list)
+
+    # Legend text (if in legend region)
+    legend_items: List[str] = Field(default_factory=list)
+
+    # Containment
+    containment_refs: List[str] = Field(default_factory=list)  # Trunking, conduit, tray
+
+    # Warnings
+    parse_warnings: List[str] = Field(default_factory=list)
+    source_page: int = 0
+
+
+class PageExtractionResult(BaseModel):
+    """
+    Union-like structure for page extraction result.
+    Contains page_type + appropriate extraction payload.
+    """
+    page_id: str = ""
+    page_number: int = 0
+    page_type: PageType = PageType.UNKNOWN
+    success: bool = False
+
+    # Type-specific extractions (only one will be populated)
+    register_data: Optional[RegisterExtraction] = None
+    sld_data: Optional[SLDExtraction] = None
+    layout_data: Optional[LayoutExtraction] = None
+
+    # Common metadata
+    drawing_number: str = ""
+    drawing_title: str = ""
+    building_block: str = ""
+
+    # Warnings
+    warnings: List[ExtractionWarning] = Field(default_factory=list)
+
+
+class MergeStatistics(BaseModel):
+    """Statistics from the merge stage."""
+    # Page counts
+    total_pages: int = 0
+    register_pages: int = 0
+    sld_pages: int = 0
+    lighting_pages: int = 0
+    plugs_pages: int = 0
+    unknown_pages: int = 0
+
+    # Extraction counts
+    total_dbs: int = 0
+    total_circuits: int = 0
+    total_rooms: int = 0
+
+    # Coverage
+    drawings_in_register: int = 0
+    drawings_uploaded: int = 0
+    drawings_matched: int = 0
+    drawings_missing: List[str] = Field(default_factory=list)  # In register but not uploaded
+    drawings_extra: List[str] = Field(default_factory=list)    # Uploaded but not in register
+
+    # Deduplication
+    unique_db_refs: List[str] = Field(default_factory=list)
+    unique_cable_sizes: List[str] = Field(default_factory=list)
+    unique_circuit_refs: List[str] = Field(default_factory=list)
+
+
+class ProjectExtractionResult(BaseModel):
+    """
+    Final aggregated result from deterministic pipeline.
+    Combines all page extractions into project-level data.
+    """
+    # Project info
+    project_name: str = ""
+    client_name: str = ""
+    consultant_name: str = ""
+
+    # Drawing register
+    register_pages: List[RegisterExtraction] = Field(default_factory=list)
+    register_combined: Optional[RegisterExtraction] = None  # Merged register data
+
+    # SLD extractions
+    sld_pages: List[SLDExtraction] = Field(default_factory=list)
+
+    # Layout extractions
+    lighting_pages: List[LayoutExtraction] = Field(default_factory=list)
+    plugs_pages: List[LayoutExtraction] = Field(default_factory=list)
+
+    # Aggregated data
+    all_db_names: List[str] = Field(default_factory=list)
+    all_circuit_refs: List[str] = Field(default_factory=list)
+    all_room_labels: List[str] = Field(default_factory=list)
+    all_cable_sizes: List[str] = Field(default_factory=list)
+    all_equipment: List[str] = Field(default_factory=list)
+
+    # Drawing number map
+    drawing_number_to_page: Dict[str, int] = Field(default_factory=dict)
+    page_to_drawing_number: Dict[int, str] = Field(default_factory=dict)
+
+    # Statistics and diagnostics
+    statistics: MergeStatistics = Field(default_factory=MergeStatistics)
+
+    # Warnings summary
+    all_warnings: List[ExtractionWarning] = Field(default_factory=list)
+    critical_warnings: int = 0
+    total_warnings: int = 0
+
+    # Processing metadata
+    processing_time_ms: int = 0
+    pages_processed: int = 0
+    pages_successful: int = 0
+
+
+class PipelineConfig(BaseModel):
+    """Configuration for the deterministic pipeline."""
+    # Rendering
+    render_dpi: int = 200
+    max_pages: int = 100
+
+    # Debug
+    debug_mode: bool = False
+    debug_output_dir: str = "debug_output"
+    save_page_images: bool = False
+    save_region_crops: bool = False
+    save_overlay_images: bool = False
+
+    # Region detection
+    enable_opencv_region_detection: bool = True
+    fallback_to_heuristic_regions: bool = True
+
+    # Classification thresholds
+    classification_threshold: float = 0.4
+    high_confidence_threshold: float = 0.7
+
+    # Extraction
+    extract_tables: bool = True
+    extract_cable_sizes: bool = True
+    extract_circuit_refs: bool = True
+
+    # Output
+    output_json: bool = True
+    output_csv: bool = False

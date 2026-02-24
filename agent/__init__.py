@@ -97,6 +97,15 @@ from agent.stages import (
     generate_output,
 )
 
+# Deterministic (non-AI) pipeline for local-only processing
+from agent.deterministic_pipeline import (
+    DeterministicPipeline,
+    DeterministicPipelineResult,
+    run_deterministic_pipeline,
+    run_deterministic_pipeline_bytes,
+    quick_extract,
+)
+
 __all__ = [
     # Version
     '__version__',
@@ -151,6 +160,13 @@ __all__ = [
     'validate',
     'price',
     'generate_output',
+
+    # Deterministic Pipeline (v5.0 - No AI)
+    'DeterministicPipeline',
+    'DeterministicPipelineResult',
+    'run_deterministic_pipeline',
+    'run_deterministic_pipeline_bytes',
+    'quick_extract',
 ]
 
-__version__ = '4.11.0'
+__version__ = '5.0.0'  # Updated for deterministic pipeline
