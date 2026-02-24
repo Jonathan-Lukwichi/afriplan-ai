@@ -311,7 +311,8 @@ def call_vision_llm(
 ) -> Tuple[str, int, float]:
     """Call vision LLM with focused prompt."""
 
-    if provider == "groq":
+    if provider in ("groq", "grok"):
+        # Groq and Grok both use OpenAI-compatible API
         content = [{"type": "text", "text": prompt}]
         for page in pages:
             if hasattr(page, 'image_base64') and page.image_base64:
@@ -328,6 +329,28 @@ def call_vision_llm(
         )
 
         return response.choices[0].message.content, response.usage.total_tokens if response.usage else 0, 0.0
+
+    elif provider == "gemini":
+        # Google Gemini API
+        import PIL.Image
+        import io
+        import base64
+
+        # Build parts for Gemini
+        parts = [prompt]
+        for page in pages:
+            if hasattr(page, 'image_base64') and page.image_base64:
+                # Convert base64 to PIL Image
+                img_bytes = base64.b64decode(page.image_base64)
+                img = PIL.Image.open(io.BytesIO(img_bytes))
+                parts.append(img)
+
+        model_obj = client.GenerativeModel(model)
+        response = model_obj.generate_content(parts)
+
+        # Estimate tokens (Gemini doesn't always return exact counts)
+        tokens = len(prompt.split()) * 2  # Rough estimate
+        return response.text, tokens, 0.0
 
     elif provider == "claude":
         content = [{"type": "text", "text": prompt}]
