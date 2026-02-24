@@ -199,56 +199,84 @@ def init_pipeline():
         return None
 
 
+def normalize_fixture_data(raw_fixtures: dict) -> dict:
+    """
+    Normalize AI-returned fixture data to standard keys.
+    Maps keys like '6w_led_downlight' to 'downlight'.
+    """
+    if not raw_fixtures:
+        return {}
+
+    normalized = {}
+    for key, value in raw_fixtures.items():
+        if not isinstance(value, (int, float)):
+            continue
+        std_key = map_fixture_to_standard_key(key)
+        # Accumulate if same standard key maps from multiple raw keys
+        normalized[std_key] = normalized.get(std_key, 0) + int(value)
+    return normalized
+
+
 def map_fixture_to_standard_key(name: str) -> str:
     """Map a legend fixture name to a standard key for build_extraction_result."""
-    name_lower = name.lower()
+    name_lower = name.lower().replace("_", " ").replace("-", " ")
 
-    # Lighting fixtures
-    if "600x1200" in name_lower or "1200" in name_lower or "panel" in name_lower:
+    # Lighting fixtures - check most specific first
+    if "600x1200" in name_lower or "1200" in name_lower:
         return "recessed_led_600x1200"
     if "600x600" in name_lower:
         return "recessed_led_600x600"
-    if "downlight" in name_lower or "down light" in name_lower:
+    if any(x in name_lower for x in ["panel", "recessed", "led panel"]):
+        return "recessed_led_600x1200"  # Default panel size
+    if any(x in name_lower for x in ["downlight", "down light", "spotlight", "spot"]):
         return "downlight"
-    if "surface" in name_lower or "ceiling" in name_lower:
+    if any(x in name_lower for x in ["surface", "ceiling", "batten", "strip"]):
         return "surface_mount_led"
-    if "vapor" in name_lower or "vapour" in name_lower:
+    if any(x in name_lower for x in ["vapor", "vapour", "waterproof light"]):
         return "vapor_proof"
-    if "bulkhead" in name_lower or "wall" in name_lower:
+    if any(x in name_lower for x in ["bulkhead", "wall light", "wall mount"]):
         return "bulkhead"
-    if "flood" in name_lower or "outdoor" in name_lower:
+    if any(x in name_lower for x in ["flood", "outdoor", "external"]):
         return "flood_light"
     if "emergency" in name_lower:
         return "emergency_light"
+    # Generic light catch-all
+    if any(x in name_lower for x in ["light", "lamp", "luminaire", "fitting"]) and "switch" not in name_lower:
+        return "surface_mount_led"
 
     # Switches
-    if "1-lever" in name_lower or "1 lever" in name_lower or "single" in name_lower:
-        if "2-way" in name_lower or "2 way" in name_lower:
+    if any(x in name_lower for x in ["switch", "lever"]):
+        if any(x in name_lower for x in ["2 way", "2way", "two way"]):
             return "switch_2way"
-        return "switch_1lever"
-    if "2-lever" in name_lower or "2 lever" in name_lower:
-        return "switch_2lever"
-    if "day" in name_lower and "night" in name_lower:
-        return "switch_daynight"
+        if any(x in name_lower for x in ["2 lever", "2lever", "two lever"]):
+            return "switch_2lever"
+        if any(x in name_lower for x in ["day", "night", "d/n"]):
+            return "switch_daynight"
+        return "switch_1lever"  # Default to 1-lever
 
-    # Sockets
-    if "double" in name_lower:
-        if "1100" in name_lower or "worktop" in name_lower:
-            return "double_socket_1100"
-        if "water" in name_lower or "ip" in name_lower:
-            return "waterproof_socket"
+    # Sockets - check most specific first
+    if any(x in name_lower for x in ["1100", "worktop", "counter"]):
+        return "double_socket_1100"
+    if any(x in name_lower for x in ["waterproof", "wp", "ip44", "ip65", "outdoor socket"]):
+        return "waterproof_socket"
+    if any(x in name_lower for x in ["double", "twin", "2 gang"]):
         return "double_socket_300"
-    if "single" in name_lower:
+    if any(x in name_lower for x in ["single", "1 gang"]):
         return "single_socket"
-    if "data" in name_lower or "cat" in name_lower:
+    # Generic socket catch-all
+    if any(x in name_lower for x in ["socket", "plug", "outlet", "receptacle"]):
+        return "double_socket_300"  # Default to double
+
+    # Data points
+    if any(x in name_lower for x in ["data", "cat5", "cat6", "rj45", "network", "lan"]):
         return "data_point_cat6"
-    if "floor" in name_lower and "box" in name_lower:
+    if any(x in name_lower for x in ["floor box", "floorbox"]):
         return "floor_box"
 
     # Isolators
-    if "isolator" in name_lower or "iso" in name_lower:
+    if any(x in name_lower for x in ["isolator", "iso ", "disconnect"]):
         return "isolator"
-    if "a/c" in name_lower or "air con" in name_lower:
+    if any(x in name_lower for x in ["a/c", "air con", "aircon", "ac unit"]):
         return "ac_isolator"
 
     # Default: use normalized name
@@ -883,7 +911,9 @@ def render_step_3_lighting():
                     st.session_state.lighting_legend
                 )
                 if result.success:
-                    st.session_state.room_lighting[current_room] = result.display_data.get("fixtures", {})
+                    raw_fixtures = result.display_data.get("fixtures", {})
+                    # Normalize keys to standard format
+                    st.session_state.room_lighting[current_room] = normalize_fixture_data(raw_fixtures)
                 else:
                     st.session_state.room_lighting[current_room] = {}
 
@@ -1083,7 +1113,9 @@ def render_step_4_power():
                     st.session_state.power_legend
                 )
                 if result.success:
-                    st.session_state.room_power[current_room] = result.display_data.get("fixtures", {})
+                    raw_fixtures = result.display_data.get("fixtures", {})
+                    # Normalize keys to standard format
+                    st.session_state.room_power[current_room] = normalize_fixture_data(raw_fixtures)
                 else:
                     st.session_state.room_power[current_room] = {}
 
