@@ -1,15 +1,24 @@
 """
-AfriPlan Electrical v6.0 - Guided Upload (AI-Only 4-Step Document Flow)
+AfriPlan Electrical v7.0 - Guided Upload (Circuit-Cluster-First Extraction)
 
 AI-powered extraction using Claude/Groq/Gemini/Grok vision models.
 
 Document Flow:
 1. Cover Page / Drawing Register → Project info
 2. SLD / Circuit Schedules → DBs, supply point, circuits, cables
-3. Lighting Layout → Legend first → Light fixtures per room
-4. Power Layout → Legend first → Sockets per room
+3. Lighting Layout → Legend first → Circuit clusters (e.g., "DB-S3 L2")
+4. Power Layout → Legend first → Circuit clusters (e.g., "DB-S1 P1")
+5. Review → SLD vs Layout reconciliation with match rate
 
-Target: 75%+ extraction rate through legend-based fixture counting.
+v7.0 Key Changes (from v5 redesign):
+- Circuit-cluster-first extraction (not room-first)
+- Type-specific point counting:
+  - Lighting: lights only (switches NOT counted)
+  - Power: sockets only (double socket = 1 point)
+  - Dedicated: always 1 point
+- Direct SLD reconciliation (cluster.total_points vs circuit.num_points)
+
+Target: 75%+ extraction accuracy through circuit-label alignment.
 """
 
 import streamlit as st
@@ -98,7 +107,7 @@ PROVIDER_MODELS = {
 # ============================================================================
 
 def init_session_state():
-    """Initialize all session state variables for 4-step AI-only flow."""
+    """Initialize all session state variables for v7.0 circuit-cluster-first flow."""
     defaults = {
         # Navigation (5 steps: 4 uploads + 1 review)
         "guided_step": 1,
@@ -123,16 +132,16 @@ def init_session_state():
         "cable_routes": [],
         "current_db_index": 0,
 
-        # Step 3: Lighting
+        # Step 3: Lighting (v7.0 - circuit clusters)
         "lighting_legend": {},
-        "detected_rooms": [],
-        "room_lighting": {},
-        "current_lighting_room_index": 0,
+        "detected_rooms": [],       # Secondary - populated from clusters
+        "lighting_circuit_clusters": [],  # v7.0 - PRIMARY extraction unit
+        "room_lighting": {},        # DEPRECATED - kept for compatibility
 
-        # Step 4: Power
+        # Step 4: Power (v7.0 - circuit clusters)
         "power_legend": {},
-        "room_power": {},
-        "current_power_room_index": 0,
+        "power_circuit_clusters": [],     # v7.0 - PRIMARY extraction unit
+        "room_power": {},           # DEPRECATED - kept for compatibility
 
         # Final results
         "final_extraction": None,
@@ -473,8 +482,136 @@ def show_page_thumbnails(pages, max_show=3):
                 )
 
 
+def reconcile_sld_with_clusters(db_schedules: dict, layout_clusters: list) -> dict:
+    """
+    v7.0 SLD Reconciliation: Compare SLD circuit points vs Layout circuit cluster points.
+
+    For each circuit in the SLD schedule, find the matching layout cluster and compare:
+    - Lighting circuits: SLD num_points vs cluster total_fixture_points (lights only)
+    - Power circuits: SLD num_points vs cluster total_fixture_points (sockets only)
+    - Dedicated (AC, geyser): Both should be 1 point
+
+    Returns:
+        {
+            "match_rate": 0.0-1.0,
+            "matched": int,
+            "total_compared": int,
+            "by_db": {
+                "DB-S3": {
+                    "total_circuits": int,
+                    "match_count": int,
+                    "is_balanced": bool,
+                    "circuits": {
+                        "L1": {"sld_points": 10, "layout_points": 8, "matched": False, "circuit_type": "lighting"},
+                        ...
+                    },
+                    "discrepancies": ["L1: SLD=10 vs Layout=8", ...]
+                }
+            }
+        }
+    """
+    from collections import defaultdict
+
+    result = {
+        "match_rate": 0.0,
+        "matched": 0,
+        "total_compared": 0,
+        "by_db": {}
+    }
+
+    if not db_schedules or not layout_clusters:
+        return result
+
+    # Index layout clusters by (db_name, circuit_id)
+    cluster_index = {}
+    for cluster in layout_clusters:
+        key = (cluster.get("db_name", ""), cluster.get("circuit_id", ""))
+        if key[0] and key[1]:
+            cluster_index[key] = cluster
+
+    # Compare each SLD circuit to its matching layout cluster
+    total_compared = 0
+    matched = 0
+
+    for db_name, schedule in db_schedules.items():
+        db_result = {
+            "total_circuits": 0,
+            "match_count": 0,
+            "is_balanced": True,
+            "circuits": {},
+            "discrepancies": []
+        }
+
+        circuits = schedule.get("circuits", [])
+        for circuit in circuits:
+            circuit_id = circuit.get("circuit_id", "")
+            if not circuit_id:
+                continue
+
+            # Skip spare circuits
+            circuit_type = circuit.get("circuit_type", "").lower()
+            if "spare" in circuit_type or "spare" in circuit_id.lower():
+                continue
+
+            db_result["total_circuits"] += 1
+            total_compared += 1
+
+            # Get SLD num_points
+            sld_points = circuit.get("num_points", 0)
+            if isinstance(sld_points, dict):
+                sld_points = sld_points.get("value", 0)
+            sld_points = int(sld_points) if sld_points else 0
+
+            # Look up matching layout cluster
+            lookup_key = (db_name, circuit_id)
+            cluster = cluster_index.get(lookup_key)
+
+            if cluster:
+                layout_points = cluster.get("total_fixture_points", 0)
+
+                # Determine if matched (exact or within tolerance)
+                # Allow ±1 point tolerance for minor counting differences
+                is_match = abs(sld_points - layout_points) <= 1
+
+                db_result["circuits"][circuit_id] = {
+                    "sld_points": sld_points,
+                    "layout_points": layout_points,
+                    "matched": is_match,
+                    "circuit_type": circuit_type
+                }
+
+                if is_match:
+                    matched += 1
+                    db_result["match_count"] += 1
+                else:
+                    db_result["is_balanced"] = False
+                    db_result["discrepancies"].append(
+                        f"{circuit_id}: SLD={sld_points} vs Layout={layout_points}"
+                    )
+            else:
+                # No matching cluster found
+                db_result["circuits"][circuit_id] = {
+                    "sld_points": sld_points,
+                    "layout_points": "-",
+                    "matched": False,
+                    "circuit_type": circuit_type
+                }
+                db_result["is_balanced"] = False
+                db_result["discrepancies"].append(
+                    f"{circuit_id}: No matching cluster found in layout"
+                )
+
+        result["by_db"][db_name] = db_result
+
+    result["total_compared"] = total_compared
+    result["matched"] = matched
+    result["match_rate"] = matched / max(1, total_compared)
+
+    return result
+
+
 # ============================================================================
-# QUICK UPLOAD MODE (Single Document - Automatic Split)
+# STEP 1: COVER PAGE / DRAWING REGISTER
 # ============================================================================
 # STEP 1: COVER PAGE / DRAWING REGISTER
 # ============================================================================
@@ -871,13 +1008,13 @@ def render_step_2_sld():
 
 
 # ============================================================================
-# STEP 3: LIGHTING LAYOUT
+# STEP 3: LIGHTING LAYOUT (v7.0 - Circuit Cluster Extraction)
 # ============================================================================
 
 def render_step_3_lighting():
-    """Step 3: Upload lighting layout, extract legend first, then room fixtures."""
+    """Step 3: Upload lighting layout, extract legend, then circuit clusters."""
     section_header("Step 3: Lighting Layout",
-                   "Extract lighting legend, then count fixtures per room")
+                   "Extract legend, then count fixtures by circuit label (e.g., DB-S3 L2)")
 
     substep = st.session_state.get("lighting_substep", "upload")
     pipeline = st.session_state.interactive_pipeline
@@ -890,8 +1027,7 @@ def render_step_3_lighting():
         This document should contain:
         - Lighting legend (symbol → fixture type)
         - Floor plan with light fixtures
-        - Room names/labels
-        - Switch positions
+        - Circuit labels (e.g., "DB-S3 L2", "DB-GF L1")
         """)
 
         uploaded_file = st.file_uploader(
@@ -924,7 +1060,7 @@ def render_step_3_lighting():
     # SUBSTEP: Legend extraction
     if substep == "legend":
         st.markdown("### Lighting Legend")
-        st.caption("Extract fixture types BEFORE counting per room for higher accuracy")
+        st.caption("Extract fixture types BEFORE counting circuits for higher accuracy")
 
         if not st.session_state.lighting_legend:
             if not hasattr(pipeline, 'run_lighting_legend_pass'):
@@ -966,152 +1102,94 @@ def render_step_3_lighting():
                 st.session_state["lighting_substep"] = "upload"
                 st.rerun()
         with col2:
-            if st.button("Detect Rooms", type="primary", use_container_width=True):
+            if st.button("Extract Circuit Clusters", type="primary", use_container_width=True):
                 st.session_state.lighting_legend = {
                     "has_legend": True,
                     "light_types": light_types,
                     "switch_types": switch_types,
                 }
-                st.session_state["lighting_substep"] = "detect_rooms"
+                st.session_state["lighting_substep"] = "circuit_clusters"
                 st.rerun()
         return
 
-    # SUBSTEP: Detect rooms
-    if substep == "detect_rooms":
-        st.markdown("### Detect Rooms from Lighting Layout")
+    # SUBSTEP: Circuit Clusters (v7.0 - replaces room-by-room)
+    if substep == "circuit_clusters":
+        st.markdown("### Lighting Circuit Clusters")
+        st.caption("Counting fixtures by circuit label (e.g., 'DB-S3 L2' → 8 downlights)")
 
-        if not st.session_state.detected_rooms:
-            with st.spinner("AI detecting rooms..."):
-                result = pipeline.run_room_detection_pass(st.session_state.lighting_pages)
-                if result.success:
-                    rooms = result.display_data.get("rooms", [])
-                    st.session_state.detected_rooms = [r["name"] for r in rooms]
-                    pipeline.apply_detected_rooms(st.session_state.detected_rooms)
-
-        if st.session_state.detected_rooms:
-            st.success(f"Found {len(st.session_state.detected_rooms)} rooms")
-
-            valid_rooms = []
-            for i, room in enumerate(st.session_state.detected_rooms):
-                if st.checkbox(room, value=True, key=f"ltg_room_check_{i}"):
-                    valid_rooms.append(room)
-
-            new_room = st.text_input("Add room manually", placeholder="e.g., SUITE 5, KITCHEN")
-            if st.button("+ Add Room") and new_room:
-                valid_rooms.append(new_room)
-                st.session_state.detected_rooms = valid_rooms
-                st.rerun()
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Back to Legend", use_container_width=True):
-                    st.session_state["lighting_substep"] = "legend"
-                    st.rerun()
-            with col2:
-                if st.button("Count Fixtures Per Room", type="primary", use_container_width=True):
-                    st.session_state.detected_rooms = valid_rooms
-                    pipeline.apply_detected_rooms(valid_rooms)
-                    st.session_state["lighting_substep"] = "room_fixtures"
-                    st.session_state.current_lighting_room_index = 0
-                    st.rerun()
-        else:
-            st.warning("No rooms detected. Add manually:")
-            new_room = st.text_input("Room Name", placeholder="e.g., SUITE 1, OFFICE")
-            if st.button("Add Room") and new_room:
-                st.session_state.detected_rooms = [new_room]
-                st.rerun()
-        return
-
-    # SUBSTEP: Room fixtures (loop using legend)
-    if substep == "room_fixtures":
-        rooms = st.session_state.detected_rooms
-        current_idx = st.session_state.current_lighting_room_index
-
-        if current_idx >= len(rooms):
-            pipeline.mark_room_fixtures_complete()
-            st.session_state["lighting_substep"] = "upload"
-            st.session_state.guided_step = 4
-            st.session_state.max_completed_step = max(3, st.session_state.max_completed_step)
-            st.rerun()
-            return
-
-        current_room = rooms[current_idx]
-        st.markdown(f"### Lighting: {current_room} ({current_idx + 1}/{len(rooms)})")
-        st.progress((current_idx + 1) / len(rooms))
-
-        # Extract using legend
-        if current_room not in st.session_state.room_lighting:
-            if not hasattr(pipeline, 'run_room_fixtures_with_legend_pass'):
+        # Extract circuit clusters
+        if "lighting_clusters" not in st.session_state or not st.session_state.lighting_clusters:
+            if not hasattr(pipeline, 'run_circuit_clusters_pass'):
                 st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
                 st.stop()
-            with st.spinner(f"AI counting lights in {current_room} using legend..."):
-                result = pipeline.run_room_fixtures_with_legend_pass(
-                    current_room,
+            with st.spinner("AI extracting lighting circuit clusters..."):
+                result = pipeline.run_circuit_clusters_pass(
                     st.session_state.lighting_pages,
                     st.session_state.lighting_legend
                 )
                 if result.success:
-                    raw_fixtures = result.display_data.get("fixtures", {})
-                    # Normalize keys to standard format
-                    st.session_state.room_lighting[current_room] = normalize_fixture_data(raw_fixtures)
+                    st.session_state.lighting_clusters = result.display_data.get("circuit_clusters", [])
+                    st.session_state.detected_rooms = [
+                        r.get("name", "") for r in result.display_data.get("rooms_identified", [])
+                    ]
                 else:
-                    st.session_state.room_lighting[current_room] = {}
+                    st.session_state.lighting_clusters = []
 
-        fixtures = st.session_state.room_lighting.get(current_room, {})
-        confidence = 0.70 if fixtures else 0.3
-        render_confidence_badge(confidence, "Fixtures")
+        clusters = st.session_state.lighting_clusters
 
-        # Editable based on legend types
-        legend = st.session_state.lighting_legend
-        light_types = legend.get("light_types", [])
+        if clusters:
+            # Group by DB
+            db_groups = {}
+            for cluster in clusters:
+                db = cluster.get("db_name", "Unknown")
+                if db not in db_groups:
+                    db_groups[db] = []
+                db_groups[db].append(cluster)
 
-        st.markdown("##### Light Fixtures")
-        light_counts = {}
-        cols = st.columns(3)
-        for i, lt in enumerate(light_types[:9]):
-            name = lt.get("name", f"Light {i+1}")
-            std_key = map_fixture_to_standard_key(name)  # Map to standard key
-            with cols[i % 3]:
-                light_counts[std_key] = st.number_input(
-                    name,
-                    value=fixtures.get(std_key, 0),
-                    min_value=0,
-                    key=f"ltg_light_{current_room}_{i}"
-                )
+            # Stats
+            total_clusters = len(clusters)
+            total_points = sum(c.get("total_points", 0) for c in clusters)
+            st.success(f"Found **{total_clusters} circuit clusters** with **{total_points} total points**")
 
-        st.markdown("##### Switches")
-        switch_types = legend.get("switch_types", [])
-        switch_counts = {}
-        cols = st.columns(3)
-        for i, sw in enumerate(switch_types[:6]):
-            name = sw.get("name", f"Switch {i+1}")
-            std_key = map_fixture_to_standard_key(name)  # Map to standard key
-            with cols[i % 3]:
-                switch_counts[std_key] = st.number_input(
-                    name,
-                    value=fixtures.get(std_key, 0),
-                    min_value=0,
-                    key=f"ltg_sw_{current_room}_{i}"
-                )
+            # Show clusters grouped by DB
+            for db_name, db_clusters in db_groups.items():
+                with st.expander(f"**{db_name}** ({len(db_clusters)} circuits)", expanded=True):
+                    import pandas as pd
 
-        col1, col2, col3 = st.columns(3)
+                    # Build table data
+                    table_data = []
+                    for c in db_clusters:
+                        fixtures_str = ", ".join([f"{k}: {v}" for k, v in c.get("fixtures", {}).items() if v > 0])
+                        table_data.append({
+                            "Circuit": c.get("circuit_id", ""),
+                            "Type": c.get("circuit_type", ""),
+                            "Points": c.get("total_points", 0),
+                            "Fixtures": fixtures_str[:50] + "..." if len(fixtures_str) > 50 else fixtures_str,
+                            "Rooms": ", ".join(c.get("rooms_served", [])),
+                            "Confidence": f"{c.get('confidence', 0):.0%}",
+                        })
+
+                    df = pd.DataFrame(table_data)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # Show rooms identified
+            if st.session_state.detected_rooms:
+                st.markdown(f"**Rooms identified:** {', '.join(st.session_state.detected_rooms)}")
+
+        else:
+            st.warning("No circuit clusters found. The drawing may not have clear circuit labels.")
+            st.info("Circuit labels look like: 'DB-S3 L2', 'DB-GF L1', 'DB-CA P3'")
+
+        col1, col2 = st.columns(2)
         with col1:
-            if st.button("Back", key="back_lt_room"):
-                if current_idx > 0:
-                    st.session_state.current_lighting_room_index -= 1
-                else:
-                    st.session_state["lighting_substep"] = "detect_rooms"
+            if st.button("Back to Legend", use_container_width=True):
+                st.session_state["lighting_substep"] = "legend"
                 st.rerun()
         with col2:
-            if st.button("Skip Room", key="skip_lt_room"):
-                st.session_state.current_lighting_room_index += 1
-                st.rerun()
-        with col3:
-            if st.button("Confirm & Next", type="primary", key="confirm_lt_room"):
-                all_fixtures = {**light_counts, **switch_counts}
-                st.session_state.room_lighting[current_room] = all_fixtures
-                pipeline.apply_room_fixtures(current_room, all_fixtures)
-                st.session_state.current_lighting_room_index += 1
+            if st.button("Continue to Power Layout", type="primary", use_container_width=True):
+                st.session_state["lighting_substep"] = "upload"
+                st.session_state.guided_step = 4
+                st.session_state.max_completed_step = max(3, st.session_state.max_completed_step)
                 st.rerun()
 
 
@@ -1120,9 +1198,14 @@ def render_step_3_lighting():
 # ============================================================================
 
 def render_step_4_power():
-    """Step 4: Upload power layout, extract legend, then room sockets."""
+    """Step 4: Upload power layout, extract legend, then circuit clusters.
+
+    v7.0 Circuit-Cluster-First: Extract by circuit labels (DB-S3 P2), not rooms.
+    Power circuits: Count socket outlets (double socket = 1 point).
+    Dedicated circuits (AC, geyser, isolators): Always 1 point per circuit.
+    """
     section_header("Step 4: Power Layout",
-                   "Extract power legend, then count sockets per room")
+                   "Extract power legend, then detect power circuit clusters")
 
     substep = st.session_state.get("power_substep", "upload")
     pipeline = st.session_state.interactive_pipeline
@@ -1134,8 +1217,8 @@ def render_step_4_power():
 
         This document should contain:
         - Power legend (sockets, data points, isolators)
-        - Floor plan with socket positions
-        - Equipment connections (A/C, etc.)
+        - Floor plan with circuit labels (e.g., "DB-S3 P2", "DB-GF P1")
+        - Equipment connections (A/C, geyser isolators)
         """)
 
         uploaded_file = st.file_uploader(
@@ -1157,8 +1240,7 @@ def render_step_4_power():
             with col1:
                 if st.button("Back to Lighting", use_container_width=True):
                     st.session_state.guided_step = 3
-                    st.session_state["lighting_substep"] = "room_fixtures"
-                    st.session_state.current_lighting_room_index = len(st.session_state.detected_rooms) - 1
+                    st.session_state["lighting_substep"] = "circuit_clusters"
                     st.rerun()
             with col2:
                 if st.button("Extract Power Legend", type="primary", use_container_width=True):
@@ -1207,113 +1289,96 @@ def render_step_4_power():
                 st.session_state["power_substep"] = "upload"
                 st.rerun()
         with col2:
-            if st.button("Count Sockets Per Room", type="primary", use_container_width=True):
+            if st.button("Detect Power Circuits", type="primary", use_container_width=True):
                 st.session_state.power_legend = {
                     "has_legend": True,
                     "socket_types": socket_types,
                     "isolator_types": isolator_types,
                 }
-                st.session_state["power_substep"] = "room_sockets"
-                st.session_state.current_power_room_index = 0
+                st.session_state["power_substep"] = "circuit_clusters"
                 st.rerun()
         return
 
-    # SUBSTEP: Room sockets (loop - reuse rooms from lighting)
-    if substep == "room_sockets":
-        rooms = st.session_state.detected_rooms  # Reuse from Step 3
-        current_idx = st.session_state.current_power_room_index
+    # SUBSTEP: Circuit clusters (v7.0 - replaces room_sockets)
+    if substep == "circuit_clusters":
+        st.markdown("### Power Circuit Clusters")
+        st.caption("Power circuits: Each socket outlet = 1 point. Dedicated (AC/geyser) = 1 point.")
 
-        if not rooms:
-            st.warning("No rooms detected. Go back to Lighting Layout to detect rooms.")
-            if st.button("Back to Lighting"):
-                st.session_state.guided_step = 3
-                st.rerun()
-            return
-
-        if current_idx >= len(rooms):
-            st.session_state["power_substep"] = "upload"
-            st.session_state.guided_step = 5
-            st.session_state.max_completed_step = max(4, st.session_state.max_completed_step)
-            st.rerun()
-            return
-
-        current_room = rooms[current_idx]
-        st.markdown(f"### Power: {current_room} ({current_idx + 1}/{len(rooms)})")
-        st.progress((current_idx + 1) / len(rooms))
-
-        # Extract using legend
-        if current_room not in st.session_state.room_power:
-            if not hasattr(pipeline, 'run_room_fixtures_with_legend_pass'):
+        # Extract power circuit clusters using legend context
+        power_clusters_key = "power_circuit_clusters"
+        if power_clusters_key not in st.session_state:
+            if not hasattr(pipeline, 'run_circuit_clusters_pass'):
                 st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
                 st.stop()
-            with st.spinner(f"AI counting sockets in {current_room} using legend..."):
-                result = pipeline.run_room_fixtures_with_legend_pass(
-                    current_room,
+
+            with st.spinner("AI detecting power circuit clusters (DB-XX P1, ISO1, AC1...)..."):
+                result = pipeline.run_circuit_clusters_pass(
                     st.session_state.power_pages,
-                    st.session_state.power_legend
+                    st.session_state.power_legend,
+                    circuit_type_filter="power"  # Filter for power/isolator circuits
                 )
                 if result.success:
-                    raw_fixtures = result.display_data.get("fixtures", {})
-                    # Normalize keys to standard format
-                    st.session_state.room_power[current_room] = normalize_fixture_data(raw_fixtures)
+                    st.session_state[power_clusters_key] = result.display_data.get("clusters", [])
+                    # Also capture any rooms mentioned
+                    rooms_found = set()
+                    for c in st.session_state[power_clusters_key]:
+                        rooms_found.update(c.get("rooms_served", []))
+                    # Merge with existing detected rooms
+                    existing = set(st.session_state.detected_rooms)
+                    st.session_state.detected_rooms = list(existing | rooms_found)
                 else:
-                    st.session_state.room_power[current_room] = {}
+                    st.session_state[power_clusters_key] = []
 
-        fixtures = st.session_state.room_power.get(current_room, {})
-        confidence = 0.70 if fixtures else 0.3
-        render_confidence_badge(confidence, "Sockets")
+        clusters = st.session_state.get(power_clusters_key, [])
+        total_clusters = len(clusters)
+        avg_confidence = sum(c.get("confidence", 0) for c in clusters) / max(1, total_clusters)
 
-        # Editable based on power legend
-        legend = st.session_state.power_legend
-        socket_types = legend.get("socket_types", [])
+        render_confidence_badge(avg_confidence, "Circuits")
 
-        st.markdown("##### Sockets & Data Points")
-        socket_counts = {}
-        cols = st.columns(3)
-        for i, st_type in enumerate(socket_types[:9]):
-            name = st_type.get("name", f"Socket {i+1}")
-            std_key = map_fixture_to_standard_key(name)  # Map to standard key
-            with cols[i % 3]:
-                socket_counts[std_key] = st.number_input(
-                    name,
-                    value=fixtures.get(std_key, 0),
-                    min_value=0,
-                    key=f"pwr_sock_{current_room}_{i}"
-                )
+        if clusters:
+            # Group by DB for display
+            from collections import defaultdict
+            by_db = defaultdict(list)
+            for c in clusters:
+                by_db[c.get("db_name", "Unknown")].append(c)
 
-        st.markdown("##### Isolators & Equipment")
-        isolator_types = legend.get("isolator_types", [])
-        iso_counts = {}
-        cols = st.columns(3)
-        for i, iso in enumerate(isolator_types[:6]):
-            name = iso.get("name", f"Isolator {i+1}")
-            std_key = map_fixture_to_standard_key(name)  # Map to standard key
-            with cols[i % 3]:
-                iso_counts[std_key] = st.number_input(
-                    name,
-                    value=fixtures.get(std_key, 0),
-                    min_value=0,
-                    key=f"pwr_iso_{current_room}_{i}"
-                )
+            for db_name, db_clusters in by_db.items():
+                with st.expander(f"**{db_name}** ({len(db_clusters)} power circuits)", expanded=True):
+                    import pandas as pd
+                    table_data = []
+                    for c in db_clusters:
+                        fixtures = c.get("fixtures", {})
+                        fixture_str = ", ".join([f"{k}: {v}" for k, v in fixtures.items() if v > 0])
+                        table_data.append({
+                            "Circuit": c.get("circuit_id", "?"),
+                            "Type": c.get("circuit_type", "power"),
+                            "Points": c.get("total_fixture_points", 0),
+                            "Fixtures": fixture_str or "-",
+                            "Rooms": ", ".join(c.get("rooms_served", [])),
+                            "Confidence": f"{c.get('confidence', 0):.0%}",
+                        })
 
-        col1, col2, col3 = st.columns(3)
+                    df = pd.DataFrame(table_data)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # Show total power points for reconciliation
+            total_power_points = sum(c.get("total_fixture_points", 0) for c in clusters)
+            st.info(f"**Total Power Points:** {total_power_points} across {total_clusters} circuits")
+
+        else:
+            st.warning("No power circuit clusters found. The drawing may not have clear circuit labels.")
+            st.info("Power circuit labels look like: 'DB-S3 P2', 'DB-GF ISO1', 'DB-CA AC1'")
+
+        col1, col2 = st.columns(2)
         with col1:
-            if st.button("Back", key="back_pwr_room"):
-                if current_idx > 0:
-                    st.session_state.current_power_room_index -= 1
-                else:
-                    st.session_state["power_substep"] = "legend"
+            if st.button("Back to Legend", use_container_width=True):
+                st.session_state["power_substep"] = "legend"
                 st.rerun()
         with col2:
-            if st.button("Skip Room", key="skip_pwr_room"):
-                st.session_state.current_power_room_index += 1
-                st.rerun()
-        with col3:
-            if st.button("Confirm & Next", type="primary", key="confirm_pwr_room"):
-                all_fixtures = {**socket_counts, **iso_counts}
-                st.session_state.room_power[current_room] = all_fixtures
-                pipeline.apply_room_fixtures(current_room, all_fixtures)
-                st.session_state.current_power_room_index += 1
+            if st.button("Continue to Review", type="primary", use_container_width=True):
+                st.session_state["power_substep"] = "upload"
+                st.session_state.guided_step = 5
+                st.session_state.max_completed_step = max(4, st.session_state.max_completed_step)
                 st.rerun()
 
 
@@ -1322,9 +1387,14 @@ def render_step_4_power():
 # ============================================================================
 
 def render_step_5_review():
-    """Step 5: Final review and BOQ export."""
+    """Step 5: Final review, SLD reconciliation, and BOQ export.
+
+    v7.0 Circuit-Cluster Reconciliation:
+    - Compares SLD circuit points vs Layout circuit cluster points
+    - Shows match rate and discrepancies per DB
+    """
     section_header("Step 5: Review & Export",
-                   "Validate extraction and download BOQ")
+                   "SLD Reconciliation, validation, and BOQ export")
 
     pipeline = st.session_state.interactive_pipeline
 
@@ -1344,30 +1414,43 @@ def render_step_5_review():
     # Get statistics from AI pipeline
     stats = pipeline.get_statistics() if pipeline else {}
 
-    # Calculate accuracy score
+    # Calculate accuracy using circuit clusters (v7.0)
     db_count = stats.get("db_schedules_extracted", 0)
-    total_circuits = sum(len(s.get("circuits", [])) for s in st.session_state.db_schedules.values())
-    room_count = len(st.session_state.detected_rooms)
+    total_sld_circuits = sum(len(s.get("circuits", [])) for s in st.session_state.db_schedules.values())
     cable_count = len(st.session_state.cable_routes)
 
-    # Count total fixtures extracted
-    total_lights = sum(sum(f.values()) for f in st.session_state.room_lighting.values() if isinstance(f, dict))
-    total_sockets = sum(sum(f.values()) for f in st.session_state.room_power.values() if isinstance(f, dict))
+    # Get circuit clusters from both lighting and power
+    lighting_clusters = st.session_state.get("lighting_circuit_clusters", [])
+    power_clusters = st.session_state.get("power_circuit_clusters", [])
+    all_layout_clusters = lighting_clusters + power_clusters
 
-    # Accuracy scoring (weighted)
+    # Count total points from clusters
+    total_lighting_points = sum(c.get("total_fixture_points", 0) for c in lighting_clusters)
+    total_power_points = sum(c.get("total_fixture_points", 0) for c in power_clusters)
+
+    # Reconciliation: SLD vs Layout
+    reconciliation_results = reconcile_sld_with_clusters(
+        st.session_state.db_schedules,
+        all_layout_clusters
+    )
+    match_rate = reconciliation_results.get("match_rate", 0)
+    matched_circuits = reconciliation_results.get("matched", 0)
+    total_compared = reconciliation_results.get("total_compared", 0)
+
+    # Accuracy scoring (v7.0 - circuit cluster based)
     # - DBs: 20% weight (target: 10 DBs for commercial)
-    # - Circuits: 20% weight (target: 50+ circuits)
-    # - Rooms: 20% weight (target: 15 rooms)
+    # - SLD Circuits: 15% weight (target: 50+ circuits)
+    # - Layout Clusters: 20% weight (target: 30+ clusters)
     # - Cable routes: 15% weight (target: 10 routes)
-    # - Fixtures: 25% weight (target: 100+ total)
+    # - Match Rate: 30% weight (SLD vs Layout reconciliation)
     db_score = min(100, (db_count / 10) * 100)
-    circuit_score = min(100, (total_circuits / 50) * 100)
-    room_score = min(100, (room_count / 15) * 100)
+    circuit_score = min(100, (total_sld_circuits / 50) * 100)
+    cluster_score = min(100, (len(all_layout_clusters) / 30) * 100)
     cable_score = min(100, (cable_count / 10) * 100)
-    fixture_score = min(100, ((total_lights + total_sockets) / 100) * 100)
+    match_score = match_rate * 100
 
-    accuracy = (db_score * 0.20 + circuit_score * 0.20 + room_score * 0.20 +
-                cable_score * 0.15 + fixture_score * 0.25)
+    accuracy = (db_score * 0.20 + circuit_score * 0.15 + cluster_score * 0.20 +
+                cable_score * 0.15 + match_score * 0.30)
 
     # Success banner with accuracy
     if accuracy >= 75:
@@ -1377,19 +1460,55 @@ def render_step_5_review():
     else:
         st.error(f"**Extraction Complete!** Accuracy: **{accuracy:.0f}%** - Needs improvement")
 
-    # Summary metrics
+    # Summary metrics (v7.0)
     st.markdown("### Extraction Summary")
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         st.metric("DBs", db_count, help="Distribution boards detected")
     with col2:
-        st.metric("Circuits", total_circuits, help="Total circuits across all DBs")
+        st.metric("SLD Circuits", total_sld_circuits, help="Circuits in SLD schedules")
     with col3:
-        st.metric("Rooms", room_count, help="Rooms detected from layouts")
+        st.metric("Layout Clusters", len(all_layout_clusters), help="Circuit clusters from layouts")
     with col4:
         st.metric("Cable Routes", cable_count, help="Sub-main cables between DBs")
     with col5:
+        st.metric("Match Rate", f"{match_rate:.0%}", help="SLD vs Layout reconciliation")
+    with col6:
         st.metric("Accuracy", f"{accuracy:.0f}%", help="Weighted extraction accuracy")
+
+    # SLD vs Layout Reconciliation (v7.0 - NEW)
+    st.markdown("### SLD vs Layout Reconciliation")
+    st.caption("Comparing circuit points from SLD schedules against layout circuit clusters")
+
+    if reconciliation_results.get("by_db"):
+        for db_name, db_recon in reconciliation_results["by_db"].items():
+            status_icon = "✅" if db_recon.get("is_balanced", False) else "⚠️"
+            with st.expander(f"{status_icon} **{db_name}** - {db_recon.get('match_count', 0)}/{db_recon.get('total_circuits', 0)} matched", expanded=False):
+                import pandas as pd
+                table_data = []
+                for circuit_id, circuit_recon in db_recon.get("circuits", {}).items():
+                    sld_points = circuit_recon.get("sld_points", "-")
+                    layout_points = circuit_recon.get("layout_points", "-")
+                    match_status = "✅ Match" if circuit_recon.get("matched") else "❌ Mismatch"
+                    table_data.append({
+                        "Circuit": circuit_id,
+                        "Type": circuit_recon.get("circuit_type", "-"),
+                        "SLD Points": sld_points,
+                        "Layout Points": layout_points,
+                        "Status": match_status,
+                    })
+                if table_data:
+                    df = pd.DataFrame(table_data)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+                # Show discrepancies
+                discrepancies = db_recon.get("discrepancies", [])
+                if discrepancies:
+                    st.warning(f"**{len(discrepancies)} discrepancies found:**")
+                    for d in discrepancies[:5]:
+                        st.markdown(f"- {d}")
+    else:
+        st.info("No reconciliation data available. Upload both SLD and Layout documents.")
 
     # Document coverage
     st.markdown("### Document Coverage")
@@ -1408,20 +1527,29 @@ def render_step_5_review():
         else:
             st.markdown(f"- :red[{doc_name}] - Not uploaded")
 
-    # Accuracy breakdown
+    # Accuracy breakdown (v7.0 - circuit cluster based)
     st.markdown("### Accuracy Breakdown")
     with st.expander("View detailed scoring", expanded=False):
         st.markdown(f"""
-        | Component | Extracted | Target | Score |
-        |-----------|-----------|--------|-------|
-        | Distribution Boards | {db_count} | 10 | {db_score:.0f}% |
-        | Circuits | {total_circuits} | 50 | {circuit_score:.0f}% |
-        | Rooms | {room_count} | 15 | {room_score:.0f}% |
-        | Cable Routes | {cable_count} | 10 | {cable_score:.0f}% |
-        | Fixtures (lights + sockets) | {total_lights + total_sockets} | 100 | {fixture_score:.0f}% |
-        | **Weighted Total** | | | **{accuracy:.0f}%** |
+        | Component | Extracted | Target | Weight | Score |
+        |-----------|-----------|--------|--------|-------|
+        | Distribution Boards | {db_count} | 10 | 20% | {db_score:.0f}% |
+        | SLD Circuits | {total_sld_circuits} | 50 | 15% | {circuit_score:.0f}% |
+        | Layout Clusters | {len(all_layout_clusters)} | 30 | 20% | {cluster_score:.0f}% |
+        | Cable Routes | {cable_count} | 10 | 15% | {cable_score:.0f}% |
+        | SLD↔Layout Match Rate | {matched_circuits}/{total_compared} | 100% | 30% | {match_score:.0f}% |
+        | **Weighted Total** | | | | **{accuracy:.0f}%** |
 
-        **Weights:** DBs 20%, Circuits 20%, Rooms 20%, Cables 15%, Fixtures 25%
+        **v7.0 Circuit-Cluster Scoring:** Match Rate is now the highest weight (30%) because
+        accurate reconciliation between SLD and Layout is the key quality indicator.
+        """)
+
+        # Point totals for reference
+        st.markdown(f"""
+        #### Point Totals
+        - **Lighting Points (from clusters):** {total_lighting_points}
+        - **Power Points (from clusters):** {total_power_points}
+        - **Total Layout Points:** {total_lighting_points + total_power_points}
         """)
 
         # Critique / improvement suggestions
@@ -1429,12 +1557,14 @@ def render_step_5_review():
         issues = []
         if db_count < 8:
             issues.append("- **DBs:** Some distribution boards may be missing (check for DB-GF, DB-CA variations)")
-        if total_circuits < 40:
-            issues.append("- **Circuits:** Circuit schedules may be incomplete - review SLD pages manually")
-        if total_lights + total_sockets < 50:
-            issues.append("- **Fixtures:** Low fixture count - legend extraction or room counting may need improvement")
+        if total_sld_circuits < 40:
+            issues.append("- **SLD Circuits:** Circuit schedules may be incomplete - review SLD pages manually")
+        if len(all_layout_clusters) < 20:
+            issues.append("- **Layout Clusters:** Low circuit cluster count - drawings may not have clear circuit labels")
         if cable_count < 5:
             issues.append("- **Cables:** Sub-main cable routes not fully extracted from SLD")
+        if match_rate < 0.70:
+            issues.append("- **Match Rate:** SLD and Layout don't align well - check circuit references match")
 
         if issues:
             for issue in issues:
@@ -1504,15 +1634,15 @@ def render_step_5_review():
             st.rerun()
     with col2:
         if st.button("Start New Extraction", type="secondary", use_container_width=True):
-            # Clear all session state
+            # Clear all session state (v7.0 - includes circuit clusters)
             keys_to_clear = [
                 "guided_step", "max_completed_step",
                 "cover_pages", "sld_pages", "lighting_pages", "power_pages",
                 "interactive_pipeline", "project_info",
                 "supply_point", "detected_dbs", "db_schedules", "cable_routes",
                 "current_db_index", "lighting_legend", "detected_rooms",
-                "room_lighting", "current_lighting_room_index",
-                "power_legend", "room_power", "current_power_room_index",
+                "lighting_circuit_clusters", "room_lighting",  # v7.0: added circuit clusters
+                "power_legend", "power_circuit_clusters", "room_power",  # v7.0: added circuit clusters
                 "final_extraction", "final_validation", "final_pricing",
                 "sld_substep", "lighting_substep", "power_substep",
             ]
@@ -1530,8 +1660,8 @@ inject_custom_css()
 init_session_state()
 
 page_header(
-    title="Guided Upload v3.0",
-    subtitle="AI-powered 4-step document flow | 75%+ accuracy target"
+    title="Guided Upload v7.0",
+    subtitle="Circuit-Cluster-First | SLD Reconciliation | 75%+ accuracy target"
 )
 
 # Check if pipeline is available
@@ -1549,12 +1679,12 @@ provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", "")
 st.sidebar.success(f"{provider_name} ({provider_cost})")
 
 st.sidebar.info("""
-**AI-Powered Extraction**
+**v7.0 Circuit-Cluster-First**
 
-✅ High accuracy with vision models
-✅ Understands complex layouts
-✅ Extracts legends before counting
-✅ Specialized prompts per document type
+✅ Extract by circuit labels (DB-S3 L2)
+✅ Legend → Circuit clusters (not rooms)
+✅ SLD↔Layout reconciliation
+✅ Type-specific point counting
 """)
 
 st.sidebar.markdown("---")
@@ -1563,10 +1693,10 @@ st.sidebar.markdown("""
 
 1. **Cover Page** → Project info
 2. **SLD + Schedules** → DBs, circuits, cables
-3. **Lighting Layout** → Legend → Fixtures
-4. **Power Layout** → Legend → Sockets
+3. **Lighting Layout** → Legend → Circuit clusters
+4. **Power Layout** → Legend → Circuit clusters
 
-**Key:** Extract legends FIRST, then count fixtures using legend symbols.
+**Key:** Fixtures counted by CIRCUIT LABEL, then reconciled against SLD schedules.
 """)
 
 # Render the 4-step guided upload
