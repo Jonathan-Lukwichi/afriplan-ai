@@ -1,0 +1,868 @@
+{
+  "version": "1.0.0",
+  "created": "2026-02-28",
+  "description": "Ground truth benchmark for AfriPlan AI electrical extraction pipeline",
+  "projects": [
+    {
+      "id": "WEDELA_001",
+      "name": "THE UPGRADING OF WEDELA RECREATIONAL CLUB",
+      "type": "commercial_recreational",
+      "consultant": "CHONA-MALANGA ENGINEERING",
+      "client": "KABE CONSULTING ENGINEERS",
+      "standard": "SANS 10142-1",
+      "supply_point": {
+        "name": "Kiosk Metering",
+        "type": "existing_mini_sub",
+        "voltage": "400V",
+        "main_breaker_a": 250,
+        "fault_level_ka": 15,
+        "phases": "3PH+N+E",
+        "meter_type": "ct",
+        "feeds_to": "DB-CR",
+        "cable_spec": "95mm²x4CORE COPPER PVC SWA PVC",
+        "cable_length_m": 35
+      },
+      "distribution_boards": [
+        {
+          "name": "DB-CR",
+          "location": "Central Reception",
+          "is_main": true,
+          "fed_from": "Kiosk",
+          "incoming_cable": "95mm²x4C PVC SWA PVC",
+          "cable_length_m": 35,
+          "voltage": "400V",
+          "main_breaker_a": 200,
+          "fault_level_ka": 15,
+          "phases": "3PH+N+E",
+          "total_circuits": 22,
+          "spare_circuits": 2,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "6x48W", "load_w": 384, "cable": "1.5mm²", "points": 6},
+              {"ref": "L2", "description": "7x48W", "load_w": 336, "cable": "1.5mm²", "points": 7},
+              {"ref": "L3", "description": "6x48W", "load_w": 288, "cable": "1.5mm²", "points": 6},
+              {"ref": "L4", "description": "7x48W", "load_w": 336, "cable": "1.5mm²", "points": 7},
+              {"ref": "L5", "description": "6x48W", "load_w": 288, "cable": "1.5mm²", "points": 6},
+              {"ref": "L6", "description": "3x1200W", "load_w": 3600, "cable": "2.5mm²", "points": 3},
+              {"ref": "L7", "description": "2x1200W", "load_w": 2400, "cable": "2.5mm²", "points": 2},
+              {"ref": "L8", "description": "2x1200W", "load_w": 2400, "cable": "2.5mm²", "points": 2},
+              {"ref": "L9", "description": "Pool lighting", "load_w": 1800, "cable": "2.5mm²", "points": 8},
+              {"ref": "L10", "description": "Pool lighting", "load_w": 900, "cable": "1.5mm²", "points": 4},
+              {"ref": "L11", "description": "Pool lighting", "load_w": 900, "cable": "1.5mm²", "points": 4},
+              {"ref": "L12", "description": "Ablution lighting", "load_w": 450, "cable": "1.5mm²", "points": 2},
+              {"ref": "L13", "description": "Ablution lighting", "load_w": 450, "cable": "1.5mm²", "points": 2},
+              {"ref": "L14", "description": "Ablution lighting", "load_w": 450, "cable": "1.5mm²", "points": 2}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 3680, "cable": "2.5mm²", "points": 4},
+              {"ref": "P2", "description": "Power circuit", "load_w": 3680, "cable": "2.5mm²", "points": 4}
+            ],
+            "isolators": [
+              {"ref": "ISO1", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO2", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO3", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO4", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO5", "rating_a": 30, "description": "Isolator"}
+            ],
+            "sub_boards": ["DB-1", "DB-AB1", "DB-SGH", "DB-PFA"]
+          }
+        },
+        {
+          "name": "DB-PFA",
+          "location": "Pool Facility Area",
+          "is_main": false,
+          "fed_from": "DB-CR",
+          "incoming_cable": "70mm² PVC SWA PVC",
+          "voltage": "400V",
+          "main_breaker_a": 200,
+          "fault_level_ka": 15,
+          "phases": "3PH+N+E",
+          "total_circuits": 20,
+          "spare_circuits": 2,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "8x48W", "load_w": 384, "cable": "1.5mm²", "points": 8},
+              {"ref": "L2", "description": "8x48W", "load_w": 384, "cable": "1.5mm²", "points": 8},
+              {"ref": "L3", "description": "7x48W", "load_w": 336, "cable": "1.5mm²", "points": 7},
+              {"ref": "L4", "description": "5x48W", "load_w": 240, "cable": "1.5mm²", "points": 5},
+              {"ref": "L5", "description": "5x48W", "load_w": 240, "cable": "1.5mm²", "points": 5},
+              {"ref": "L6", "description": "Flood lights", "load_w": 600, "cable": "2.5mm²", "points": 3},
+              {"ref": "L7", "description": "Flood lights", "load_w": 400, "cable": "2.5mm²", "points": 2}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 3680, "cable": "2.5mm²", "points": 4},
+              {"ref": "P2", "description": "Power circuit", "load_w": 3680, "cable": "2.5mm²", "points": 4}
+            ],
+            "isolators": [
+              {"ref": "ISO1", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO2", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO3", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO4", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO5", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO6", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO7", "rating_a": 30, "description": "Isolator"}
+            ],
+            "sub_boards": ["DB-PPS1", "DB-PPS2", "DB-HPS1", "DB-HPS2"]
+          }
+        },
+        {
+          "name": "DB-1",
+          "location": "Existing Community Hall",
+          "is_main": false,
+          "fed_from": "DB-CR",
+          "incoming_cable": "50mm²",
+          "voltage": "400V",
+          "main_breaker_a": 150,
+          "fault_level_ka": 15,
+          "phases": "3PH+N+E",
+          "total_circuits": 24,
+          "spare_circuits": 2,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "5x54W", "load_w": 270, "cable": "1.5mm²", "points": 5},
+              {"ref": "L2", "description": "13x30W", "load_w": 390, "cable": "1.5mm²", "points": 13},
+              {"ref": "L3", "description": "5x48W", "load_w": 240, "cable": "1.5mm²", "points": 5},
+              {"ref": "L4", "description": "8x48W", "load_w": 384, "cable": "1.5mm²", "points": 8},
+              {"ref": "L5", "description": "8x48W", "load_w": 384, "cable": "1.5mm²", "points": 8},
+              {"ref": "L6", "description": "8x54W", "load_w": 432, "cable": "1.5mm²", "points": 8},
+              {"ref": "L7", "description": "8x54W", "load_w": 432, "cable": "1.5mm²", "points": 8},
+              {"ref": "L8", "description": "5x54W", "load_w": 270, "cable": "1.5mm²", "points": 5}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 2500, "cable": "2.5mm²", "points": 5},
+              {"ref": "P2", "description": "Power circuit", "load_w": 2500, "cable": "2.5mm²", "points": 5},
+              {"ref": "P3", "description": "Power circuit", "load_w": 2000, "cable": "2.5mm²", "points": 4},
+              {"ref": "P4", "description": "Power circuit", "load_w": 1500, "cable": "2.5mm²", "points": 3},
+              {"ref": "P5", "description": "Power circuit", "load_w": 2000, "cable": "2.5mm²", "points": 4}
+            ],
+            "isolators": [
+              {"ref": "ISO1", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO2", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO3", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO4", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO5", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO6", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO7", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO8", "rating_a": 30, "description": "Isolator"}
+            ],
+            "dedicated": [
+              {"ref": "HVAC", "description": "60KW HVAC System", "load_w": 60000, "cable": "25mm²", "rating_a": 100}
+            ],
+            "sub_boards": ["DB-ST"]
+          }
+        },
+        {
+          "name": "DB-ST",
+          "location": "Stage/Entertainment",
+          "is_main": false,
+          "fed_from": "DB-1",
+          "incoming_cable": "4mm²",
+          "voltage": "400V",
+          "main_breaker_a": 32,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 5,
+          "spare_circuits": 1,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "1x48W", "load_w": 48, "cable": "1.5mm²", "points": 1},
+              {"ref": "L2", "description": "4x30W", "load_w": 120, "cable": "1.5mm²", "points": 4}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 1500, "cable": "2.5mm²", "points": 3}
+            ]
+          }
+        },
+        {
+          "name": "DB-AB1",
+          "location": "Ablution Block 1",
+          "is_main": false,
+          "fed_from": "DB-CR",
+          "incoming_cable": "16mm²",
+          "voltage": "400V",
+          "main_breaker_a": 50,
+          "fault_level_ka": 15,
+          "phases": "3PH+N+E",
+          "total_circuits": 21,
+          "spare_circuits": 2,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "9x48W", "load_w": 432, "cable": "1.5mm²", "points": 9},
+              {"ref": "L2", "description": "8x48W", "load_w": 384, "cable": "1.5mm²", "points": 8},
+              {"ref": "L3", "description": "5x48W", "load_w": 240, "cable": "1.5mm²", "points": 5},
+              {"ref": "L4", "description": "10x48W", "load_w": 480, "cable": "1.5mm²", "points": 10},
+              {"ref": "L5", "description": "10x48W", "load_w": 480, "cable": "1.5mm²", "points": 10}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 2500, "cable": "2.5mm²", "points": 5},
+              {"ref": "P2", "description": "Power circuit", "load_w": 2500, "cable": "2.5mm²", "points": 5}
+            ],
+            "isolators": [
+              {"ref": "ISO1", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO2", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO3", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO4", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO5", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO6", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO7", "rating_a": 30, "description": "Isolator"},
+              {"ref": "ISO8", "rating_a": 30, "description": "Isolator"}
+            ],
+            "sub_boards": ["DB-AB2"]
+          }
+        },
+        {
+          "name": "DB-AB2",
+          "location": "Ablution Block 2",
+          "is_main": false,
+          "fed_from": "DB-AB1",
+          "incoming_cable": "10mm²",
+          "voltage": "400V",
+          "main_breaker_a": 50,
+          "fault_level_ka": 15,
+          "phases": "3PH+N+E",
+          "total_circuits": 10,
+          "spare_circuits": 3,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "5x48W", "load_w": 240, "cable": "1.5mm²", "points": 5},
+              {"ref": "L2", "description": "4x48W", "load_w": 192, "cable": "1.5mm²", "points": 4},
+              {"ref": "L3", "description": "9x48W", "load_w": 432, "cable": "1.5mm²", "points": 9}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 2000, "cable": "2.5mm²", "points": 4},
+              {"ref": "P2", "description": "Power circuit", "load_w": 1500, "cable": "2.5mm²", "points": 3}
+            ],
+            "sub_boards": ["DB-LGH"]
+          }
+        },
+        {
+          "name": "DB-LGH",
+          "location": "Large Guard House",
+          "is_main": false,
+          "fed_from": "DB-AB2",
+          "incoming_cable": "6mm²",
+          "voltage": "400V",
+          "main_breaker_a": 32,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 5,
+          "spare_circuits": 1,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "5x48W", "load_w": 240, "cable": "1.5mm²", "points": 5},
+              {"ref": "L2", "description": "5x26W Bulkhead", "load_w": 130, "cable": "1.5mm²", "points": 5}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 1000, "cable": "2.5mm²", "points": 2},
+              {"ref": "P2", "description": "Power circuit", "load_w": 1000, "cable": "2.5mm²", "points": 2}
+            ]
+          }
+        },
+        {
+          "name": "DB-SGH",
+          "location": "Small Guard House",
+          "is_main": false,
+          "fed_from": "DB-CR",
+          "incoming_cable": "6mm²",
+          "voltage": "400V",
+          "main_breaker_a": 32,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 4,
+          "spare_circuits": 1,
+          "circuits": {
+            "lighting": [
+              {"ref": "L1", "description": "4x48W", "load_w": 172, "cable": "1.5mm²", "points": 4},
+              {"ref": "L2", "description": "4x26W Bulkhead", "load_w": 104, "cable": "1.5mm²", "points": 4}
+            ],
+            "power": [
+              {"ref": "P1", "description": "Power circuit", "load_w": 1000, "cable": "2.5mm²", "points": 2}
+            ]
+          }
+        }
+      ],
+      "cable_routes": [
+        {"from": "Kiosk", "to": "DB-CR", "cable_spec": "95mm²x4C PVC SWA PVC", "length_m": 35, "is_underground": true},
+        {"from": "DB-CR", "to": "DB-1", "cable_spec": "50mm²", "length_m": 50, "is_underground": false},
+        {"from": "DB-CR", "to": "DB-PFA", "cable_spec": "70mm²", "length_m": 55, "is_underground": true},
+        {"from": "DB-CR", "to": "DB-AB1", "cable_spec": "16mm²", "length_m": 55, "is_underground": false},
+        {"from": "DB-CR", "to": "DB-SGH", "cable_spec": "6mm²", "length_m": 35, "is_underground": false},
+        {"from": "DB-1", "to": "DB-ST", "cable_spec": "4mm²", "length_m": 20, "is_underground": false},
+        {"from": "DB-AB1", "to": "DB-AB2", "cable_spec": "10mm²", "length_m": 32, "is_underground": false},
+        {"from": "DB-AB2", "to": "DB-LGH", "cable_spec": "6mm²", "length_m": 110, "is_underground": false},
+        {"from": "DB-PFA", "to": "DB-PPS1", "cable_spec": "35mm²", "length_m": 30, "is_underground": false},
+        {"from": "DB-PFA", "to": "DB-PPS2", "cable_spec": "35mm²", "length_m": 30, "is_underground": false},
+        {"from": "DB-PFA", "to": "DB-HPS1", "cable_spec": "35mm²", "length_m": 25, "is_underground": false},
+        {"from": "DB-PFA", "to": "DB-HPS2", "cable_spec": "35mm²", "length_m": 25, "is_underground": false}
+      ],
+      "areas": [
+        {
+          "name": "Pool Block",
+          "rooms": [
+            {"name": "Public Female Ablutions", "area_m2": 50},
+            {"name": "Public Male Ablutions", "area_m2": 35},
+            {"name": "Pool Pump", "area_m2": 16},
+            {"name": "Training Pool", "area_m2": 710},
+            {"name": "Children's Pool", "area_m2": 153},
+            {"name": "Male Changing Rooms", "area_m2": 68},
+            {"name": "Female Changing Rooms", "area_m2": 67},
+            {"name": "Storage 1", "area_m2": 19},
+            {"name": "Storage 2", "area_m2": 84}
+          ]
+        },
+        {
+          "name": "Community Hall Block",
+          "rooms": [
+            {"name": "Storage", "area_m2": 54},
+            {"name": "Kitchen/Scullery", "area_m2": 53},
+            {"name": "Multi Purpose Hall", "area_m2": 447},
+            {"name": "Waiting Lobby", "area_m2": 74},
+            {"name": "Entrance", "area_m2": 14},
+            {"name": "Male Ablutions", "area_m2": 25},
+            {"name": "Female Ablutions", "area_m2": 22},
+            {"name": "Open Courtyard", "area_m2": 389}
+          ]
+        },
+        {
+          "name": "Ablution Retail Block",
+          "rooms": [
+            {"name": "Tuck Shop", "area_m2": 52},
+            {"name": "Office", "area_m2": 26},
+            {"name": "Storage 01", "area_m2": 24},
+            {"name": "Storage 02", "area_m2": 20},
+            {"name": "Storage 03", "area_m2": 13},
+            {"name": "Ticket Sales", "area_m2": 11},
+            {"name": "Refuse Area", "area_m2": 28},
+            {"name": "Public Female Ablutions", "area_m2": 54},
+            {"name": "Public Male Ablutions", "area_m2": 48}
+          ]
+        },
+        {
+          "name": "Large Guard House",
+          "rooms": [
+            {"name": "Passage", "area_m2": 3},
+            {"name": "WC", "area_m2": 2},
+            {"name": "Security Office", "area_m2": 11}
+          ]
+        },
+        {
+          "name": "Small Guard House",
+          "rooms": [
+            {"name": "Security Office", "area_m2": 6},
+            {"name": "Passage", "area_m2": 2}
+          ]
+        }
+      ],
+      "legend": {
+        "lighting": [
+          {"symbol": "rect_1200", "name": "600x1200 Recessed 3x18W LED", "wattage_w": 54},
+          {"symbol": "downlight", "name": "6W LED Downlight", "wattage_w": 6},
+          {"symbol": "flood_30w", "name": "30W LED Flood Light", "wattage_w": 30},
+          {"symbol": "flood_200w", "name": "200W LED Flood Light", "wattage_w": 200},
+          {"symbol": "vapor_proof", "name": "2x24W Vapor Proof LED", "wattage_w": 48},
+          {"symbol": "bulkhead", "name": "26W Bulkhead Light Outdoor", "wattage_w": 26},
+          {"symbol": "ceiling_18w", "name": "18W LED Ceiling Light", "wattage_w": 18},
+          {"symbol": "pole_60w", "name": "Outdoor Pole Light 60W", "wattage_w": 60}
+        ],
+        "switches": [
+          {"symbol": "1L1W", "name": "1-lever 1-way @1200mm", "height_mm": 1200},
+          {"symbol": "2L1W", "name": "2-lever 1-way @1200mm", "height_mm": 1200},
+          {"symbol": "1L2W", "name": "1-lever 2-way @1200mm", "height_mm": 1200},
+          {"symbol": "DN", "name": "Day/Night switch @2000mm", "height_mm": 2000},
+          {"symbol": "ISO20", "name": "20A Isolator @2000mm", "height_mm": 2000},
+          {"symbol": "ISO30", "name": "30A Isolator @2000mm", "height_mm": 2000}
+        ],
+        "sockets": [
+          {"symbol": "DS300", "name": "16A Double Socket @300mm", "height_mm": 300},
+          {"symbol": "SS300", "name": "16A Single Socket @300mm", "height_mm": 300},
+          {"symbol": "DS1100", "name": "16A Double Socket @1100mm", "height_mm": 1100},
+          {"symbol": "SS1100", "name": "16A Single Socket @1100mm", "height_mm": 1100}
+        ],
+        "equipment": [
+          {"symbol": "DB", "name": "Distribution Board"},
+          {"symbol": "GEYSER", "name": "50L Geyser"},
+          {"symbol": "AC", "name": "Air Conditioning Unit"}
+        ]
+      },
+      "totals": {
+        "distribution_boards": 12,
+        "lighting_circuits": 48,
+        "power_circuits": 16,
+        "isolators": 42,
+        "dedicated_circuits": 5,
+        "total_lighting_points": 180,
+        "total_power_points": 85,
+        "total_load_kw": 145
+      }
+    },
+    {
+      "id": "EUROBATH_001",
+      "name": "ERF 470 YAPA PROPERTIES",
+      "type": "industrial_warehouse",
+      "consultant": "CHONA MALANGA",
+      "client": "YAPA PROPERTIES",
+      "location": "470 TRICHARD",
+      "standard": "SANS 10142-1",
+      "supply_point": {
+        "name": "Solar Panel + Eskom",
+        "type": "hybrid",
+        "voltage": "400V",
+        "main_breaker_a": 100,
+        "phases": "3PH+N+E",
+        "solar_input": "4x10mm PVCF Cu",
+        "earth": "4x16mm BCEW"
+      },
+      "distribution_boards": [
+        {
+          "name": "NEW MAIN DB",
+          "location": "Ground Floor",
+          "is_main": true,
+          "voltage": "400V",
+          "main_breaker_a": 100,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "wall_mounted": true,
+          "color": "white",
+          "cable_entry": "bottom",
+          "total_circuits": 24,
+          "spare_circuits": 4,
+          "circuits": {
+            "sub_boards": [
+              {"ref": "DB-CA", "load_w": 1299, "cable": "3Cx16mm²"},
+              {"ref": "DB-S1", "load_w": 9082, "cable": "3Cx6mm²"},
+              {"ref": "DB-S2", "load_w": 8210, "cable": "3Cx6mm²"},
+              {"ref": "DB-S3", "load_w": 5486, "cable": "4Cx4mm²"},
+              {"ref": "DB-S4", "load_w": 5486, "cable": "4Cx4mm²"}
+            ],
+            "power": [
+              {"ref": "P1", "load_w": 3680, "cable": "2.5mm²", "points": 4},
+              {"ref": "P2", "load_w": 3680, "cable": "2.5mm²", "points": 4}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 72, "cable": "1.5mm²", "points": 3},
+              {"ref": "L2", "load_w": 24, "cable": "1.5mm²", "points": 4},
+              {"ref": "L3", "load_w": 144, "cable": "1.5mm²", "points": 8},
+              {"ref": "L4", "load_w": 576, "cable": "1.5mm²", "points": 8},
+              {"ref": "L5", "load_w": 180, "cable": "1.5mm²", "points": 5}
+            ],
+            "dedicated": [
+              {"ref": "AC-1", "load_w": 1650, "cable": "2.5mm²", "points": 1}
+            ],
+            "isolators": [
+              {"ref": "ROLLER DOORS", "description": "Roller Doors Isolator 1-10", "rating_a": 20}
+            ],
+            "warehouse_lights": [
+              {"ref": "DBH-L7", "phase": "R-PH", "load_w": 400, "cable": "1.5mm²", "points": 9, "type": "C/F LIGHTS"},
+              {"ref": "DBH-L8", "phase": "W-PH", "load_w": 350, "cable": "1.5mm²", "points": 7, "type": "C/F LIGHTS"},
+              {"ref": "DBH-L0", "phase": "R-PH", "load_w": 350, "cable": "1.5mm²", "points": 7, "type": "C/F LIGHTS"},
+              {"ref": "DBM-L1", "phase": "R-PH", "load_w": 2000, "cable": "1.5mm²", "points": 8, "type": "High Bay"},
+              {"ref": "DBM-L2", "phase": "W-PH", "load_w": 2000, "cable": "1.5mm²", "points": 8, "type": "High Bay"},
+              {"ref": "DBM-L3", "phase": "R-PH", "load_w": 2000, "cable": "1.5mm²", "points": 8, "type": "High Bay"},
+              {"ref": "DBM-L4", "phase": "W-PH", "load_w": 2000, "cable": "1.5mm²", "points": 8, "type": "High Bay"},
+              {"ref": "DBM-L5", "phase": "R-PH", "load_w": 2250, "cable": "1.5mm²", "points": 9, "type": "High Bay"},
+              {"ref": "DBM-L5", "phase": "W-PH", "load_w": 2250, "cable": "1.5mm²", "points": 9, "type": "High Bay"}
+            ],
+            "feeders": [
+              {"ref": "GF-00", "phase": "2PH+N+E", "load_w": 37500, "rating_a": 60, "description": "Ground Floor Coating"},
+              {"ref": "VF-00", "phase": "3PH+N+E", "load_w": 27300, "description": "FEEDER SUBMETERING"}
+            ]
+          }
+        },
+        {
+          "name": "SUB DB-GF",
+          "location": "Ground Floor",
+          "is_main": false,
+          "fed_from": "Main DB",
+          "incoming_cable": "4Cx16mm PVCF Cu + 10Cx16mm BCEW",
+          "voltage": "400V",
+          "main_breaker_a": 60,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 15,
+          "spare_circuits": 3,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "description": "PLUGS", "cable": "2.5mm²", "points": 11},
+              {"ref": "P2", "description": "PLUGS", "cable": "3.5mm²", "points": 3},
+              {"ref": "P5", "description": "PLUGS", "cable": "3.5mm²", "points": 3}
+            ],
+            "lighting": [
+              {"ref": "L1", "phase": "R-PH", "cable": "1.5mm²", "points": 9},
+              {"ref": "L4", "phase": "R-PH", "load_w": 800, "cable": "1.5mm²", "points": 8}
+            ],
+            "isolators": [
+              {"ref": "ISO1", "description": "DOOR", "rating_a": 20},
+              {"ref": "ISO2", "description": "EF1", "rating_a": 20},
+              {"ref": "ISO3", "description": "EF2", "rating_a": 20},
+              {"ref": "ISO4", "description": "EF3", "rating_a": 20},
+              {"ref": "ISO5", "description": "DOOR", "rating_a": 20}
+            ],
+            "dedicated": [
+              {"ref": "AC1", "description": "Air Conditioning", "rating_a": 20}
+            ]
+          }
+        },
+        {
+          "name": "SUB DB-1F",
+          "location": "First Floor",
+          "is_main": false,
+          "fed_from": "Main DB",
+          "incoming_cable": "4Cx16mm PVCF Cu + 10Cx16mm BCEW",
+          "voltage": "400V",
+          "main_breaker_a": 60,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 22,
+          "spare_circuits": 2,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "phase": "B-PH", "cable": "2.5mm²", "points": 11},
+              {"ref": "P2", "phase": "R-PH", "cable": "3.5mm²", "points": 0},
+              {"ref": "P5", "phase": "W-PH", "cable": "2.5mm²", "points": 8}
+            ],
+            "lighting": [
+              {"ref": "L1", "phase": "B-PH", "load_w": 120, "cable": "1.5mm²", "points": 17},
+              {"ref": "L2", "phase": "W-PH", "load_w": 110, "cable": "1.5mm²", "points": 17},
+              {"ref": "L3", "load_w": 102, "cable": "1.5mm²", "points": 17}
+            ],
+            "isolators": [
+              {"ref": "ISO1", "rating_a": 20},
+              {"ref": "ISO3-ISO9", "description": "Multiple", "rating_a": 20}
+            ],
+            "dedicated": [
+              {"ref": "AC2", "description": "Air Conditioning"},
+              {"ref": "AC3", "description": "Air Conditioning"},
+              {"ref": "AC5", "description": "Air Conditioning"},
+              {"ref": "EF1", "description": "Extractor Fan"},
+              {"ref": "EF2", "description": "Extractor Fan"},
+              {"ref": "GEYSER", "description": "Geyser"}
+            ]
+          }
+        }
+      ],
+      "areas": [
+        {
+          "name": "Warehouse Ground Floor",
+          "rooms": [
+            {"name": "Dispatch Cage 1", "area_m2": 25},
+            {"name": "Dispatch Cage 2", "area_m2": 25},
+            {"name": "Dispatch Cage 3", "area_m2": 25},
+            {"name": "Dispatch Cage 4", "area_m2": 25},
+            {"name": "Office", "area_m2": 30},
+            {"name": "Ladies", "area_m2": 15},
+            {"name": "Gents", "area_m2": 15},
+            {"name": "Tea Room", "area_m2": 20},
+            {"name": "Prayer Room", "area_m2": 18},
+            {"name": "Wudhu", "area_m2": 8},
+            {"name": "Retail Space", "area_m2": 80},
+            {"name": "Secure Payment Area", "area_m2": 20},
+            {"name": "Secure Items Store", "area_m2": 25}
+          ]
+        },
+        {
+          "name": "Warehouse Main",
+          "rooms": [
+            {"name": "High Level Pallet Racking", "area_m2": 1500}
+          ]
+        }
+      ],
+      "legend": {
+        "lighting": [
+          {"symbol": "ufo_highbay", "name": "UFO Ring Highbay 250W", "wattage_w": 250},
+          {"symbol": "pr48_highbay", "name": "Type PR48 High Bay 120W LED", "wattage_w": 120},
+          {"symbol": "downlight_8w", "name": "Downlight 8W LED", "wattage_w": 8},
+          {"symbol": "led_20w", "name": "20W LED Light", "wattage_w": 20},
+          {"symbol": "flood_50w", "name": "Flood Light 50W LED", "wattage_w": 50},
+          {"symbol": "t5_twin", "name": "Type T5 2x54W LED", "wattage_w": 108},
+          {"symbol": "led_20w_strip", "name": "1x20W LED", "wattage_w": 20}
+        ],
+        "switches": [
+          {"symbol": "1L1W", "name": "1-lever 1-way Switch", "height_mm": 1200},
+          {"symbol": "2WAY", "name": "Two Way Switch-Carrier", "height_mm": 1200}
+        ]
+      },
+      "totals": {
+        "distribution_boards": 3,
+        "lighting_circuits": 15,
+        "power_circuits": 9,
+        "isolators": 15,
+        "dedicated_circuits": 8,
+        "total_lighting_points": 130,
+        "total_power_points": 50,
+        "total_load_kw": 85
+      }
+    },
+    {
+      "id": "NEWMARK_001",
+      "name": "PROPOSED NEW OFFICES ON ERF1/1 NEWMARK",
+      "type": "commercial_office",
+      "consultant": "CHONA-MALANGA ENGINEERING",
+      "client": "TJM GREENTECH",
+      "location": "249 Waterfall View, Midrand, Halfway House",
+      "standard": "SANS 10142-1",
+      "supply_point": {
+        "name": "Kiosk Metering",
+        "type": "eskom",
+        "main_breaker_a": 100,
+        "incoming_cable": "95mm²x4C PVC SWA PVC",
+        "earth": "25mm² BCEW"
+      },
+      "distribution_boards": [
+        {
+          "name": "DB-GF",
+          "location": "Ground Floor",
+          "is_main": true,
+          "fed_from": "Eskom Metering Box",
+          "incoming_cable": "14mm x 4C PVC SWA",
+          "voltage": "400V",
+          "main_breaker_a": 100,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 17,
+          "spare_circuits": 2,
+          "circuits": {
+            "sub_boards": [
+              {"ref": "DB-CA", "load_w": 1299, "cable": "3Cx16mm²"},
+              {"ref": "DB-S1", "load_w": 9082, "cable": "3Cx6mm²"},
+              {"ref": "DB-S2", "load_w": 8210, "cable": "3Cx6mm²"},
+              {"ref": "DB-S3", "load_w": 5486, "cable": "4Cx4mm²"},
+              {"ref": "DB-S4", "load_w": 5486, "cable": "4Cx4mm²"}
+            ],
+            "power": [
+              {"ref": "P1", "load_w": 3680, "cable": "2.5mm²", "points": 4},
+              {"ref": "P2", "load_w": 3680, "cable": "2.5mm²", "points": 4}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 72, "cable": "1.5mm²", "points": 3, "description": "Foyer"},
+              {"ref": "L2", "load_w": 24, "cable": "1.5mm²", "points": 4},
+              {"ref": "L3", "load_w": 144, "cable": "1.5mm²", "points": 8},
+              {"ref": "L4", "load_w": 576, "cable": "1.5mm²", "points": 8},
+              {"ref": "L5", "load_w": 180, "cable": "1.5mm²", "points": 5, "description": "External Day/Night"}
+            ],
+            "dedicated": [
+              {"ref": "AC-1", "load_w": 1650, "cable": "2.5mm²", "points": 1}
+            ]
+          }
+        },
+        {
+          "name": "DB-CA",
+          "location": "Common Area",
+          "is_main": false,
+          "fed_from": "DB-GF",
+          "incoming_cable": "16mm x 4C PVC SWA PVC",
+          "voltage": "230V",
+          "main_breaker_a": 60,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 10,
+          "spare_circuits": 3,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "load_w": 3680, "cable": "2.5mm²", "points": 4},
+              {"ref": "P2", "load_w": 3680, "cable": "2.5mm²", "points": 3},
+              {"ref": "P3", "load_w": 3680, "cable": "2.5mm²", "points": 2}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 30, "cable": "1.5mm²", "points": 6},
+              {"ref": "L2", "load_w": 198, "cable": "1.5mm²", "points": 8},
+              {"ref": "L3", "load_w": 60, "cable": "1.5mm²", "points": 6}
+            ],
+            "dedicated": [
+              {"ref": "AC-1", "load_w": 1650, "cable": "2.5mm²"}
+            ]
+          }
+        },
+        {
+          "name": "DB-S1",
+          "location": "Suite 1",
+          "is_main": false,
+          "fed_from": "DB-GF",
+          "incoming_cable": "6mm² x 3C PVC SWA PVC",
+          "voltage": "230V",
+          "main_breaker_a": 30,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 7,
+          "spare_circuits": 2,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "load_w": 3660, "cable": "2.5mm²", "points": 3},
+              {"ref": "P2", "load_w": 3660, "cable": "2.5mm²", "points": 4}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 54, "cable": "1.5mm²", "points": 9},
+              {"ref": "L2", "load_w": 18, "cable": "1.5mm²", "points": 1}
+            ],
+            "dedicated": [
+              {"ref": "AC1", "load_w": 1650, "cable": "2.5mm²"}
+            ]
+          }
+        },
+        {
+          "name": "DB-S2",
+          "location": "Suite 2",
+          "is_main": false,
+          "fed_from": "DB-GF",
+          "incoming_cable": "6mm² x 3C PVC SWA PVC",
+          "voltage": "230V",
+          "main_breaker_a": 30,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 7,
+          "spare_circuits": 2,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "load_w": 3660, "cable": "2.5mm²", "points": 3},
+              {"ref": "P2", "load_w": 2760, "cable": "2.5mm²", "points": 3}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 48, "cable": "1.5mm²", "points": 8},
+              {"ref": "L2", "load_w": 72, "cable": "1.5mm²", "points": 3}
+            ],
+            "dedicated": [
+              {"ref": "AC1", "load_w": 1650, "cable": "2.5mm²"}
+            ]
+          }
+        },
+        {
+          "name": "DB-S3",
+          "location": "Suite 3",
+          "is_main": false,
+          "fed_from": "DB-GF",
+          "incoming_cable": "4mm² x 3C PVC SWA PVC",
+          "voltage": "230V",
+          "main_breaker_a": 20,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 6,
+          "spare_circuits": 2,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "load_w": 3660, "cable": "2.5mm²", "points": 3},
+              {"ref": "P2", "load_w": 0, "cable": "2.5mm²", "points": 0},
+              {"ref": "P3", "load_w": 0, "cable": "2.5mm²", "points": 0}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 48, "cable": "1.5mm²", "points": 8},
+              {"ref": "L2", "load_w": 54, "cable": "1.5mm²", "points": 4}
+            ],
+            "dedicated": [
+              {"ref": "AC1", "load_w": 1650, "cable": "2.5mm²"}
+            ]
+          }
+        },
+        {
+          "name": "DB-S4",
+          "location": "Suite 4",
+          "is_main": false,
+          "fed_from": "DB-GF",
+          "incoming_cable": "4mm² x 3C PVC SWA PVC",
+          "voltage": "230V",
+          "main_breaker_a": 20,
+          "fault_level_ka": 6,
+          "phases": "3PH+N+E",
+          "total_circuits": 6,
+          "spare_circuits": 2,
+          "circuits": {
+            "power": [
+              {"ref": "P1", "load_w": 3660, "cable": "2.5mm²", "points": 3}
+            ],
+            "lighting": [
+              {"ref": "L1", "load_w": 48, "cable": "1.5mm²", "points": 8},
+              {"ref": "L2", "load_w": 108, "cable": "1.5mm²", "points": 4}
+            ],
+            "dedicated": [
+              {"ref": "AC1", "load_w": 1650, "cable": "2.5mm²"}
+            ]
+          }
+        }
+      ],
+      "cable_routes": [
+        {"from": "Kiosk Metering", "to": "DB-GF", "cable_spec": "95mm²x4C PVC SWA PVC", "earth": "25mm² BCEW", "is_underground": true},
+        {"from": "DB-GF", "to": "DB-CA", "cable_spec": "16mm x 4C PVC SWA PVC", "is_underground": false},
+        {"from": "DB-GF", "to": "DB-S1", "cable_spec": "6mm² x 3C PVC SWA PVC", "is_underground": false},
+        {"from": "DB-GF", "to": "DB-S2", "cable_spec": "6mm² x 3C PVC SWA PVC", "is_underground": false},
+        {"from": "DB-GF", "to": "DB-S3", "cable_spec": "4mm² x 3C PVC SWA PVC", "is_underground": false},
+        {"from": "DB-GF", "to": "DB-S4", "cable_spec": "4mm² x 3C PVC SWA PVC", "is_underground": false}
+      ],
+      "underground_works": [
+        {"size_mm": 110, "qty": 2, "purpose": "Main supply sleeves"},
+        {"size_mm": 75, "qty": 4, "purpose": "Cable sleeves"},
+        {"size_mm": 50, "qty": 3, "purpose": "Solar cable underground"}
+      ],
+      "areas": [
+        {
+          "name": "Ground Floor",
+          "rooms": [
+            {"name": "Suite 1", "area_m2": 54.9},
+            {"name": "Foyer", "area_m2": 18.9},
+            {"name": "Parking", "area_m2": 76.1},
+            {"name": "Tea Room", "area_m2": 10},
+            {"name": "Office", "area_m2": 25},
+            {"name": "Staff Change Room", "area_m2": 12},
+            {"name": "Conference Room", "area_m2": 30},
+            {"name": "Battery Room", "area_m2": 8},
+            {"name": "Broom Closet", "area_m2": 4},
+            {"name": "Refuse", "area_m2": 6},
+            {"name": "WC", "area_m2": 4}
+          ]
+        },
+        {
+          "name": "First Floor",
+          "rooms": [
+            {"name": "Suite 2", "area_m2": 0},
+            {"name": "Suite 3", "area_m2": 20.2},
+            {"name": "Suite 4", "area_m2": 31.7},
+            {"name": "Lounge", "area_m2": 7.5},
+            {"name": "Balcony", "area_m2": 13.2},
+            {"name": "Store", "area_m2": 10.2},
+            {"name": "Kitchenette", "area_m2": 8},
+            {"name": "WC", "area_m2": 4}
+          ]
+        }
+      ],
+      "containment": [
+        {"type": "power_skirting", "description": "2x Compartment Steel Grey Power Skirting"},
+        {"type": "cable_tray", "description": "200mm Galvanized Cable Tray (Aircon)"},
+        {"type": "trunking", "description": "P8000 Trunking"},
+        {"type": "wire_mesh", "description": "150mm Wire Mesh Basket Galvanized"}
+      ],
+      "legend": {
+        "lighting": [
+          {"symbol": "rect_1200", "name": "600x1200 Recessed 3x18W LED", "wattage_w": 54},
+          {"symbol": "ceiling_18w", "name": "18W LED Ceiling Light", "wattage_w": 18},
+          {"symbol": "flood_30w", "name": "30W LED Flood Light", "wattage_w": 30}
+        ],
+        "switches": [
+          {"symbol": "1L1W", "name": "1-lever 1-way @1200mm", "height_mm": 1200},
+          {"symbol": "2L1W", "name": "2-lever 1-way @1200mm", "height_mm": 1200},
+          {"symbol": "DN", "name": "Day/Night switch @2000mm", "height_mm": 2000},
+          {"symbol": "ISO20", "name": "20A Isolator @2000mm", "height_mm": 2000},
+          {"symbol": "ISO30", "name": "30A Isolator @2000mm", "height_mm": 2000}
+        ],
+        "sockets": [
+          {"symbol": "SS300", "name": "16A Single Socket @300mm", "height_mm": 300},
+          {"symbol": "DS300", "name": "16A Double Socket @300mm", "height_mm": 300},
+          {"symbol": "SS1100", "name": "16A Single Socket @1100mm", "height_mm": 1100},
+          {"symbol": "DS1100", "name": "16A Double Socket @1100mm", "height_mm": 1100},
+          {"symbol": "DATA", "name": "Data Socket CAT 6", "height_mm": 300},
+          {"symbol": "FLOOR_BOX", "name": "Floor Box", "height_mm": 0}
+        ],
+        "equipment": [
+          {"symbol": "DB", "name": "Distribution Board"},
+          {"symbol": "AC", "name": "Air Conditioning Unit"}
+        ]
+      },
+      "totals": {
+        "distribution_boards": 6,
+        "lighting_circuits": 14,
+        "power_circuits": 12,
+        "isolators": 0,
+        "dedicated_circuits": 6,
+        "total_lighting_points": 85,
+        "total_power_points": 45,
+        "total_load_kw": 55
+      }
+    }
+  ]
+}

@@ -49,6 +49,19 @@ except ImportError as e:
     PIPELINE_IMPORT_ERROR = str(e)
     HAS_OPENPYXL = False
 
+# Import benchmark validation module
+BENCHMARK_AVAILABLE = False
+try:
+    from benchmark import (
+        validate_extraction_against_benchmark,
+        render_benchmark_results,
+        convert_extraction_for_validation,
+        identify_project,
+    )
+    BENCHMARK_AVAILABLE = True
+except ImportError:
+    pass
+
 
 # ============================================================================
 # API KEY LOADING
@@ -1582,6 +1595,51 @@ def render_step_5_review():
             st.warning(f"Score: {score:.0f}%")
         else:
             st.error(f"Score: {score:.0f}%")
+
+    # Benchmark Validation (if project matches known ground truth)
+    if BENCHMARK_AVAILABLE:
+        project_name = st.session_state.project_info.get("project_name", "")
+        project_id = identify_project(project_name)
+
+        if project_id:
+            st.markdown("### Benchmark Validation")
+            st.caption(f"Comparing extraction against ground truth: **{project_id}**")
+
+            with st.expander("View Benchmark Results", expanded=True):
+                try:
+                    # Convert session state data for validation
+                    validation_data = convert_extraction_for_validation(
+                        db_data=st.session_state.db_schedules,
+                        cable_routes=st.session_state.cable_routes,
+                        legend_data={
+                            "lighting": st.session_state.lighting_legend,
+                            "power": st.session_state.power_legend,
+                        },
+                        project_info=st.session_state.project_info
+                    )
+
+                    # Add circuit clusters for validation
+                    validation_data["lighting_clusters"] = lighting_clusters
+                    validation_data["power_clusters"] = power_clusters
+
+                    # Run benchmark validation
+                    benchmark_report = validate_extraction_against_benchmark(
+                        validation_data,
+                        project_id=project_id
+                    )
+
+                    if benchmark_report:
+                        render_benchmark_results(benchmark_report)
+                    else:
+                        st.info("Benchmark validation could not be completed.")
+
+                except Exception as e:
+                    st.warning(f"Benchmark validation error: {e}")
+        else:
+            # Show that benchmark is available but project not matched
+            st.markdown("### Benchmark Validation")
+            st.info(f"Project '{project_name}' not in benchmark database. Benchmark validation skipped.")
+            st.caption("Known projects: WEDELA (Recreational Club), EUROBATH (Warehouse), NewMark (Offices)")
 
     # Export buttons
     st.markdown("### Export")
