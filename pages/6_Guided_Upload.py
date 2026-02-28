@@ -132,6 +132,12 @@ def init_session_state():
         "lighting_pages": [],
         "power_pages": [],
 
+        # Skip tracking (for upload summary)
+        "step_1_skipped": False,
+        "step_2_skipped": False,
+        "step_3_skipped": False,
+        "step_4_skipped": False,
+
         # Pipeline instance (AI-based)
         "interactive_pipeline": None,
 
@@ -645,20 +651,34 @@ def render_step_1_cover():
     - Date and revision info
     """)
 
-    # File upload
-    uploaded_file = st.file_uploader(
-        "Upload Cover Page (PDF or Image)",
+    # File upload - supports multiple files
+    uploaded_files = st.file_uploader(
+        "Upload Cover Page(s) (PDF or Image) - You can select multiple files",
         type=["pdf", "png", "jpg", "jpeg"],
-        key="cover_uploader_v2"
+        key="cover_uploader_v3",
+        accept_multiple_files=True
     )
 
-    if uploaded_file:
-        with st.spinner("Processing cover page..."):
-            pages = process_uploaded_file(uploaded_file)
-            if pages:
-                st.session_state.cover_pages = pages
-                st.success(f"Cover page loaded ({len(pages)} page(s))")
-                show_page_thumbnails(pages, max_show=2)
+    if uploaded_files:
+        all_pages = []
+        with st.spinner(f"Processing {len(uploaded_files)} file(s)..."):
+            for uploaded_file in uploaded_files:
+                pages = process_uploaded_file(uploaded_file)
+                if pages:
+                    all_pages.extend(pages)
+            if all_pages:
+                st.session_state.cover_pages = all_pages
+                st.success(f"Cover page loaded ({len(all_pages)} page(s) from {len(uploaded_files)} file(s))")
+                show_page_thumbnails(all_pages, max_show=2)
+
+    # Skip button
+    col_skip, col_spacer = st.columns([1, 3])
+    with col_skip:
+        if st.button("Skip this step →", key="skip_step_1", help="Skip if you don't have a cover page"):
+            st.session_state.guided_step = 2
+            st.session_state.max_completed_step = max(1, st.session_state.max_completed_step)
+            st.session_state["step_1_skipped"] = True
+            st.rerun()
 
     # If already uploaded, show extraction form
     if st.session_state.cover_pages and not st.session_state.project_info:
@@ -757,21 +777,28 @@ def render_step_2_sld():
         - Circuit schedules for each DB
         - Main supply point / Kiosk metering info
         - Cable routes between DBs
+
+        **Tip:** You can upload multiple SLD files if they are split across documents.
         """)
 
-        uploaded_file = st.file_uploader(
-            "Upload SLD & Circuit Schedule (PDF)",
+        uploaded_files = st.file_uploader(
+            "Upload SLD & Circuit Schedule(s) (PDF) - You can select multiple files",
             type=["pdf", "png", "jpg", "jpeg"],
-            key="sld_uploader_v2"
+            key="sld_uploader_v3",
+            accept_multiple_files=True
         )
 
-        if uploaded_file:
-            with st.spinner("Processing SLD pages..."):
-                pages = process_uploaded_file(uploaded_file)
-                if pages:
-                    st.session_state.sld_pages = pages
-                    st.success(f"SLD loaded ({len(pages)} page(s))")
-                    show_page_thumbnails(pages, max_show=4)
+        if uploaded_files:
+            all_pages = []
+            with st.spinner(f"Processing {len(uploaded_files)} SLD file(s)..."):
+                for uploaded_file in uploaded_files:
+                    pages = process_uploaded_file(uploaded_file)
+                    if pages:
+                        all_pages.extend(pages)
+                if all_pages:
+                    st.session_state.sld_pages = all_pages
+                    st.success(f"SLD loaded ({len(all_pages)} page(s) from {len(uploaded_files)} file(s))")
+                    show_page_thumbnails(all_pages, max_show=4)
 
         if st.session_state.sld_pages:
             col1, col2 = st.columns(2)
@@ -782,6 +809,19 @@ def render_step_2_sld():
             with col2:
                 if st.button("Detect Distribution Boards", type="primary", use_container_width=True):
                     st.session_state["sld_substep"] = "detect_dbs"
+                    st.rerun()
+        else:
+            # Skip button when no file uploaded
+            col_back, col_skip = st.columns(2)
+            with col_back:
+                if st.button("Back to Cover Page", use_container_width=True):
+                    st.session_state.guided_step = 1
+                    st.rerun()
+            with col_skip:
+                if st.button("Skip SLD step →", key="skip_step_2", help="Skip if you don't have SLD documents"):
+                    st.session_state.guided_step = 3
+                    st.session_state.max_completed_step = max(2, st.session_state.max_completed_step)
+                    st.session_state["step_2_skipped"] = True
                     st.rerun()
         return
 
@@ -1041,21 +1081,28 @@ def render_step_3_lighting():
         - Lighting legend (symbol → fixture type)
         - Floor plan with light fixtures
         - Circuit labels (e.g., "DB-S3 L2", "DB-GF L1")
+
+        **Tip:** You can upload multiple lighting layout files (e.g., Ground Floor, First Floor).
         """)
 
-        uploaded_file = st.file_uploader(
-            "Upload Lighting Layout (PDF)",
+        uploaded_files = st.file_uploader(
+            "Upload Lighting Layout(s) (PDF) - You can select multiple files",
             type=["pdf", "png", "jpg", "jpeg"],
-            key="lighting_uploader_v2"
+            key="lighting_uploader_v3",
+            accept_multiple_files=True
         )
 
-        if uploaded_file:
-            with st.spinner("Processing lighting layout..."):
-                pages = process_uploaded_file(uploaded_file)
-                if pages:
-                    st.session_state.lighting_pages = pages
-                    st.success(f"Lighting layout loaded ({len(pages)} page(s))")
-                    show_page_thumbnails(pages, max_show=3)
+        if uploaded_files:
+            all_pages = []
+            with st.spinner(f"Processing {len(uploaded_files)} lighting file(s)..."):
+                for uploaded_file in uploaded_files:
+                    pages = process_uploaded_file(uploaded_file)
+                    if pages:
+                        all_pages.extend(pages)
+                if all_pages:
+                    st.session_state.lighting_pages = all_pages
+                    st.success(f"Lighting layout loaded ({len(all_pages)} page(s) from {len(uploaded_files)} file(s))")
+                    show_page_thumbnails(all_pages, max_show=3)
 
         if st.session_state.lighting_pages:
             col1, col2 = st.columns(2)
@@ -1067,6 +1114,20 @@ def render_step_3_lighting():
             with col2:
                 if st.button("Extract Lighting Legend", type="primary", use_container_width=True):
                     st.session_state["lighting_substep"] = "legend"
+                    st.rerun()
+        else:
+            # Skip button when no file uploaded
+            col_back, col_skip = st.columns(2)
+            with col_back:
+                if st.button("Back to SLD", use_container_width=True):
+                    st.session_state.guided_step = 2
+                    st.session_state["sld_substep"] = "cable_routes"
+                    st.rerun()
+            with col_skip:
+                if st.button("Skip Lighting step →", key="skip_step_3", help="Skip if you don't have lighting layouts"):
+                    st.session_state.guided_step = 4
+                    st.session_state.max_completed_step = max(3, st.session_state.max_completed_step)
+                    st.session_state["step_3_skipped"] = True
                     st.rerun()
         return
 
@@ -1232,21 +1293,28 @@ def render_step_4_power():
         - Power legend (sockets, data points, isolators)
         - Floor plan with circuit labels (e.g., "DB-S3 P2", "DB-GF P1")
         - Equipment connections (A/C, geyser isolators)
+
+        **Tip:** You can upload multiple power layout files (e.g., Ground Floor, First Floor).
         """)
 
-        uploaded_file = st.file_uploader(
-            "Upload Power Layout (PDF)",
+        uploaded_files = st.file_uploader(
+            "Upload Power Layout(s) (PDF) - You can select multiple files",
             type=["pdf", "png", "jpg", "jpeg"],
-            key="power_uploader_v2"
+            key="power_uploader_v3",
+            accept_multiple_files=True
         )
 
-        if uploaded_file:
-            with st.spinner("Processing power layout..."):
-                pages = process_uploaded_file(uploaded_file)
-                if pages:
-                    st.session_state.power_pages = pages
-                    st.success(f"Power layout loaded ({len(pages)} page(s))")
-                    show_page_thumbnails(pages, max_show=3)
+        if uploaded_files:
+            all_pages = []
+            with st.spinner(f"Processing {len(uploaded_files)} power file(s)..."):
+                for uploaded_file in uploaded_files:
+                    pages = process_uploaded_file(uploaded_file)
+                    if pages:
+                        all_pages.extend(pages)
+                if all_pages:
+                    st.session_state.power_pages = all_pages
+                    st.success(f"Power layout loaded ({len(all_pages)} page(s) from {len(uploaded_files)} file(s))")
+                    show_page_thumbnails(all_pages, max_show=3)
 
         if st.session_state.power_pages:
             col1, col2 = st.columns(2)
@@ -1258,6 +1326,20 @@ def render_step_4_power():
             with col2:
                 if st.button("Extract Power Legend", type="primary", use_container_width=True):
                     st.session_state["power_substep"] = "legend"
+                    st.rerun()
+        else:
+            # Skip button when no file uploaded
+            col_back, col_skip = st.columns(2)
+            with col_back:
+                if st.button("Back to Lighting", use_container_width=True):
+                    st.session_state.guided_step = 3
+                    st.session_state["lighting_substep"] = "circuit_clusters"
+                    st.rerun()
+            with col_skip:
+                if st.button("Skip to Review →", key="skip_step_4", help="Skip if you don't have power layouts"):
+                    st.session_state.guided_step = 5
+                    st.session_state.max_completed_step = max(4, st.session_state.max_completed_step)
+                    st.session_state["step_4_skipped"] = True
                     st.rerun()
         return
 
@@ -1523,20 +1605,57 @@ def render_step_5_review():
     else:
         st.info("No reconciliation data available. Upload both SLD and Layout documents.")
 
-    # Document coverage
-    st.markdown("### Document Coverage")
+    # Document coverage with upload summary
+    st.markdown("### Document Upload Summary")
+
+    # Build detailed status with page counts and skip info
     doc_status = [
-        ("Cover Page", bool(st.session_state.cover_pages), bool(st.session_state.project_info.get("project_name"))),
-        ("SLD/Schedules", bool(st.session_state.sld_pages), bool(st.session_state.db_schedules)),
-        ("Lighting Layout", bool(st.session_state.lighting_pages), bool(st.session_state.lighting_legend.get("has_legend"))),
-        ("Power Layout", bool(st.session_state.power_pages), bool(st.session_state.power_legend.get("has_legend"))),
+        {
+            "name": "Cover Page",
+            "step": 1,
+            "pages": st.session_state.cover_pages,
+            "extracted": bool(st.session_state.project_info.get("project_name")),
+            "skipped": st.session_state.get("step_1_skipped", False),
+        },
+        {
+            "name": "SLD/Schedules",
+            "step": 2,
+            "pages": st.session_state.sld_pages,
+            "extracted": bool(st.session_state.db_schedules),
+            "skipped": st.session_state.get("step_2_skipped", False),
+        },
+        {
+            "name": "Lighting Layout",
+            "step": 3,
+            "pages": st.session_state.lighting_pages,
+            "extracted": bool(st.session_state.lighting_legend.get("has_legend")),
+            "skipped": st.session_state.get("step_3_skipped", False),
+        },
+        {
+            "name": "Power Layout",
+            "step": 4,
+            "pages": st.session_state.power_pages,
+            "extracted": bool(st.session_state.power_legend.get("has_legend")),
+            "skipped": st.session_state.get("step_4_skipped", False),
+        },
     ]
 
-    for doc_name, uploaded, extracted in doc_status:
-        if uploaded and extracted:
-            st.markdown(f"- :green[{doc_name}] - Uploaded & Extracted")
-        elif uploaded:
-            st.markdown(f"- :orange[{doc_name}] - Uploaded (partial extraction)")
+    # Calculate totals
+    total_pages = sum(len(d["pages"]) for d in doc_status)
+    total_uploaded = sum(1 for d in doc_status if d["pages"])
+    total_skipped = sum(1 for d in doc_status if d["skipped"])
+
+    st.info(f"**Total:** {total_pages} pages from {total_uploaded} document type(s) | {total_skipped} step(s) skipped")
+
+    for doc in doc_status:
+        page_count = len(doc["pages"])
+        doc_name = doc["name"]
+        if doc["skipped"]:
+            st.markdown(f"- :gray[{doc_name}] - **Skipped** (no file uploaded)")
+        elif page_count > 0 and doc["extracted"]:
+            st.markdown(f"- :green[{doc_name}] - **{page_count} page(s)** - Extracted")
+        elif page_count > 0:
+            st.markdown(f"- :orange[{doc_name}] - **{page_count} page(s)** - Partial extraction")
         else:
             st.markdown(f"- :red[{doc_name}] - Not uploaded")
 
@@ -1696,6 +1815,7 @@ def render_step_5_review():
             keys_to_clear = [
                 "guided_step", "max_completed_step",
                 "cover_pages", "sld_pages", "lighting_pages", "power_pages",
+                "step_1_skipped", "step_2_skipped", "step_3_skipped", "step_4_skipped",  # Skip flags
                 "interactive_pipeline", "project_info",
                 "supply_point", "detected_dbs", "db_schedules", "cable_routes",
                 "current_db_index", "lighting_legend", "detected_rooms",
