@@ -577,6 +577,140 @@ If {room_name} NOT clearly visible:
 
 
 # ============================================================================
+# v5.0: CIRCUIT CLUSTER EXTRACTION (the critic's key improvement)
+# ============================================================================
+
+PROMPT_CIRCUIT_CLUSTERS = """## TASK: Find ALL Circuit Label Clusters on This Floor Plan
+
+You are looking at an electrical floor plan. The drawing shows fixtures
+(lights, sockets, switches) connected to CIRCUIT LABELS like:
+  "DB-S3 L2", "DBM-P4", "DB-GF-P3", "DB1 L7"
+
+### YOUR JOB:
+Find EVERY circuit label annotation on this drawing.
+For each label, count the fixtures it connects to.
+
+### HOW CIRCUIT LABELS APPEAR:
+- Usually written near a group of fixtures with a leader line or arrow
+- Format: [DB-name] [Circuit-ID]
+  Examples: "DB-S3 L2", "DB-CA P1", "DBM-ISO5", "DB-1 L7"
+- Sometimes just the circuit ID with the DB implied: "L1", "P2"
+
+### FIXTURE CATEGORIES (for counting):
+{legend_context}
+
+Count each fixture type separately within each circuit cluster.
+
+### RESPOND WITH ONLY THIS JSON:
+{{
+  "drawing_type": "lighting",
+  "floor": "Ground Floor",
+  "circuit_clusters": [
+    {{
+      "circuit_ref": "DB-S3 L2",
+      "db_name": "DB-S3",
+      "circuit_id": "L2",
+      "circuit_type": "lighting",
+      "fixtures": {{
+        "recessed_led_600x1200_54w": 8,
+        "switch_2lever": 1
+      }},
+      "total_points": 8,
+      "rooms_served": ["SUITE 3"],
+      "evidence_tokens": ["DB-S3", "L2", "8 recessed panels visible"],
+      "confidence": 0.85
+    }},
+    {{
+      "circuit_ref": "DB-S3 P1",
+      "db_name": "DB-S3",
+      "circuit_id": "P1",
+      "circuit_type": "power",
+      "fixtures": {{
+        "double_socket_300mm": 4,
+        "single_socket_1100mm": 2,
+        "data_cat6": 2
+      }},
+      "total_points": 8,
+      "rooms_served": ["SUITE 3", "SUITE 3 KITCHENETTE"],
+      "evidence_tokens": ["DB-S3", "P1", "4 double sockets", "2 singles at counter"],
+      "confidence": 0.8
+    }},
+    {{
+      "circuit_ref": "DB-S3 AC1",
+      "db_name": "DB-S3",
+      "circuit_id": "AC1",
+      "circuit_type": "aircon",
+      "fixtures": {{
+        "aircon_unit": 1
+      }},
+      "total_points": 1,
+      "rooms_served": ["SUITE 3"],
+      "evidence_tokens": ["DB-S3", "AC1", "A/C symbol"],
+      "confidence": 0.9
+    }}
+  ],
+  "rooms_identified": [
+    {{"name": "SUITE 3", "floor": "First Floor", "area_m2": 20.2, "is_wet_area": false}},
+    {{"name": "WC", "floor": "First Floor", "area_m2": 3.2, "is_wet_area": true}}
+  ],
+  "notes": "Some circuit labels partially obscured near stairwell"
+}}
+
+### COUNTING RULES (CRITICAL for SLD reconciliation):
+- For LIGHTING circuits: count light fittings only (NOT switches)
+  Switches control the circuit but are NOT counted as "points" on the SLD
+- For POWER circuits: count socket outlets only
+  A double socket = 1 point (one connection)
+- For ISOLATOR circuits: count the appliance (AC unit, geyser, etc.) = 1 point
+- For dedicated circuits (AC, geyser): always 1 point per circuit
+
+### CRITICAL:
+- "total_points" must match what the SLD would show for "No of Points"
+- This means: lights count as points, sockets count as points,
+  but switches do NOT count as points
+- A "16A Double Switched Socket" = 1 point (it's one socket outlet)
+- evidence_tokens: list the EXACT text/labels you read from the drawing
+"""
+
+
+def build_legend_context(legend_dict: dict) -> str:
+    """Build legend context block for circuit cluster extraction."""
+    if not legend_dict:
+        return "No legend available — use standard SA electrical symbols (SANS 10142-1)"
+
+    parts = []
+
+    # Map legend keys to display names
+    key_map = {
+        "light_types": "LIGHTS",
+        "switch_types": "SWITCHES",
+        "socket_types": "POWER SOCKETS",
+        "isolator_types": "ISOLATORS",
+    }
+
+    for key, display_name in key_map.items():
+        items = legend_dict.get(key, [])
+        if items:
+            parts.append(f"\n**{display_name}:**")
+            for item in items:
+                if isinstance(item, dict):
+                    name = item.get("name", item.get("description", ""))
+                    wattage = item.get("wattage_w", "")
+                    if name:
+                        parts.append(f"  - {name}" + (f" ({wattage}W)" if wattage else ""))
+                else:
+                    parts.append(f"  - {item}")
+
+    return "\n".join(parts) if parts else "No legend items found"
+
+
+def get_circuit_clusters_prompt(legend_dict: dict = None) -> str:
+    """Generate circuit clusters prompt with legend context."""
+    legend_context = build_legend_context(legend_dict) if legend_dict else ""
+    return PROMPT_CIRCUIT_CLUSTERS.format(legend_context=legend_context)
+
+
+# ============================================================================
 # MULTI-PASS ORCHESTRATOR
 # ============================================================================
 

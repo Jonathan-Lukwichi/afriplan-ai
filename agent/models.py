@@ -153,6 +153,70 @@ class EquipmentStatus(str, Enum):
     REMOVE = "remove"         # To be removed
 
 
+# v5.0 - Circuit type for type-specific reconciliation
+class CircuitType(str, Enum):
+    """
+    Circuit function classification for type-specific point counting.
+
+    CRITICAL: Different circuit types count "points" differently:
+    - LIGHTING: points = light fittings (switches are NOT counted)
+    - POWER: points = socket outlets (a double socket = 1 point)
+    - DEDICATED (AC, geyser): always 1 point per circuit
+    """
+    LIGHTING = "lighting"
+    POWER = "power"              # general socket circuits
+    ISOLATOR = "isolator"        # dedicated appliance isolators
+    AIRCON = "aircon"
+    GEYSER = "geyser"
+    MOTOR = "motor"
+    SUB_DB_FEED = "sub_db_feed"
+    SPARE = "spare"
+    UNKNOWN = "unknown"
+
+    @classmethod
+    def from_circuit_id(cls, circuit_id: str, description: str = "") -> "CircuitType":
+        """Determine circuit type from ID pattern and description."""
+        cid = circuit_id.upper().strip()
+        desc = description.upper().strip()
+
+        if cid.startswith("L") and len(cid) > 1 and cid[1:].replace("-", "").isdigit():
+            return cls.LIGHTING
+        if cid.startswith("P") and len(cid) > 1 and cid[1:].replace("-", "").isdigit():
+            return cls.POWER
+        if cid.startswith("ISO") or cid.startswith("IS"):
+            return cls.ISOLATOR
+        if "AC" in cid or "A/C" in desc or "AIRCON" in desc or "AIR CON" in desc:
+            return cls.AIRCON
+        if "GEYSER" in desc or "GEY" in cid:
+            return cls.GEYSER
+        if "SPARE" in cid or "SPARE" in desc:
+            return cls.SPARE
+        if cid.startswith("DB") or "SUB" in desc:
+            return cls.SUB_DB_FEED
+        if "MOTOR" in desc or "PUMP" in desc:
+            return cls.MOTOR
+        if desc in ("PLUGS", "SOCKET", "POWER", "SOCKETS"):
+            return cls.POWER
+        if desc in ("LIGHTS", "LIGHTING"):
+            return cls.LIGHTING
+
+        return cls.UNKNOWN
+
+
+# v5.0 - Fixture categories for reconciliation
+class FixtureCategory(str, Enum):
+    """Fixture categories that map to circuit types for reconciliation."""
+    LIGHT = "light"
+    SOCKET = "socket"
+    SWITCH = "switch"            # switches are counted but NOT as "points" for reconciliation
+    DATA_OUTLET = "data_outlet"
+    FLOOR_BOX = "floor_box"
+    ISOLATOR = "isolator"
+    AIRCON_UNIT = "aircon_unit"
+    DISTRIBUTION_BOARD = "distribution_board"
+    OTHER = "other"
+
+
 class EquipmentType(str, Enum):
     """v4.5 - Comprehensive equipment types for universal extraction."""
     # Pumps
@@ -931,6 +995,72 @@ class BuildingBlock(BaseModel):
     @property
     def total_points(self) -> int:
         return sum(r.fixtures.total_points for r in self.rooms)
+
+
+# v5.0 - Circuit Cluster (primary extraction unit for layouts)
+class CircuitCluster(BaseModel):
+    """
+    A group of fixtures belonging to ONE circuit on a layout page.
+
+    This is the PRIMARY extraction unit for layouts — NOT rooms.
+    Drawings annotate fixtures by circuit cluster (e.g., "DB-S3 L2" → 8 downlights).
+    Extracting by cluster aligns with how drawings are annotated and makes
+    reconciliation against SLD *direct*.
+
+    CRITICAL COUNTING RULES:
+    - LIGHTING circuits: points = light fittings (switches NOT counted)
+    - POWER circuits: points = socket outlets (double socket = 1 point)
+    - DEDICATED (AC, geyser): always 1 point
+    """
+    circuit_ref: str = ""                     # "DB-S3 L2" as written on drawing
+    db_name: str = ""                         # "DB-S3" (parsed)
+    circuit_id: str = ""                      # "L2" (parsed)
+    circuit_type: CircuitType = CircuitType.UNKNOWN
+
+    # Fixture counts BY TYPE within this cluster
+    fixtures: Dict[str, int] = Field(default_factory=dict)
+    # e.g., {"recessed_led_600x1200": 8, "switch_2lever": 1}
+
+    # Total connection points (for SLD reconciliation)
+    total_fixture_points: int = 0
+
+    # Location context (optional, secondary)
+    rooms_served: List[str] = Field(default_factory=list)  # ["SUITE 3", "SUITE 3 KITCHENETTE"]
+    floor: str = ""                           # "Ground Floor", "First Floor"
+
+    # Evidence tokens for auditability
+    evidence_tokens: List[str] = Field(default_factory=list)
+
+    confidence: float = 0.0
+
+    @classmethod
+    def parse_circuit_ref(cls, ref: str) -> tuple:
+        """Parse 'DB-S3 L2' → ('DB-S3', 'L2')"""
+        parts = ref.strip().split()
+        if len(parts) >= 2:
+            return parts[0], " ".join(parts[1:])
+        return ref, ""
+
+    def count_points_for_reconciliation(self) -> int:
+        """
+        Calculate points for SLD reconciliation based on circuit type.
+
+        - Lighting: count only light fixtures (exclude switches)
+        - Power: count socket outlets (double socket = 1)
+        - Dedicated: always 1
+        """
+        if self.circuit_type in (CircuitType.AIRCON, CircuitType.GEYSER, CircuitType.MOTOR):
+            return 1
+
+        # For lighting, exclude switches
+        if self.circuit_type == CircuitType.LIGHTING:
+            return sum(
+                count for name, count in self.fixtures.items()
+                if "switch" not in name.lower()
+            )
+
+        # For power, count all socket-type items
+        return sum(self.fixtures.values())
 
 
 class Discrepancy(BaseModel):

@@ -20,6 +20,7 @@ from agent.stages.multi_pass_discover import (
     PROMPT_CABLE_ROUTES, PROMPT_SUPPLY_POINT, PROMPT_LEGEND_LIGHTING,
     PROMPT_LEGEND_POWER, get_db_schedule_prompt, get_room_fixtures_prompt,
     get_room_fixtures_prompt_with_legend, build_extraction_result,
+    PROMPT_CIRCUIT_CLUSTERS, get_circuit_clusters_prompt, build_legend_context,
 )
 
 
@@ -857,6 +858,159 @@ class InteractivePipeline:
             cost_zar=result.cost_zar,
             error=result.error,
         )
+
+    # ==========================================
+    # v5.0: CIRCUIT CLUSTER EXTRACTION
+    # ==========================================
+
+    def run_circuit_clusters_pass(
+        self,
+        pages: Optional[List[PageInfo]] = None,
+        legend_dict: Optional[Dict] = None,
+    ) -> InteractivePassResult:
+        """
+        Run v5.0 circuit-cluster-first extraction.
+
+        This is the PRIMARY extraction method for layout pages.
+        Instead of counting by room (which has boundary ambiguity),
+        we count by circuit label (e.g., "DB-S3 L2" → 8 downlights).
+
+        This aligns with how SA drawings are annotated and makes
+        SLD reconciliation direct.
+
+        Args:
+            pages: Layout pages (lighting or power)
+            legend_dict: Optional legend data for fixture identification
+
+        Returns:
+            InteractivePassResult with circuit clusters
+        """
+        if not pages:
+            return InteractivePassResult(
+                success=False,
+                confidence=0.0,
+                raw_data={},
+                display_data={
+                    "circuit_clusters": [],
+                    "rooms_identified": [],
+                },
+                error="No layout pages provided"
+            )
+
+        # Build prompt with legend context
+        prompt = get_circuit_clusters_prompt(legend_dict)
+
+        result = run_pass(
+            ExtractionPass.ROOM_FIXTURES,  # Reuse pass type for now
+            prompt,
+            pages,
+            self.client,
+            self.model,
+            self.provider,
+        )
+
+        data = result.data if result.data is not None else {}
+
+        clusters = data.get("circuit_clusters", [])
+        rooms = data.get("rooms_identified", [])
+
+        # Store in state for later use
+        if not hasattr(self.state, 'circuit_clusters'):
+            self.state.circuit_clusters = []
+        self.state.circuit_clusters.extend(clusters)
+
+        # Calculate stats for UI
+        total_clusters = len(clusters)
+        total_points = sum(c.get("total_points", 0) for c in clusters)
+        dbs_covered = set(c.get("db_name", "") for c in clusters if c.get("db_name"))
+
+        display_data = {
+            "circuit_clusters": clusters,
+            "rooms_identified": rooms,
+            "drawing_type": data.get("drawing_type", "unknown"),
+            "floor": data.get("floor", ""),
+            "notes": data.get("notes", ""),
+            "stats": {
+                "total_clusters": total_clusters,
+                "total_points": total_points,
+                "dbs_covered": list(dbs_covered),
+            }
+        }
+
+        # Track cost
+        self.state.total_tokens += result.tokens_used
+        self.state.total_cost += result.cost_zar
+
+        confidence = 0.85 if total_clusters > 0 else 0.3
+
+        return InteractivePassResult(
+            success=total_clusters > 0,
+            confidence=confidence,
+            raw_data=data,
+            display_data=display_data,
+            tokens_used=result.tokens_used,
+            cost_zar=result.cost_zar,
+            error=result.error,
+        )
+
+    def get_circuit_clusters(self) -> List[Dict]:
+        """Get all extracted circuit clusters."""
+        return getattr(self.state, 'circuit_clusters', [])
+
+    def reconcile_sld_with_clusters(self) -> Dict[str, Any]:
+        """
+        Reconcile SLD circuit points with layout cluster points.
+
+        Returns discrepancies for each circuit where SLD.num_points != cluster.total_points.
+        Uses type-specific counting rules:
+        - Lighting: lights only (no switches)
+        - Power: sockets only
+        - Dedicated: always 1
+        """
+        discrepancies = []
+        matched = 0
+        total = 0
+
+        clusters = self.get_circuit_clusters()
+
+        for db_name, schedule in self.state.db_schedules.items():
+            circuits = schedule.get("circuits", [])
+            for circuit in circuits:
+                cid = circuit.get("circuit_id", circuit.get("id", ""))
+                sld_points = circuit.get("num_points", 0)
+
+                # Find matching cluster
+                cluster_ref = f"{db_name} {cid}"
+                matching_clusters = [
+                    c for c in clusters
+                    if c.get("circuit_ref", "").upper() == cluster_ref.upper()
+                    or (c.get("db_name", "").upper() == db_name.upper()
+                        and c.get("circuit_id", "").upper() == cid.upper())
+                ]
+
+                if matching_clusters:
+                    cluster = matching_clusters[0]
+                    layout_points = cluster.get("total_points", 0)
+
+                    total += 1
+                    if sld_points == layout_points:
+                        matched += 1
+                    else:
+                        discrepancies.append({
+                            "db_name": db_name,
+                            "circuit_id": cid,
+                            "sld_points": sld_points,
+                            "layout_points": layout_points,
+                            "difference": layout_points - sld_points,
+                            "severity": "warning" if abs(layout_points - sld_points) <= 2 else "error",
+                        })
+
+        return {
+            "total_circuits_compared": total,
+            "matched": matched,
+            "match_rate": matched / total if total > 0 else 0,
+            "discrepancies": discrepancies,
+        }
 
     # ==========================================
     # RESULT BUILDING

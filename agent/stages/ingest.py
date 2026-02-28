@@ -209,6 +209,91 @@ def _process_image(
     return doc_info
 
 
+# ============================================================================
+# v5.0: REGION-LEVEL DPI RENDERING
+# ============================================================================
+
+def render_region_hires(
+    pdf_bytes: bytes,
+    page_num: int,
+    crop_box: Tuple[float, float, float, float],  # (x0, y0, x1, y1) as percentages
+    dpi: int = 400,
+) -> Optional[str]:
+    """
+    Re-render a specific region of a PDF page at higher DPI.
+
+    The schedule table is ~20% of page area but ~80% of extraction value.
+    Rendering it at 400 DPI (vs 250 for full page) gives vision models
+    2.6x more pixels on tiny "2.5mm²" and "20A" text.
+
+    Args:
+        pdf_bytes: Raw PDF bytes
+        page_num: Page number (1-indexed)
+        crop_box: Region as percentages of page (x0%, y0%, x1%, y1%)
+        dpi: Target DPI for region (default 400)
+
+    Returns:
+        Base64-encoded PNG of the cropped region, or None if failed
+    """
+    if fitz is None:
+        return None
+
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        if page_num < 1 or page_num > len(doc):
+            doc.close()
+            return None
+
+        page = doc[page_num - 1]
+        rect = page.rect
+
+        # Convert percentage crop to absolute coordinates
+        x0 = rect.x0 + (rect.width * crop_box[0])
+        y0 = rect.y0 + (rect.height * crop_box[1])
+        x1 = rect.x0 + (rect.width * crop_box[2])
+        y1 = rect.y0 + (rect.height * crop_box[3])
+
+        clip_rect = fitz.Rect(x0, y0, x1, y1)
+
+        # Render at higher DPI
+        mat = fitz.Matrix(dpi / 72, dpi / 72)
+        pix = page.get_pixmap(matrix=mat, clip=clip_rect)
+
+        # Convert to PNG bytes
+        img_bytes = pix.tobytes("png")
+        img_base64 = encode_image_to_base64(img_bytes)
+
+        doc.close()
+        return img_base64
+
+    except Exception as e:
+        return None
+
+
+def render_schedule_hires(
+    pdf_bytes: bytes,
+    page_num: int,
+    dpi: int = 400,
+) -> Optional[str]:
+    """
+    Render the bottom half of a page (where schedule tables usually are) at high DPI.
+
+    Most SLD pages have the single-line diagram in the top half and the
+    circuit schedule table in the bottom half. This renders just the
+    table region at higher resolution for better OCR.
+
+    Args:
+        pdf_bytes: Raw PDF bytes
+        page_num: Page number (1-indexed)
+        dpi: Target DPI (default 400)
+
+    Returns:
+        Base64-encoded PNG of the schedule region, or None if failed
+    """
+    # Assume schedule table is in bottom 50% of page
+    return render_region_hires(pdf_bytes, page_num, (0.0, 0.50, 1.0, 1.0), dpi)
+
+
 def _parse_drawing_register(doc_set: DocumentSet) -> Dict[int, str]:
     """
     Parse drawing register (typically page 1) to extract drawing number -> page type mappings.
