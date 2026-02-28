@@ -487,8 +487,8 @@ def reconcile_sld_with_clusters(db_schedules: dict, layout_clusters: list) -> di
     v7.0 SLD Reconciliation: Compare SLD circuit points vs Layout circuit cluster points.
 
     For each circuit in the SLD schedule, find the matching layout cluster and compare:
-    - Lighting circuits: SLD num_points vs cluster total_fixture_points (lights only)
-    - Power circuits: SLD num_points vs cluster total_fixture_points (sockets only)
+    - Lighting circuits: SLD num_points vs cluster total_points (lights only)
+    - Power circuits: SLD num_points vs cluster total_points (sockets only)
     - Dedicated (AC, geyser): Both should be 1 point
 
     Returns:
@@ -567,7 +567,7 @@ def reconcile_sld_with_clusters(db_schedules: dict, layout_clusters: list) -> di
             cluster = cluster_index.get(lookup_key)
 
             if cluster:
-                layout_points = cluster.get("total_fixture_points", 0)
+                layout_points = cluster.get("total_points", 0)
 
                 # Determine if matched (exact or within tolerance)
                 # Allow ±1 point tolerance for minor counting differences
@@ -1118,7 +1118,7 @@ def render_step_3_lighting():
         st.caption("Counting fixtures by circuit label (e.g., 'DB-S3 L2' → 8 downlights)")
 
         # Extract circuit clusters
-        if "lighting_clusters" not in st.session_state or not st.session_state.lighting_clusters:
+        if "lighting_circuit_clusters" not in st.session_state or not st.session_state.lighting_circuit_clusters:
             if not hasattr(pipeline, 'run_circuit_clusters_pass'):
                 st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
                 st.stop()
@@ -1128,14 +1128,14 @@ def render_step_3_lighting():
                     st.session_state.lighting_legend
                 )
                 if result.success:
-                    st.session_state.lighting_clusters = result.display_data.get("circuit_clusters", [])
+                    st.session_state.lighting_circuit_clusters = result.display_data.get("circuit_clusters", [])
                     st.session_state.detected_rooms = [
                         r.get("name", "") for r in result.display_data.get("rooms_identified", [])
                     ]
                 else:
-                    st.session_state.lighting_clusters = []
+                    st.session_state.lighting_circuit_clusters = []
 
-        clusters = st.session_state.lighting_clusters
+        clusters = st.session_state.lighting_circuit_clusters
 
         if clusters:
             # Group by DB
@@ -1352,7 +1352,7 @@ def render_step_4_power():
                         table_data.append({
                             "Circuit": c.get("circuit_id", "?"),
                             "Type": c.get("circuit_type", "power"),
-                            "Points": c.get("total_fixture_points", 0),
+                            "Points": c.get("total_points", 0),
                             "Fixtures": fixture_str or "-",
                             "Rooms": ", ".join(c.get("rooms_served", [])),
                             "Confidence": f"{c.get('confidence', 0):.0%}",
@@ -1362,7 +1362,7 @@ def render_step_4_power():
                     st.dataframe(df, use_container_width=True, hide_index=True)
 
             # Show total power points for reconciliation
-            total_power_points = sum(c.get("total_fixture_points", 0) for c in clusters)
+            total_power_points = sum(c.get("total_points", 0) for c in clusters)
             st.info(f"**Total Power Points:** {total_power_points} across {total_clusters} circuits")
 
         else:
@@ -1425,8 +1425,8 @@ def render_step_5_review():
     all_layout_clusters = lighting_clusters + power_clusters
 
     # Count total points from clusters
-    total_lighting_points = sum(c.get("total_fixture_points", 0) for c in lighting_clusters)
-    total_power_points = sum(c.get("total_fixture_points", 0) for c in power_clusters)
+    total_lighting_points = sum(c.get("total_points", 0) for c in lighting_clusters)
+    total_power_points = sum(c.get("total_points", 0) for c in power_clusters)
 
     # Reconciliation: SLD vs Layout
     reconciliation_results = reconcile_sld_with_clusters(
