@@ -179,7 +179,7 @@ def convert_extraction_for_validation(
     Args:
         db_data: Distribution board data from SLD extraction
         cable_routes: Cable routes list
-        legend_data: Legend extraction data
+        legend_data: Legend extraction data (contains "lighting" and "power" dicts)
         project_info: Project metadata
 
     Returns:
@@ -218,12 +218,31 @@ def convert_extraction_for_validation(
         ),
     }
 
+    # Flatten legend data for validator
+    # legend_data comes in as {"lighting": {...}, "power": {...}}
+    # Validator expects {"light_types": [...], "socket_types": [...]}
+    lighting_legend = legend_data.get("lighting", {}) if isinstance(legend_data, dict) else {}
+    power_legend = legend_data.get("power", {}) if isinstance(legend_data, dict) else {}
+
+    # Handle case where legend_data is passed directly
+    if not lighting_legend and "light_types" in legend_data:
+        lighting_legend = legend_data
+    if not power_legend and "socket_types" in legend_data:
+        power_legend = legend_data
+
+    normalized_legend = {
+        "light_types": lighting_legend.get("light_types", []) if isinstance(lighting_legend, dict) else [],
+        "switch_types": lighting_legend.get("switch_types", []) if isinstance(lighting_legend, dict) else [],
+        "socket_types": power_legend.get("socket_types", []) if isinstance(power_legend, dict) else [],
+        "isolator_types": power_legend.get("isolator_types", []) if isinstance(power_legend, dict) else [],
+    }
+
     return {
         "project_name": project_info.get("project_name", ""),
         "supply_point": project_info.get("supply_point", {}),
         "distribution_boards": distribution_boards,
         "cable_routes": cable_routes,
-        "legend": legend_data,
+        "legend": normalized_legend,
         "totals": totals,
     }
 
