@@ -479,86 +479,49 @@ def map_fixture_to_standard_key(name: str) -> str:
 
 
 def render_progress_indicator():
-    """Render improved 5-step progress indicator with icons and visual feedback."""
+    """Render 5-step progress indicator using native Streamlit components."""
     step = st.session_state.guided_step
     max_step = st.session_state.max_completed_step
 
-    # Step definitions with icons
+    # Step definitions
     steps = [
-        ("📋", "Cover Page", "cover_pages"),
-        ("⚡", "SLD & Schedules", "sld_pages"),
-        ("💡", "Lighting Layout", "lighting_pages"),
-        ("🔌", "Power Layout", "power_pages"),
-        ("✅", "Review & Export", None),
+        ("📋", "Cover", "cover_pages"),
+        ("⚡", "SLD", "sld_pages"),
+        ("💡", "Lighting", "lighting_pages"),
+        ("🔌", "Power", "power_pages"),
+        ("✅", "Review", None),
     ]
 
-    # Calculate completion status
-    def get_step_status(idx, storage_key):
-        step_num = idx + 1
-        if step_num == step:
-            return "active"
-        elif step_num < step or step_num <= max_step:
-            # Check if data exists
-            if storage_key and len(st.session_state.get(storage_key, [])) > 0:
-                return "completed"
-            elif st.session_state.get(f"step_{step_num}_skipped", False):
-                return "skipped"
-            return "completed"
-        return "pending"
-
-    # Render progress bar HTML
-    progress_html = '<div style="display: flex; justify-content: space-between; margin: 0 0 20px 0; padding: 15px; background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(0,0,0,0.2)); border-radius: 12px; border: 1px solid rgba(0,212,255,0.2);">'
-
+    cols = st.columns(5)
     for i, (icon, name, storage_key) in enumerate(steps):
         step_num = i + 1
-        status = get_step_status(i, storage_key)
-
-        # Count pages if applicable
         page_count = len(st.session_state.get(storage_key, [])) if storage_key else 0
+        is_skipped = st.session_state.get(f"step_{step_num}_skipped", False)
 
-        # Style based on status
-        if status == "active":
-            bg_color = "rgba(0, 212, 255, 0.2)"
-            border_color = "#00D4FF"
-            text_color = "#00D4FF"
-            icon_bg = "linear-gradient(135deg, #00D4FF, #0099FF)"
-            badge = f'<span style="font-size: 10px; color: #00D4FF;">●</span>'
-        elif status == "completed":
-            bg_color = "rgba(34, 197, 94, 0.15)"
-            border_color = "#22C55E"
-            text_color = "#22C55E"
-            icon_bg = "linear-gradient(135deg, #22C55E, #16A34A)"
-            badge = f'<span style="font-size: 10px; color: #22C55E;">✓ {page_count}p</span>' if page_count > 0 else '<span style="font-size: 10px; color: #22C55E;">✓</span>'
-        elif status == "skipped":
-            bg_color = "rgba(245, 158, 11, 0.15)"
-            border_color = "#F59E0B"
-            text_color = "#F59E0B"
-            icon_bg = "rgba(245, 158, 11, 0.3)"
-            badge = '<span style="font-size: 10px; color: #F59E0B;">skipped</span>'
-        else:
-            bg_color = "rgba(100, 116, 139, 0.1)"
-            border_color = "rgba(100, 116, 139, 0.3)"
-            text_color = "#64748B"
-            icon_bg = "rgba(100, 116, 139, 0.2)"
-            badge = ''
+        with cols[i]:
+            if step_num == step:
+                # Active step - cyan
+                st.markdown(f"### :blue[{icon}]")
+                st.markdown(f"**:blue[{name}]**")
+                if page_count > 0:
+                    st.caption(f"✓ {page_count}p")
+            elif step_num < step or step_num <= max_step:
+                # Completed step - green
+                if is_skipped:
+                    st.markdown(f"### :orange[{icon}]")
+                    st.markdown(f":orange[{name}]")
+                    st.caption("skipped")
+                else:
+                    st.markdown(f"### :green[{icon}]")
+                    st.markdown(f":green[{name}]")
+                    if page_count > 0:
+                        st.caption(f"✓ {page_count}p")
+            else:
+                # Pending step - gray
+                st.markdown(f"### :gray[{icon}]")
+                st.markdown(f":gray[{name}]")
 
-        # Connector line (except for last step)
-        connector = ''
-        if i < len(steps) - 1:
-            connector_color = "#22C55E" if status in ["completed", "skipped"] else "rgba(100, 116, 139, 0.3)"
-            connector = f'<div style="flex: 1; height: 2px; background: {connector_color}; margin: 0 5px; align-self: center;"></div>'
-
-        progress_html += f'''
-        <div style="display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; min-width: 80px;">
-            <div style="width: 40px; height: 40px; border-radius: 50%; background: {icon_bg}; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid {border_color}; box-shadow: 0 0 10px {border_color}40;">{icon}</div>
-            <span style="font-size: 11px; color: {text_color}; margin-top: 6px; text-align: center; font-weight: 500;">{name}</span>
-            {badge}
-        </div>
-        {connector}
-        '''
-
-    progress_html += '</div>'
-    st.markdown(progress_html, unsafe_allow_html=True)
+    st.divider()
 
 
 def render_confidence_badge(confidence: float, label: str = "Confidence"):
@@ -572,32 +535,23 @@ def render_confidence_badge(confidence: float, label: str = "Confidence"):
 
 
 def show_page_thumbnails(pages, max_show=3):
-    """Show thumbnails of uploaded pages with improved styling."""
+    """Show thumbnails of uploaded pages using native Streamlit components."""
     if not pages:
         return
-
-    st.markdown("""
-    <div style="margin: 15px 0 10px 0;">
-        <span style="color: #94A3B8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">📄 Page Preview</span>
-    </div>
-    """, unsafe_allow_html=True)
 
     cols = st.columns(min(max_show, len(pages)))
     for i, page in enumerate(pages[:max_show]):
         if page.image_base64:
             with cols[i]:
-                # Get page type info
                 page_type = getattr(page, 'page_type', None)
                 type_label = page_type.value if page_type else "unknown"
                 confidence = getattr(page, 'classification_confidence', 0)
 
-                st.markdown(f"""
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(100,116,139,0.3); border-radius: 8px; padding: 8px; text-align: center;">
-                    <img src="data:image/png;base64,{page.image_base64}" style="width: 100%; border-radius: 4px; margin-bottom: 8px;">
-                    <div style="color: #E2E8F0; font-size: 12px; font-weight: 500;">Page {page.page_number}</div>
-                    <div style="color: #64748B; font-size: 10px;">{type_label} • {confidence*100:.0f}%</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.image(
+                    f"data:image/png;base64,{page.image_base64}",
+                    caption=f"Page {page.page_number} | {type_label} | {confidence*100:.0f}%",
+                    use_container_width=True
+                )
 
     if len(pages) > max_show:
         st.caption(f"... and {len(pages) - max_show} more page(s)")
@@ -738,62 +692,32 @@ def reconcile_sld_with_clusters(db_schedules: dict, layout_clusters: list) -> di
 # ============================================================================
 
 def render_step_1_cover():
-    """Step 1: Upload cover page and extract project info."""
+    """Step 1: Upload all electrical drawings at once."""
+
+    # Header
+    st.subheader("📁 Upload Your Electrical Drawings")
+    st.caption("Drop all your files here — we'll auto-classify them into Cover, SLD, Lighting, and Power pages.")
 
     # ========================================================================
-    # SMART UPLOAD HEADER
-    # ========================================================================
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 30px;">
-        <h2 style="color: #00D4FF; margin-bottom: 5px;">📋 Step 1: Cover Page / Drawing Register</h2>
-        <p style="color: #94A3B8; font-size: 14px;">Upload the cover page to extract project information</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ========================================================================
-    # AUTO-CLASSIFY CARD (Recommended)
+    # UPLOAD SECTION (Single approach - Upload All)
     # ========================================================================
     if not st.session_state.auto_classified:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(34,197,94,0.05)); border: 2px solid rgba(0,212,255,0.3); border-radius: 16px; padding: 25px; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                <span style="font-size: 24px;">🚀</span>
-                <span style="color: #00D4FF; font-weight: 600; font-size: 18px;">Quick Start — Upload All Files at Once</span>
-                <span style="background: linear-gradient(135deg, #22C55E, #16A34A); color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">RECOMMENDED</span>
-            </div>
-            <p style="color: #CBD5E1; margin-bottom: 15px; font-size: 14px;">
-                Drop all your electrical drawings in one go. Our AI-free classifier instantly sorts them into:
-            </p>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 5px;">
-                <span style="background: rgba(0,212,255,0.15); color: #00D4FF; padding: 5px 12px; border-radius: 8px; font-size: 13px;">📋 Cover Pages</span>
-                <span style="background: rgba(0,212,255,0.15); color: #00D4FF; padding: 5px 12px; border-radius: 8px; font-size: 13px;">⚡ SLD Schedules</span>
-                <span style="background: rgba(0,212,255,0.15); color: #00D4FF; padding: 5px 12px; border-radius: 8px; font-size: 13px;">💡 Lighting Layouts</span>
-                <span style="background: rgba(0,212,255,0.15); color: #00D4FF; padding: 5px 12px; border-radius: 8px; font-size: 13px;">🔌 Power Layouts</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
+        # File uploader
         all_files = st.file_uploader(
-            "📁 Drop all your PDF files here",
+            "Drop all your PDF/image files here",
             type=["pdf", "png", "jpg", "jpeg"],
             key="auto_classify_uploader",
             accept_multiple_files=True,
-            help="Supports PDF, PNG, JPG files up to 200MB each"
+            help="Supports PDF, PNG, JPG files • Up to 200MB per file"
         )
 
         if all_files:
-            # Show uploaded file count
-            st.markdown(f"""
-            <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 12px; margin: 10px 0;">
-                <span style="color: #22C55E;">✓ {len(all_files)} file(s) ready for classification</span>
-            </div>
-            """, unsafe_allow_html=True)
+            st.success(f"✓ {len(all_files)} file(s) ready for classification")
 
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                if st.button("🔍 Auto-Classify Pages", type="primary", key="btn_auto_classify", use_container_width=True):
+                if st.button("🔍 Classify & Continue", type="primary", key="btn_auto_classify", use_container_width=True):
                     with st.spinner("Processing and classifying pages..."):
-                        # Process all files
                         all_pages = []
                         progress_bar = st.progress(0)
                         for idx, f in enumerate(all_files):
@@ -803,27 +727,18 @@ def render_step_1_cover():
                             progress_bar.progress((idx + 1) / len(all_files))
 
                         if all_pages:
-                            # Auto-classify using KeywordClassifier (NO LLM!)
                             categories = classify_pages_from_list(all_pages)
                             summary = get_classification_summary(categories)
 
-                            # Store in session state
                             st.session_state.cover_pages = categories["Cover"]
                             st.session_state.sld_pages = categories["SLD"]
                             st.session_state.lighting_pages = categories["Lighting"]
                             st.session_state.power_pages = categories["Power"]
                             st.session_state.auto_classified = True
                             st.session_state.classification_summary = summary
-
                             st.rerun()
-
-        st.markdown("""
-        <div style="display: flex; align-items: center; margin: 25px 0;">
-            <div style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, rgba(100,116,139,0.5), transparent);"></div>
-            <span style="color: #64748B; padding: 0 15px; font-size: 13px;">OR upload step-by-step</span>
-            <div style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, rgba(100,116,139,0.5), transparent);"></div>
-        </div>
-        """, unsafe_allow_html=True)
+        else:
+            st.info("👆 Select files to begin")
 
     # ========================================================================
     # CLASSIFICATION RESULTS
@@ -831,38 +746,21 @@ def render_step_1_cover():
     if st.session_state.auto_classified:
         summary = st.session_state.classification_summary
 
-        # Results cards
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05)); border: 1px solid rgba(34,197,94,0.4); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                <span style="font-size: 22px;">✅</span>
-                <span style="color: #22C55E; font-weight: 600; font-size: 16px;">Auto-Classification Complete</span>
-                <span style="color: #64748B; font-size: 12px;">(No AI used — instant!)</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.success("✅ Classification Complete (No AI used — instant!)")
 
-        # Category cards
-        categories = [
-            ("📋", "Cover", len(st.session_state.cover_pages), "#00D4FF"),
-            ("⚡", "SLD", len(st.session_state.sld_pages), "#F59E0B"),
-            ("💡", "Lighting", len(st.session_state.lighting_pages), "#22C55E"),
-            ("🔌", "Power", len(st.session_state.power_pages), "#8B5CF6"),
-        ]
+        # Category metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📋 Cover", len(st.session_state.cover_pages))
+        with col2:
+            st.metric("⚡ SLD", len(st.session_state.sld_pages))
+        with col3:
+            st.metric("💡 Lighting", len(st.session_state.lighting_pages))
+        with col4:
+            st.metric("🔌 Power", len(st.session_state.power_pages))
 
-        cols = st.columns(4)
-        for i, (icon, name, count, color) in enumerate(categories):
-            with cols[i]:
-                st.markdown(f"""
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid {color}40; border-radius: 10px; padding: 15px; text-align: center;">
-                    <div style="font-size: 28px; margin-bottom: 5px;">{icon}</div>
-                    <div style="color: {color}; font-size: 24px; font-weight: 700;">{count}</div>
-                    <div style="color: #94A3B8; font-size: 12px;">{name} Pages</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-        # Details toggle
-        with st.expander("📊 Show classification details"):
+        # Details
+        with st.expander("📊 Classification Details"):
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("Total Pages", summary.total_pages if summary else 0)
@@ -873,66 +771,29 @@ def render_step_1_cover():
                     st.warning(f"⚠️ Low confidence pages: {summary.low_confidence_pages[:5]}")
                     st.caption("These pages may need manual review")
 
-        col1, col2 = st.columns([1, 4])
+        # Show thumbnails of classified pages
+        if st.session_state.cover_pages:
+            st.markdown("**Cover Pages:**")
+            show_page_thumbnails(st.session_state.cover_pages, max_show=3)
+
+        st.divider()
+
+        # Action buttons
+        col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
-            if st.button("🔄 Reset & Re-upload", key="reset_auto_classify", type="secondary"):
+            if st.button("🔄 Re-upload", key="reset_auto_classify"):
                 st.session_state.auto_classified = False
                 st.session_state.cover_pages = []
                 st.session_state.sld_pages = []
                 st.session_state.lighting_pages = []
                 st.session_state.power_pages = []
                 st.rerun()
-
-        st.markdown("---")
-
-    # ========================================================================
-    # MANUAL UPLOAD SECTION
-    # ========================================================================
-    st.markdown("""
-    <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(100,116,139,0.3); border-radius: 12px; padding: 20px; margin-bottom: 15px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 20px;">📋</span>
-            <span style="color: #E2E8F0; font-weight: 500;">Cover Page / Drawing Register</span>
-        </div>
-        <p style="color: #94A3B8; font-size: 13px; margin: 0;">
-            Contains project name, client details, consultant info, and drawing list.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # File upload - supports multiple files
-    uploaded_files = st.file_uploader(
-        "📎 Drop cover page files here or click to browse",
-        type=["pdf", "png", "jpg", "jpeg"],
-        key="cover_uploader_v3",
-        accept_multiple_files=True,
-        help="PDF, PNG, JPG supported • Max 200MB per file"
-    )
-
-    if uploaded_files:
-        all_pages = []
-        with st.spinner(f"⏳ Processing {len(uploaded_files)} file(s)..."):
-            for uploaded_file in uploaded_files:
-                pages = process_uploaded_file(uploaded_file)
-                if pages:
-                    all_pages.extend(pages)
-            if all_pages:
-                st.session_state.cover_pages = all_pages
-                st.markdown(f"""
-                <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 12px; margin: 10px 0;">
-                    <span style="color: #22C55E;">✓ Cover page loaded — {len(all_pages)} page(s) from {len(uploaded_files)} file(s)</span>
-                </div>
-                """, unsafe_allow_html=True)
-                show_page_thumbnails(all_pages, max_show=2)
-
-    # Action buttons
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col1:
-        if st.button("⏭️ Skip this step", key="skip_step_1", help="Skip if you don't have a cover page"):
-            st.session_state.guided_step = 2
-            st.session_state.max_completed_step = max(1, st.session_state.max_completed_step)
-            st.session_state["step_1_skipped"] = True
-            st.rerun()
+        with col2:
+            if st.button("⏭️ Skip Cover Extraction", key="skip_step_1"):
+                st.session_state.guided_step = 2
+                st.session_state.max_completed_step = max(1, st.session_state.max_completed_step)
+                st.session_state["step_1_skipped"] = True
+                st.rerun()
 
     # If already uploaded, show extraction form
     if st.session_state.cover_pages and not st.session_state.project_info:
