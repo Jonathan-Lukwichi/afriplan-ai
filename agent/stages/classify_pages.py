@@ -19,12 +19,13 @@ from dataclasses import dataclass, field
 
 from agent.parsers.keyword_classifier import (
     KeywordClassifier,
-    PageType,
+    PageType as ClassifierPageType,
     ClassificationResult,
 )
 from agent.models import (
     DocumentSet,
     PageInfo,
+    PageType,
     ServiceTier,
     StageResult,
     PipelineStage,
@@ -81,23 +82,22 @@ def classify_all_pages(
             # Classify the page
             result = classifier.classify(text, drawing_number)
 
-            # Store classification on page for debugging/display
-            page.classification_result = result
-            page.classified_type = result.page_type.value
+            # Update page with classification (only valid PageInfo fields)
+            page.page_type = PageType(result.page_type.value)
             page.classification_confidence = result.confidence
 
             # Route to appropriate category
             if result.confidence < confidence_threshold:
                 categories["Other"].append(page)
-            elif result.page_type == PageType.REGISTER:
+            elif result.page_type == ClassifierPageType.REGISTER:
                 categories["Cover"].append(page)
-            elif result.page_type == PageType.SLD:
+            elif result.page_type == ClassifierPageType.SLD:
                 categories["SLD"].append(page)
-            elif result.page_type in (PageType.LAYOUT_LIGHTING, PageType.OUTSIDE_LIGHTS):
+            elif result.page_type in (ClassifierPageType.LAYOUT_LIGHTING, ClassifierPageType.OUTSIDE_LIGHTS):
                 categories["Lighting"].append(page)
-            elif result.page_type == PageType.LAYOUT_PLUGS:
+            elif result.page_type == ClassifierPageType.LAYOUT_PLUGS:
                 categories["Power"].append(page)
-            elif result.page_type == PageType.LAYOUT_COMBINED:
+            elif result.page_type == ClassifierPageType.LAYOUT_COMBINED:
                 # Combined layouts go to both lighting and power
                 categories["Lighting"].append(page)
                 categories["Power"].append(page)
@@ -137,21 +137,21 @@ def classify_pages_from_list(
 
         result = classifier.classify(text, drawing_number)
 
-        page.classification_result = result
-        page.classified_type = result.page_type.value
+        # Update page with classification (only valid PageInfo fields)
+        page.page_type = PageType(result.page_type.value)
         page.classification_confidence = result.confidence
 
         if result.confidence < confidence_threshold:
             categories["Other"].append(page)
-        elif result.page_type == PageType.REGISTER:
+        elif result.page_type == ClassifierPageType.REGISTER:
             categories["Cover"].append(page)
-        elif result.page_type == PageType.SLD:
+        elif result.page_type == ClassifierPageType.SLD:
             categories["SLD"].append(page)
-        elif result.page_type in (PageType.LAYOUT_LIGHTING, PageType.OUTSIDE_LIGHTS):
+        elif result.page_type in (ClassifierPageType.LAYOUT_LIGHTING, ClassifierPageType.OUTSIDE_LIGHTS):
             categories["Lighting"].append(page)
-        elif result.page_type == PageType.LAYOUT_PLUGS:
+        elif result.page_type == ClassifierPageType.LAYOUT_PLUGS:
             categories["Power"].append(page)
-        elif result.page_type == PageType.LAYOUT_COMBINED:
+        elif result.page_type == ClassifierPageType.LAYOUT_COMBINED:
             categories["Lighting"].append(page)
             categories["Power"].append(page)
         else:
