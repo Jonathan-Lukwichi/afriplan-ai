@@ -1,0 +1,154 @@
+%%{init: {'theme': 'dark'}}%%
+
+flowchart TB
+    subgraph USER["USER LAYER"]
+        UPLOAD[("PDF/Image<br/>Upload")]
+        REVIEW_UI["Contractor<br/>Review UI"]
+        DOWNLOAD[("Download<br/>BOQ")]
+    end
+
+    subgraph INGEST["STAGE 1: INGEST (Python Only)"]
+        PDF_PARSE["PyMuPDF<br/>PDF to Images"]
+        IMG_PROC["Pillow<br/>Image Enhancement"]
+        OCR["Text Extraction<br/>Page Classification"]
+        DOC_SET["DocumentSet<br/>{pages[], images[], text}"]
+    end
+
+    subgraph CLASSIFY["STAGE 2: CLASSIFY (AI + Prompt)"]
+        direction LR
+        CLASS_PROMPT["classify_prompt.py<br/>Tier keywords<br/>Building indicators"]
+        CLASS_AI["AI Model<br/>Haiku 4.5 / Groq"]
+        TIER["ServiceTier<br/>+ Confidence"]
+    end
+
+    subgraph DISCOVER["STAGE 3: DISCOVER (AI + Multi-Pass Prompts)"]
+        direction TB
+
+        subgraph SYSTEM_KNOWLEDGE["Domain Knowledge (system_prompt.py)"]
+            SK1["SANS 10142-1 Rules"]
+            SK2["Max 10 points/circuit"]
+            SK3["SA Cable Standards"]
+            SK4["Load Calculations"]
+        end
+
+        subgraph PASSES["6 Extraction Passes"]
+            PASS1["Pass 1: PROJECT_INFO<br/>Cover page metadata"]
+            PASS2["Pass 2: DB_DETECTION<br/>Find all DBs"]
+            PASS3["Pass 3: DB_SCHEDULES<br/>Circuits per DB"]
+            PASS4["Pass 4: ROOM_DETECTION<br/>Find all rooms"]
+            PASS5["Pass 5: ROOM_FIXTURES<br/>Count fixtures"]
+            PASS6["Pass 6: CABLE_ROUTES<br/>Site cables"]
+        end
+
+        EXTRACT_AI["AI Model<br/>Sonnet 4.5 / Llama 4"]
+        EXTRACT_OUT["ExtractionResult<br/>{DBs, Circuits, Rooms, Fixtures}"]
+    end
+
+    subgraph VALIDATE["STAGE 5: VALIDATE (Python Rules)"]
+        direction LR
+        SANS_RULES["SANS 10142-1 Checks"]
+        RULE1["Max 10 lights/circuit"]
+        RULE2["ELCB 30mA required"]
+        RULE3["Dedicated circuits"]
+        AUTO_FIX["Auto-Corrections"]
+        VAL_OUT["ValidationResult<br/>{flags[], corrections[]}"]
+    end
+
+    subgraph PRICE["STAGE 6: PRICE (Python + Database)"]
+        direction TB
+
+        subgraph CONSTANTS["constants.py (1650 lines)"]
+            C1["ELECTRICAL_CABLES"]
+            C2["ELECTRICAL_DB"]
+            C3["ELECTRICAL_LIGHTS"]
+            C4["LABOUR_RATES"]
+            C5["COC_FEES"]
+        end
+
+        subgraph CALCULATIONS["calculations.py"]
+            CALC1["calculate_load()"]
+            CALC2["calculate_admd()"]
+            CALC3["voltage_drop()"]
+        end
+
+        BQ_GEN["14-Section BOQ<br/>Generation"]
+        DUAL_BQ["Dual BQ Output<br/>Qty-Only + Estimated"]
+    end
+
+    subgraph OUTPUT["STAGE 7: OUTPUT (Python)"]
+        PDF_GEN["pdf_summary.py<br/>fpdf2"]
+        EXCEL_GEN["excel_bq.py<br/>openpyxl"]
+
+        subgraph PDF_OUT["PDF Quotation"]
+            PDF1["Cover Page"]
+            PDF2["Project Summary"]
+            PDF3["BQ Table"]
+            PDF4["Terms & Notes"]
+        end
+
+        subgraph EXCEL_OUT["Excel BOQ (4 Sheets)"]
+            EX1["Sheet 1: Cover"]
+            EX2["Sheet 2: BOQ"]
+            EX3["Sheet 3: Summary"]
+            EX4["Sheet 4: Discrepancies"]
+        end
+    end
+
+    %% Flow connections
+    UPLOAD --> PDF_PARSE
+    PDF_PARSE --> IMG_PROC
+    IMG_PROC --> OCR
+    OCR --> DOC_SET
+
+    DOC_SET --> CLASS_PROMPT
+    CLASS_PROMPT --> CLASS_AI
+    CLASS_AI --> TIER
+
+    TIER --> SYSTEM_KNOWLEDGE
+    SYSTEM_KNOWLEDGE --> PASSES
+    PASS1 --> EXTRACT_AI
+    PASS2 --> EXTRACT_AI
+    PASS3 --> EXTRACT_AI
+    PASS4 --> EXTRACT_AI
+    PASS5 --> EXTRACT_AI
+    PASS6 --> EXTRACT_AI
+    EXTRACT_AI --> EXTRACT_OUT
+
+    EXTRACT_OUT --> REVIEW_UI
+    REVIEW_UI -->|"Corrections"| SANS_RULES
+
+    SANS_RULES --> RULE1
+    SANS_RULES --> RULE2
+    SANS_RULES --> RULE3
+    RULE1 --> AUTO_FIX
+    RULE2 --> AUTO_FIX
+    RULE3 --> AUTO_FIX
+    AUTO_FIX --> VAL_OUT
+
+    VAL_OUT --> CONSTANTS
+    VAL_OUT --> CALCULATIONS
+    CONSTANTS --> BQ_GEN
+    CALCULATIONS --> BQ_GEN
+    BQ_GEN --> DUAL_BQ
+
+    DUAL_BQ --> PDF_GEN
+    DUAL_BQ --> EXCEL_GEN
+    PDF_GEN --> PDF_OUT
+    EXCEL_GEN --> EXCEL_OUT
+
+    PDF_OUT --> DOWNLOAD
+    EXCEL_OUT --> DOWNLOAD
+
+    %% Styling
+    style UPLOAD fill:#00D4FF,stroke:#00D4FF,color:#000
+    style DOWNLOAD fill:#00D4FF,stroke:#00D4FF,color:#000
+    style CLASS_AI fill:#9b59b6,stroke:#9b59b6,color:#fff
+    style EXTRACT_AI fill:#9b59b6,stroke:#9b59b6,color:#fff
+    style CLASS_PROMPT fill:#8e44ad,stroke:#8e44ad,color:#fff
+    style SYSTEM_KNOWLEDGE fill:#8e44ad,stroke:#8e44ad,color:#fff
+    style SANS_RULES fill:#27ae60,stroke:#27ae60,color:#fff
+    style AUTO_FIX fill:#2ecc71,stroke:#2ecc71,color:#000
+    style CONSTANTS fill:#f39c12,stroke:#f39c12,color:#000
+    style CALCULATIONS fill:#e67e22,stroke:#e67e22,color:#000
+    style BQ_GEN fill:#e74c3c,stroke:#e74c3c,color:#fff
+    style REVIEW_UI fill:#e74c3c,stroke:#e74c3c,color:#fff

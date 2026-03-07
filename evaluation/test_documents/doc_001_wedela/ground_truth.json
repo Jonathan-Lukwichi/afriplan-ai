@@ -1,0 +1,368 @@
+{
+  "document_id": "doc_001_wedela",
+  "document_type": "sld",
+  "page_count": 8,
+
+  "project_info": {
+    "project_name": "Wedela Recreational Club",
+    "client_name": null,
+    "consultant": "KABE Consulting",
+    "drawing_number": "WD-KIOSK-01-SLD (main)",
+    "revision": "RA",
+    "date": "2025-05-26",
+    "standard": "SANS 10142-1"
+  },
+
+  "distribution_boards": [
+    {
+      "name": "DB-KIOSK",
+      "location": "Kiosk / Entrance",
+      "drawing_ref": "WD-KIOSK-01-SLD (Page 2)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 250,
+      "incoming_cable_mm2": 95,
+      "incoming_cable_type": "4C+E COPPER PVC SWA",
+      "fed_from": "EXISTING MINI SUB",
+      "total_ways": 6,
+      "spare_ways": 3,
+      "has_elcb": false,
+      "circuits": [
+        {"name": "Q1", "type": "main", "mcb_rating_a": 63, "description": "Sub-main to Q2, Q3"},
+        {"name": "Q2", "type": "spare", "mcb_rating_a": 20, "description": "SPARE"},
+        {"name": "Q3", "type": "spare", "mcb_rating_a": 20, "description": "SPARE"},
+        {"name": "Q4", "type": "spare", "mcb_rating_a": 10, "description": "SPARE"},
+        {"name": "Q5", "type": "sub_feed", "mcb_rating_a": 250, "description": "To METER"},
+        {"name": "Q6", "type": "sub_feed", "mcb_rating_a": 50, "cable_size_mm2": 35, "description": "Feed to DB-CR"}
+      ]
+    },
+    {
+      "name": "DB-PS",
+      "location": "Pool/Sports Area",
+      "drawing_ref": "WD-PS-01-SLD (Page 3 - Top)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 63,
+      "total_ways": 24,
+      "spare_ways": 1,
+      "has_elcb": true,
+      "elcb_rating_a": 63,
+      "elcb_sensitivity_ma": 30,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 216, "num_points": null, "phase": "R"},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 288, "num_points": null, "phase": "W"},
+        {"name": "L3", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 288, "num_points": null, "phase": "B"},
+        {"name": "L4", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 360, "num_points": null, "phase": "R"},
+        {"name": "L5", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 360, "num_points": null, "phase": "W"},
+        {"name": "L6", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 216, "num_points": null, "phase": "B"},
+        {"name": "L7", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 1200, "num_points": null, "phase": "R"},
+        {"name": "L8", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 1200, "num_points": null, "phase": "W"},
+        {"name": "P1", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5, "num_points": null, "phase": "R"},
+        {"name": "P2", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5, "num_points": null, "phase": "W"},
+        {"name": "SPARE", "type": "spare", "mcb_rating_a": null},
+        {"name": "STOVE", "type": "dedicated", "mcb_rating_a": 32, "cable_size_mm2": 6.0, "description": "Stove circuit"},
+        {"name": "GEYSER", "type": "dedicated", "mcb_rating_a": 20, "cable_size_mm2": 2.5, "description": "Geyser 150L"},
+        {"name": "AIR/CON", "type": "dedicated", "mcb_rating_a": 20, "cable_size_mm2": 2.5, "description": "Air conditioner"},
+        {"name": "DB-ST", "type": "sub_feed", "mcb_rating_a": 40, "description": "Feed to DB-ST (staff)"}
+      ]
+    },
+    {
+      "name": "DB-PS-02",
+      "location": "Pool/Sports Area (Second Board)",
+      "drawing_ref": "WD-PS-01-SLD (Page 3 - Bottom)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 63,
+      "total_ways": 24,
+      "spare_ways": 1,
+      "has_elcb": true,
+      "elcb_rating_a": 63,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 216},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 216},
+        {"name": "L3", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 144},
+        {"name": "L4", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 144},
+        {"name": "L5", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 216},
+        {"name": "L6", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 216},
+        {"name": "SPARE", "type": "spare"},
+        {"name": "P1", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P2", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P3", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P4", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P5", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P6", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P7", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "CIRCULATION", "type": "dedicated", "mcb_rating_a": 20, "description": "Circulation pump"},
+        {"name": "POOL_STATION_1", "type": "sub_feed", "mcb_rating_a": 32, "description": "Pool pumps station 1"},
+        {"name": "POOL_STATION_2", "type": "sub_feed", "mcb_rating_a": 32, "description": "Pool pumps station 2"},
+        {"name": "HEAT_STATION_1", "type": "sub_feed", "mcb_rating_a": 32, "description": "Heat pumps station 1"},
+        {"name": "HEAT_STATION_2", "type": "sub_feed", "mcb_rating_a": 32, "description": "Heat pumps station 2"}
+      ]
+    },
+    {
+      "name": "DB-PP (Pool Pumps)",
+      "location": "Pool Pumps Station",
+      "drawing_ref": "WD-PP-01-SLD (Page 4 - Top)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 63,
+      "total_ways": 12,
+      "spare_ways": 4,
+      "has_elcb": false,
+      "circuits": [
+        {"name": "P01", "type": "dedicated", "mcb_rating_a": 16, "description": "Pool Pump 1"},
+        {"name": "P02", "type": "dedicated", "mcb_rating_a": 16, "description": "Pool Pump 2"},
+        {"name": "P03", "type": "dedicated", "mcb_rating_a": 16, "description": "Pool Pump 3"},
+        {"name": "P04", "type": "dedicated", "mcb_rating_a": 16, "description": "Pool Pump 4"},
+        {"name": "SPARE1", "type": "spare"},
+        {"name": "SPARE2", "type": "spare"},
+        {"name": "P05", "type": "dedicated", "mcb_rating_a": 16, "description": "Pool Pump 5"},
+        {"name": "P06", "type": "dedicated", "mcb_rating_a": 16, "description": "Pool Pump 6"},
+        {"name": "SPARE3", "type": "spare"},
+        {"name": "SPARE4", "type": "spare"}
+      ]
+    },
+    {
+      "name": "DB-HP (Heat Pumps)",
+      "location": "Heat Pumps Station",
+      "drawing_ref": "WD-PP-01-SLD (Page 4 - Bottom)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 63,
+      "total_ways": 12,
+      "spare_ways": 4,
+      "has_elcb": false,
+      "circuits": [
+        {"name": "HP1", "type": "dedicated", "mcb_rating_a": 20, "description": "Heat Pump 1"},
+        {"name": "HP2", "type": "dedicated", "mcb_rating_a": 20, "description": "Heat Pump 2"},
+        {"name": "HP3", "type": "dedicated", "mcb_rating_a": 20, "description": "Heat Pump 3"},
+        {"name": "HP4", "type": "dedicated", "mcb_rating_a": 20, "description": "Heat Pump 4"},
+        {"name": "SPARE1", "type": "spare"},
+        {"name": "SPARE2", "type": "spare"},
+        {"name": "HP5", "type": "dedicated", "mcb_rating_a": 20, "description": "Heat Pump 5"},
+        {"name": "HP6", "type": "dedicated", "mcb_rating_a": 20, "description": "Heat Pump 6"},
+        {"name": "SPARE3", "type": "spare"},
+        {"name": "SPARE4", "type": "spare"}
+      ]
+    },
+    {
+      "name": "DB-EOH",
+      "location": "Equipment/Other Area",
+      "drawing_ref": "WD-EOH-01-SLD (Page 5 - Top)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 100,
+      "total_ways": 24,
+      "spare_ways": 2,
+      "has_elcb": true,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5454},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 13320},
+        {"name": "L3", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5448},
+        {"name": "L4", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 240},
+        {"name": "L5", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 6648},
+        {"name": "L6", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 360},
+        {"name": "L7", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 8832},
+        {"name": "L8", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5454},
+        {"name": "L9", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5454},
+        {"name": "P1", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P2", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P3", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P4", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P5", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "SPARE1", "type": "spare"},
+        {"name": "SPARE2", "type": "spare"},
+        {"name": "DB-ST", "type": "sub_feed", "mcb_rating_a": 32, "description": "Feed to DB-ST"}
+      ]
+    },
+    {
+      "name": "DB-EOH-02",
+      "location": "Equipment Area (Second)",
+      "drawing_ref": "WD-EOH-01-SLD (Page 5 - Bottom)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 63,
+      "total_ways": 16,
+      "spare_ways": 1,
+      "has_elcb": true,
+      "circuits": [
+        {"name": "J501", "type": "dedicated", "mcb_rating_a": 20},
+        {"name": "J502", "type": "dedicated", "mcb_rating_a": 20},
+        {"name": "J503", "type": "dedicated", "mcb_rating_a": 16},
+        {"name": "J504", "type": "dedicated", "mcb_rating_a": 16},
+        {"name": "J505", "type": "dedicated", "mcb_rating_a": 16},
+        {"name": "J506", "type": "dedicated", "mcb_rating_a": 16},
+        {"name": "J507", "type": "dedicated", "mcb_rating_a": 16},
+        {"name": "J508", "type": "dedicated", "mcb_rating_a": 16},
+        {"name": "HVAC", "type": "dedicated", "mcb_rating_a": 32, "description": "HVAC System"},
+        {"name": "SPARE", "type": "spare"},
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "wattage_w": 1440},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "wattage_w": 420},
+        {"name": "SPARE2", "type": "spare"}
+      ]
+    },
+    {
+      "name": "DB-AB1",
+      "location": "Admin Building 1",
+      "drawing_ref": "WD-AB-01-SLD (Page 6 - Top)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 100,
+      "total_ways": 20,
+      "spare_ways": 2,
+      "has_elcb": true,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5160},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5448},
+        {"name": "L3", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5160},
+        {"name": "L4", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 6084},
+        {"name": "SPARE1", "type": "spare"},
+        {"name": "P1", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P2", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "ISO1", "type": "dedicated", "mcb_rating_a": 20, "description": "Isolator 1"},
+        {"name": "ISO2", "type": "dedicated", "mcb_rating_a": 20, "description": "Isolator 2"},
+        {"name": "ISO3", "type": "dedicated", "mcb_rating_a": 20, "description": "Isolator 3"},
+        {"name": "ISO4", "type": "dedicated", "mcb_rating_a": 20, "description": "Isolator 4"},
+        {"name": "CON", "type": "dedicated", "mcb_rating_a": 16, "description": "Contactor"},
+        {"name": "S07", "type": "power", "mcb_rating_a": 16},
+        {"name": "S08", "type": "power", "mcb_rating_a": 16},
+        {"name": "SPARE2", "type": "spare"},
+        {"name": "DB-MIE", "type": "sub_feed", "mcb_rating_a": 40, "description": "Feed to DB-MIE"}
+      ]
+    },
+    {
+      "name": "DB-AB2",
+      "location": "Admin Building 2",
+      "drawing_ref": "WD-AB-01-SLD (Page 6 - Bottom)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 63,
+      "total_ways": 14,
+      "spare_ways": 4,
+      "has_elcb": true,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5160},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 6240},
+        {"name": "L3", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 5160},
+        {"name": "L4", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 432},
+        {"name": "SPARE1", "type": "spare"},
+        {"name": "SPARE2", "type": "spare"},
+        {"name": "P1", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "P2", "type": "power", "mcb_rating_a": 16, "cable_size_mm2": 2.5},
+        {"name": "SPARE3", "type": "spare"},
+        {"name": "SPARE4", "type": "spare"},
+        {"name": "LARGE_GAME", "type": "dedicated", "mcb_rating_a": 32, "description": "Large game force"}
+      ]
+    },
+    {
+      "name": "DB-LGH",
+      "location": "Large Game House",
+      "drawing_ref": "WD-LGH-01-SLD (Page 7)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 32,
+      "incoming_cable_mm2": 6,
+      "fed_from": "DB-AB2",
+      "total_ways": 7,
+      "spare_ways": 1,
+      "has_elcb": true,
+      "elcb_rating_a": 63,
+      "elcb_sensitivity_ma": 30,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 240, "description": "5x48W"},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 130, "description": "5x26W"},
+        {"name": "SPARE", "type": "spare"},
+        {"name": "P1", "type": "power", "mcb_rating_a": 20, "cable_size_mm2": 2.5},
+        {"name": "P2", "type": "power", "mcb_rating_a": 20, "cable_size_mm2": 2.5}
+      ]
+    },
+    {
+      "name": "DB-SGH",
+      "location": "Small Game House",
+      "drawing_ref": "WD-SGH-01-SLD (Page 8)",
+      "voltage": "400V",
+      "phase": "3PH+N+E",
+      "main_breaker_a": 32,
+      "incoming_cable_mm2": 6,
+      "fed_from": "DB-CR",
+      "total_ways": 7,
+      "spare_ways": 2,
+      "has_elcb": true,
+      "elcb_rating_a": 63,
+      "elcb_sensitivity_ma": 30,
+      "circuits": [
+        {"name": "L1", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 192, "description": "4x48W"},
+        {"name": "L2", "type": "lighting", "mcb_rating_a": 10, "cable_size_mm2": 1.5, "wattage_w": 104, "description": "4x26W"},
+        {"name": "SPARE1", "type": "spare"},
+        {"name": "P1", "type": "power", "mcb_rating_a": 20, "cable_size_mm2": 2.5},
+        {"name": "SPARE2", "type": "spare"}
+      ]
+    }
+  ],
+
+  "cables": {
+    "main_feeds": [
+      {
+        "from": "EXISTING MINI SUB",
+        "to": "DB-KIOSK",
+        "cable_size_mm2": 95,
+        "cable_type": "4C+E COPPER PVC SWA PVC",
+        "length_m": null,
+        "installation": "underground"
+      }
+    ],
+    "sub_feeds": [
+      {
+        "from": "DB-KIOSK",
+        "to": "DB-CR",
+        "cable_size_mm2": 35,
+        "cable_type": "4C+E COPPER PVC SWA",
+        "length_m": null
+      },
+      {
+        "from": "DB-AB2",
+        "to": "DB-LGH",
+        "cable_size_mm2": 6,
+        "length_m": null
+      },
+      {
+        "from": "DB-CR",
+        "to": "DB-SGH",
+        "cable_size_mm2": 6,
+        "length_m": null
+      }
+    ]
+  },
+
+  "totals": {
+    "total_dbs": 11,
+    "total_circuits": 156,
+    "total_lighting_circuits": 42,
+    "total_power_circuits": 35,
+    "total_dedicated_circuits": 45,
+    "total_spare_circuits": 28,
+    "total_sub_feeds": 6,
+
+    "circuit_count_by_db": {
+      "DB-KIOSK": 6,
+      "DB-PS": 15,
+      "DB-PS-02": 19,
+      "DB-PP": 10,
+      "DB-HP": 10,
+      "DB-EOH": 17,
+      "DB-EOH-02": 13,
+      "DB-AB1": 16,
+      "DB-AB2": 11,
+      "DB-LGH": 5,
+      "DB-SGH": 5
+    }
+  },
+
+  "notes": [
+    "This is an SLD-only document - no fixture layout counts available",
+    "Standard: SANS 10142-1",
+    "OHS Act 85 of 1993 Environmental Regulation for workplace applies",
+    "Some wattage values may need verification from higher resolution source",
+    "Circuit point counts not shown on SLD - would need layout drawings"
+  ]
+}

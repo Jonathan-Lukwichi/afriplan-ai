@@ -1,13 +1,12 @@
 """
-AfriPlan Electrical v4.11 — Main Application
+AfriPlan Electrical v1.0 — Main Application
 
 SA Electrical Quotation Platform - Quantity Take-Off Accelerator
 
-Two upload modes:
-- Smart Upload: Fast automated extraction (38% accuracy with Llama 4)
-- Guided Upload: Step-by-step extraction with user validation (70%+ target)
+Primary Mode:
+- Smart Upload: Step-by-step extraction with human validation (75%+ target)
 
-v4.11 Pipeline:
+v1.0 Pipeline:
 INGEST → CLASSIFY → DISCOVER (Multi-Pass) → VALIDATE → PRICE → OUTPUT
 """
 
@@ -21,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Define pages (v4.2 - simplified to 3 pages)
+# Define pages (v1.0 - Smart Upload only)
 welcome = st.Page(
     "pages/0_Welcome.py",
     title="Welcome",
@@ -35,23 +34,8 @@ smart_upload = st.Page(
     icon="📤"
 )
 
-guided_upload = st.Page(
-    "pages/6_Guided_Upload.py",
-    title="Guided Upload",
-    icon="📋"
-)
-
-profile = st.Page(
-    "pages/5_Profile.py",
-    title="Settings",
-    icon="⚙️"
-)
-
-# Navigation (v4.11 - with Guided Upload)
-pg = st.navigation({
-    "Main": [welcome, smart_upload, guided_upload],
-    "Settings": [profile],
-})
+# Navigation (v1.0 - minimal)
+pg = st.navigation([welcome, smart_upload])
 
 # Run the selected page
 pg.run()

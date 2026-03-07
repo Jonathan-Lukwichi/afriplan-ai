@@ -1,0 +1,2180 @@
+{
+  "timestamp": "2026-03-04T00:31:01.473035",
+  "document_count": 1,
+  "average_overall": 0.917226637116693,
+  "average_critical": 0.9015451677474381,
+  "documents": [
+    {
+      "document_id": "doc_001_wedela",
+      "overall_score": 0.917226637116693,
+      "critical_score": 0.9015451677474381,
+      "section_scores": {
+        "project": 1.0,
+        "db": 0.9191267491235771,
+        "circuit": 0.8731303418803418,
+        "totals": 0.696969696969697
+      },
+      "summary": {
+        "total_fields": 269,
+        "correct_fields": 244,
+        "accuracy_percent": 90.70631970260223,
+        "critical_fields": 135,
+        "critical_correct": 118
+      },
+      "field_details": [
+        {
+          "field": "project_name",
+          "expected": "Wedela Recreational Club",
+          "actual": "Wedela Recreational Club",
+          "score": 1.0,
+          "priority": "low",
+          "correct": true
+        },
+        {
+          "field": "consultant",
+          "expected": "KABE Consulting",
+          "actual": "KABE Consulting",
+          "score": 1.0,
+          "priority": "low",
+          "correct": true
+        },
+        {
+          "field": "db_count",
+          "expected": "11.0",
+          "actual": "9.0",
+          "score": 0.696969696969697,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_names_found",
+          "expected": "['db-eoh', 'db-ab1', 'db-kiosk', 'db-hp (heat pumps)', 'db-eoh-02', 'db-ps', 'db-ab2', 'db-lgh', 'db-pp (pool pumps)', 'db-sgh', 'db-ps-02']",
+          "actual": "['db-ab1', 'db-eoh-02', 'db-kiosk', 'db-ps', 'db-ab2', 'db-lgh', 'db-pp (pool pumps)', 'db-sgh', 'db-ps-02']",
+          "score": 0.8181818181818182,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_main_breaker",
+          "expected": "250",
+          "actual": "250",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_has_elcb",
+          "expected": "False",
+          "actual": "False",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_circuit_count",
+          "expected": "6.0",
+          "actual": "6.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_lighting_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_power_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_dedicated_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_spare_count",
+          "expected": "3.0",
+          "actual": "3.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q1_mcb",
+          "expected": "63",
+          "actual": "50",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q1_type",
+          "expected": "main",
+          "actual": "main",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q2_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q2_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q3_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q3_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q4_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q4_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q5_mcb",
+          "expected": "250",
+          "actual": "250",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q5_type",
+          "expected": "sub_feed",
+          "actual": "sub_feed",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q6_mcb",
+          "expected": "50",
+          "actual": "50",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q6_cable",
+          "expected": "35",
+          "actual": "35",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-KIOSK_cct_Q6_type",
+          "expected": "sub_feed",
+          "actual": "sub_feed",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_main_breaker",
+          "expected": "63",
+          "actual": "63",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_circuit_count",
+          "expected": "15.0",
+          "actual": "15.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_lighting_count",
+          "expected": "8.0",
+          "actual": "8.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_power_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_dedicated_count",
+          "expected": "3.0",
+          "actual": "3.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_spare_count",
+          "expected": "1.0",
+          "actual": "1.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L2_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L3_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L3_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L3_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L4_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L4_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L4_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L5_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L5_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L5_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L6_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L6_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L6_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L7_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L7_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L7_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L8_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L8_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_L8_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_P1_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_P1_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_P1_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_P2_mcb",
+          "expected": "16",
+          "actual": "10",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-PS_cct_P2_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS_cct_P2_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_main_breaker",
+          "expected": "63",
+          "actual": "63",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_circuit_count",
+          "expected": "19.0",
+          "actual": "15.0",
+          "score": 0.6491228070175439,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-PS-02_lighting_count",
+          "expected": "6.0",
+          "actual": "8.0",
+          "score": 0.4444444444444444,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-PS-02_power_count",
+          "expected": "7.0",
+          "actual": "2.0",
+          "score": 0.0,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-PS-02_dedicated_count",
+          "expected": "1.0",
+          "actual": "3.0",
+          "score": 0.0,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-PS-02_spare_count",
+          "expected": "1.0",
+          "actual": "1.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L2_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L3_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L3_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L3_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L4_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L4_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L4_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L5_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L5_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L5_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L6_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L6_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_L6_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_SPARE_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_P1_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_P1_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_P1_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_P2_mcb",
+          "expected": "16",
+          "actual": "10",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-PS-02_cct_P2_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PS-02_cct_P2_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_main_breaker",
+          "expected": "63",
+          "actual": "63",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_has_elcb",
+          "expected": "False",
+          "actual": "False",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_circuit_count",
+          "expected": "10.0",
+          "actual": "10.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_lighting_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_power_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_dedicated_count",
+          "expected": "6.0",
+          "actual": "6.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_spare_count",
+          "expected": "4.0",
+          "actual": "4.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P01_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P01_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P02_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P02_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P03_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P03_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P04_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P04_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_SPARE1_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_SPARE2_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P05_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P05_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P06_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_P06_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_SPARE3_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-PP (Pool Pumps)_cct_SPARE4_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-HP (Heat Pumps)_found",
+          "expected": "DB-HP (Heat Pumps)",
+          "actual": "None",
+          "score": 0.0,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_main_breaker",
+          "expected": "100",
+          "actual": "63",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH_circuit_count",
+          "expected": "17.0",
+          "actual": "13.0",
+          "score": 0.607843137254902,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_lighting_count",
+          "expected": "9.0",
+          "actual": "2.0",
+          "score": 0.0,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_power_count",
+          "expected": "5.0",
+          "actual": "0.0",
+          "score": 0.0,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_dedicated_count",
+          "expected": "0.0",
+          "actual": "9.0",
+          "score": 0.0,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_spare_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "None",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH_cct_L2_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "None",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_main_breaker",
+          "expected": "63",
+          "actual": "63",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_circuit_count",
+          "expected": "13.0",
+          "actual": "13.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_lighting_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_power_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_dedicated_count",
+          "expected": "9.0",
+          "actual": "9.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_spare_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J501_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J501_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J502_mcb",
+          "expected": "20",
+          "actual": "25",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J502_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J503_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J503_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J504_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J504_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J505_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J505_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J506_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J506_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J507_mcb",
+          "expected": "16",
+          "actual": "10",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J507_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J508_mcb",
+          "expected": "16",
+          "actual": "10",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-EOH-02_cct_J508_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_HVAC_mcb",
+          "expected": "32",
+          "actual": "32",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_HVAC_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-EOH-02_cct_SPARE_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_main_breaker",
+          "expected": "100",
+          "actual": "100",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_circuit_count",
+          "expected": "16.0",
+          "actual": "16.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_lighting_count",
+          "expected": "4.0",
+          "actual": "4.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_power_count",
+          "expected": "4.0",
+          "actual": "4.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_dedicated_count",
+          "expected": "5.0",
+          "actual": "5.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_spare_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L2_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L3_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L3_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L3_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L4_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L4_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_L4_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_SPARE1_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_P1_mcb",
+          "expected": "16",
+          "actual": "10",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-AB1_cct_P1_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_P1_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_P2_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_P2_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_P2_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_ISO1_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_ISO1_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_ISO2_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_ISO2_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_ISO3_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB1_cct_ISO3_type",
+          "expected": "dedicated",
+          "actual": "dedicated",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_main_breaker",
+          "expected": "63",
+          "actual": "63",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_circuit_count",
+          "expected": "11.0",
+          "actual": "11.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_lighting_count",
+          "expected": "4.0",
+          "actual": "4.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_power_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_dedicated_count",
+          "expected": "1.0",
+          "actual": "1.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_spare_count",
+          "expected": "4.0",
+          "actual": "4.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L2_mcb",
+          "expected": "10",
+          "actual": "16",
+          "score": 0.0,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-AB2_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L3_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L3_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L3_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L4_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L4_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_L4_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_SPARE1_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_SPARE2_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_P1_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_P1_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_P1_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_P2_mcb",
+          "expected": "16",
+          "actual": "16",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_P2_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_P2_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_SPARE3_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-AB2_cct_SPARE4_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_main_breaker",
+          "expected": "32",
+          "actual": "32",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_circuit_count",
+          "expected": "5.0",
+          "actual": "4.0",
+          "score": 0.6666666666666666,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "db_DB-LGH_lighting_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_power_count",
+          "expected": "2.0",
+          "actual": "1.0",
+          "score": 0.16666666666666663,
+          "priority": "high",
+          "correct": false
+        },
+        {
+          "field": "db_DB-LGH_dedicated_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_spare_count",
+          "expected": "1.0",
+          "actual": "1.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_L2_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_SPARE_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_P1_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_P1_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-LGH_cct_P1_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_main_breaker",
+          "expected": "32",
+          "actual": "32",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_phase",
+          "expected": "3PH+N+E",
+          "actual": "3PH+N+E",
+          "score": 1.0,
+          "priority": "medium",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_has_elcb",
+          "expected": "True",
+          "actual": "True",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_circuit_count",
+          "expected": "5.0",
+          "actual": "5.0",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_lighting_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_power_count",
+          "expected": "1.0",
+          "actual": "1.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_dedicated_count",
+          "expected": "0.0",
+          "actual": "0.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_spare_count",
+          "expected": "2.0",
+          "actual": "2.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_L1_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_L1_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_L1_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_L2_mcb",
+          "expected": "10",
+          "actual": "10",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_L2_cable",
+          "expected": "1.5",
+          "actual": "1.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_L2_type",
+          "expected": "lighting",
+          "actual": "lighting",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_SPARE1_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_P1_mcb",
+          "expected": "20",
+          "actual": "20",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_P1_cable",
+          "expected": "2.5",
+          "actual": "2.5",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_P1_type",
+          "expected": "power",
+          "actual": "power",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "db_DB-SGH_cct_SPARE2_type",
+          "expected": "spare",
+          "actual": "spare",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "main_feed_0_cable_size",
+          "expected": "95",
+          "actual": "95",
+          "score": 1.0,
+          "priority": "critical",
+          "correct": true
+        },
+        {
+          "field": "total_dbs",
+          "expected": "11.0",
+          "actual": "9.0",
+          "score": 0.696969696969697,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "total_circuits",
+          "expected": "156.0",
+          "actual": "99.0",
+          "score": 0.3910256410256411,
+          "priority": "critical",
+          "correct": false
+        },
+        {
+          "field": "total_lighting_circuits",
+          "expected": "42.0",
+          "actual": "42.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "total_power_circuits",
+          "expected": "35.0",
+          "actual": "35.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "total_dedicated_circuits",
+          "expected": "45.0",
+          "actual": "45.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        },
+        {
+          "field": "total_spare_circuits",
+          "expected": "28.0",
+          "actual": "28.0",
+          "score": 1.0,
+          "priority": "high",
+          "correct": true
+        }
+      ]
+    }
+  ]
+}

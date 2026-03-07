@@ -1,0 +1,84 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#00D4FF', 'primaryTextColor': '#fff', 'primaryBorderColor': '#00D4FF', 'lineColor': '#00D4FF', 'secondaryColor': '#1a1a2e', 'tertiaryColor': '#16213e'}}}%%
+
+flowchart TB
+    subgraph INPUT["USER INPUT"]
+        UPLOAD["PDF / Image Upload"]
+    end
+
+    subgraph PIPELINE["7-STAGE AI PIPELINE"]
+        direction TB
+
+        subgraph STAGE1["STAGE 1: INGEST"]
+            S1_TOOL["PyMuPDF + Pillow"]
+            S1_OUT["DocumentSet<br/>pages[], images[], text"]
+        end
+
+        subgraph STAGE2["STAGE 2: CLASSIFY"]
+            S2_MODEL["Haiku 4.5 / Groq<br/>~R0.18"]
+            S2_PROMPT["classify_prompt.py"]
+            S2_OUT["ServiceTier<br/>RESIDENTIAL | COMMERCIAL | MAINTENANCE"]
+        end
+
+        subgraph STAGE3["STAGE 3: DISCOVER"]
+            S3_MODEL["Sonnet 4.5 / Llama 4<br/>~R1.80"]
+            S3_PROMPTS["Multi-Pass Prompts"]
+            S3_PASSES["6 Extraction Passes"]
+            S3_OUT["ExtractionResult<br/>DBs, Circuits, Rooms, Fixtures"]
+        end
+
+        subgraph STAGE4["STAGE 4: REVIEW"]
+            S4_UI["Streamlit UI"]
+            S4_HUMAN["Human-in-the-Loop"]
+            S4_OUT["CorrectionLog<br/>edits[], accuracy%"]
+        end
+
+        subgraph STAGE5["STAGE 5: VALIDATE"]
+            S5_CODE["Python Rules"]
+            S5_SANS["SANS 10142-1:2017"]
+            S5_OUT["ValidationResult<br/>flags[], auto-corrections"]
+        end
+
+        subgraph STAGE6["STAGE 6: PRICE"]
+            S6_CODE["Python Only"]
+            S6_DB["constants.py<br/>1650 lines"]
+            S6_OUT["PricingResult<br/>dual BQ, totals"]
+        end
+    end
+
+    subgraph OUTPUT["STAGE 7: OUTPUT"]
+        PDF["PDF Quotation<br/>fpdf2"]
+        EXCEL["Excel BOQ<br/>openpyxl<br/>4 sheets"]
+        JSON["JSON Results"]
+    end
+
+    UPLOAD --> S1_TOOL
+    S1_TOOL --> S1_OUT
+    S1_OUT --> S2_PROMPT
+    S2_PROMPT --> S2_MODEL
+    S2_MODEL --> S2_OUT
+    S2_OUT --> S3_PROMPTS
+    S3_PROMPTS --> S3_PASSES
+    S3_PASSES --> S3_MODEL
+    S3_MODEL --> S3_OUT
+    S3_OUT --> S4_UI
+    S4_UI --> S4_HUMAN
+    S4_HUMAN --> S4_OUT
+    S4_OUT --> S5_CODE
+    S5_CODE --> S5_SANS
+    S5_SANS --> S5_OUT
+    S5_OUT --> S6_CODE
+    S6_CODE --> S6_DB
+    S6_DB --> S6_OUT
+    S6_OUT --> PDF
+    S6_OUT --> EXCEL
+    S6_OUT --> JSON
+
+    style UPLOAD fill:#00D4FF,stroke:#00D4FF,color:#000
+    style S2_MODEL fill:#9b59b6,stroke:#9b59b6,color:#fff
+    style S3_MODEL fill:#9b59b6,stroke:#9b59b6,color:#fff
+    style S4_HUMAN fill:#e74c3c,stroke:#e74c3c,color:#fff
+    style S5_SANS fill:#27ae60,stroke:#27ae60,color:#fff
+    style S6_DB fill:#f39c12,stroke:#f39c12,color:#000
+    style PDF fill:#00D4FF,stroke:#00D4FF,color:#000
+    style EXCEL fill:#00D4FF,stroke:#00D4FF,color:#000
+    style JSON fill:#00D4FF,stroke:#00D4FF,color:#000

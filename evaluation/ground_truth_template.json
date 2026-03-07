@@ -1,0 +1,122 @@
+{
+  "_comment": "GROUND TRUTH TEMPLATE - Fill in values from the drawing",
+  "_instructions": "Replace all null values with actual values from the drawing. Delete fields that don't apply.",
+
+  "document_id": "doc_001_example",
+  "document_type": "sld | layout | combined | cover",
+  "page_count": null,
+
+  "project_info": {
+    "project_name": null,
+    "client_name": null,
+    "consultant": null,
+    "drawing_number": null,
+    "revision": null,
+    "date": null,
+    "standard": "SANS 10142-1"
+  },
+
+  "distribution_boards": [
+    {
+      "_comment": "Copy this block for each DB",
+      "name": "DB-NAME",
+      "location": null,
+      "voltage": "400V | 230V",
+      "phase": "3PH+N+E | 1PH+N+E",
+      "main_breaker_a": null,
+      "total_ways": null,
+      "spare_ways": null,
+      "has_elcb": true,
+      "elcb_rating_a": null,
+      "elcb_sensitivity_ma": 30,
+      "has_surge_protection": false,
+
+      "circuits": [
+        {
+          "_comment": "Copy this block for each circuit",
+          "name": "L1",
+          "type": "lighting | power | dedicated | spare | sub_feed",
+          "mcb_rating_a": null,
+          "cable_size_mm2": null,
+          "cable_type": "SURFIX | PVC/PVC | XLPE",
+          "num_points": null,
+          "wattage_w": null,
+          "description": null,
+          "phase": "R | W | B | 3PH | N/A"
+        }
+      ]
+    }
+  ],
+
+  "fixtures": {
+    "_comment": "Fill this section for LAYOUT drawings only",
+
+    "lights": {
+      "led_downlight": null,
+      "fluorescent_600x600": null,
+      "fluorescent_600x1200": null,
+      "bulkhead": null,
+      "exit_sign": null,
+      "emergency_light": null,
+      "floodlight": null,
+      "batten": null,
+      "other": null
+    },
+
+    "sockets": {
+      "single_socket": null,
+      "double_socket": null,
+      "usb_socket": null,
+      "floor_box": null,
+      "isolator": null,
+      "fcu": null
+    },
+
+    "switches": {
+      "switch_1_lever": null,
+      "switch_2_lever": null,
+      "switch_3_lever": null,
+      "dimmer": null,
+      "pir_sensor": null
+    }
+  },
+
+  "cables": {
+    "_comment": "Fill this section for SITE PLAN / SLD drawings",
+
+    "main_feeds": [
+      {
+        "from": "MINI SUB",
+        "to": "DB-MAIN",
+        "cable_size_mm2": null,
+        "cable_type": null,
+        "length_m": null,
+        "installation": "underground | surface | trunking"
+      }
+    ],
+
+    "sub_feeds": [
+      {
+        "from": "DB-MAIN",
+        "to": "DB-SUB",
+        "cable_size_mm2": null,
+        "length_m": null
+      }
+    ]
+  },
+
+  "totals": {
+    "_comment": "ALWAYS fill these - they are the most important for scoring",
+
+    "total_dbs": null,
+    "total_circuits": null,
+    "total_lighting_circuits": null,
+    "total_power_circuits": null,
+    "total_dedicated_circuits": null,
+    "total_spare_circuits": null,
+
+    "total_lights": null,
+    "total_socket_points": null,
+    "total_switches": null
+  }
+}
