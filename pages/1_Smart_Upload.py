@@ -1838,7 +1838,7 @@ init_session_state()
 
 page_header(
     title="Smart Upload",
-    subtitle="Circuit-Cluster-First | Step-by-Step Validation | 75%+ accuracy target"
+    subtitle="Upload your drawings, get your BOQ"
 )
 
 # Check if pipeline is available
@@ -1850,31 +1850,9 @@ if not LLM_API_KEY:
     st.error("No API key configured. Add GROQ_API_KEY, XAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY to secrets.")
     st.stop()
 
-# Sidebar: AI Provider Info
-st.sidebar.markdown("### 🤖 AI Provider")
-provider_name, provider_cost = PROVIDER_LABELS.get(LLM_PROVIDER, ("Unknown", ""))
-st.sidebar.success(f"{provider_name} ({provider_cost})")
-
-st.sidebar.info("""
-**v7.0 Circuit-Cluster-First**
-
-✅ Extract by circuit labels (DB-S3 L2)
-✅ Legend → Circuit clusters (not rooms)
-✅ SLD↔Layout reconciliation
-✅ Type-specific point counting
-""")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-**4-Step Document Flow:**
-
-1. **Cover Page** → Project info
-2. **SLD + Schedules** → DBs, circuits, cables
-3. **Lighting Layout** → Legend → Circuit clusters
-4. **Power Layout** → Legend → Circuit clusters
-
-**Key:** Fixtures counted by CIRCUIT LABEL, then reconciled against SLD schedules.
-""")
+# Sidebar: Simple help
+st.sidebar.markdown("### Need Help?")
+st.sidebar.info("Upload your electrical drawings step by step. The AI will extract quantities for your BOQ.")
 
 # Render the 4-step guided upload
 render_progress_indicator()
