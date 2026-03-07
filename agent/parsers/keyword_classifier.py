@@ -251,6 +251,44 @@ class KeywordClassifier:
             target_type=PageType.OUTSIDE_LIGHTS,
         ))
 
+        # === LEGEND PAGE RULES ===
+        # Legend pages define symbols - should be detected BEFORE SLD
+        rules.append(ClassificationRule(
+            name="legend_explicit",
+            keywords=["legend", "symbol legend", "electrical legend", "key to symbols"],
+            weight=2.5,  # Higher than SLD rules
+            match_type="any",
+            target_type=PageType.SCHEDULE,  # Use SCHEDULE for legend pages
+        ))
+        rules.append(ClassificationRule(
+            name="legend_category_headers",
+            keywords=["switches", "power sockets", "lights", "others"],
+            weight=2.2,  # High weight - these are legend section headers
+            match_type="any",
+            target_type=PageType.SCHEDULE,
+        ))
+        rules.append(ClassificationRule(
+            name="legend_qtys_column",
+            keywords=["qtys", "qty", "quantity"],
+            weight=1.8,
+            match_type="any",
+            target_type=PageType.SCHEDULE,
+        ))
+        rules.append(ClassificationRule(
+            name="legend_above_ffl",
+            keywords=["above ffl", "above floor", "above finished floor", "@1200mm", "@300mm", "@1100mm", "@2000mm"],
+            weight=1.5,  # Symbol height descriptions common in legends
+            match_type="any",
+            target_type=PageType.SCHEDULE,
+        ))
+        rules.append(ClassificationRule(
+            name="legend_symbol_descriptions",
+            keywords=["1 way switch", "2 way switch", "lever switch", "switched socket", "recessed light"],
+            weight=1.2,
+            match_type="any",
+            target_type=PageType.SCHEDULE,
+        ))
+
         # === SCHEDULE PAGE RULES ===
         rules.append(ClassificationRule(
             name="schedule_explicit",

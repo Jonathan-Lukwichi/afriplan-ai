@@ -89,7 +89,8 @@ def classify_all_pages(
             # Route to appropriate category
             if result.confidence < confidence_threshold:
                 categories["Other"].append(page)
-            elif result.page_type == ClassifierPageType.REGISTER:
+            elif result.page_type in (ClassifierPageType.REGISTER, ClassifierPageType.SCHEDULE):
+                # Register and Legend/Schedule pages go to Cover
                 categories["Cover"].append(page)
             elif result.page_type == ClassifierPageType.SLD:
                 categories["SLD"].append(page)
@@ -143,7 +144,8 @@ def classify_pages_from_list(
 
         if result.confidence < confidence_threshold:
             categories["Other"].append(page)
-        elif result.page_type == ClassifierPageType.REGISTER:
+        elif result.page_type in (ClassifierPageType.REGISTER, ClassifierPageType.SCHEDULE):
+            # Register and Legend/Schedule pages go to Cover
             categories["Cover"].append(page)
         elif result.page_type == ClassifierPageType.SLD:
             categories["SLD"].append(page)
