@@ -10,6 +10,15 @@ from .register_extractor import RegisterExtractor, RegisterRow, RegisterExtracti
 from .sld_extractor import SLDExtractor, SLDCircuitRow, SLDExtraction
 from .lighting_layout_extractor import LightingLayoutExtractor, LayoutExtraction
 from .plugs_layout_extractor import PlugsLayoutExtractor
+from .circuit_label_scanner import (
+    scan_circuit_labels,
+    scan_layout_pages,
+    aggregate_layout_counts,
+    match_with_sld_counts,
+    CircuitLabel,
+    CircuitLabelScanResult,
+    summarize_for_boq,
+)
 
 __all__ = [
     "normalize_text",
@@ -25,4 +34,12 @@ __all__ = [
     "LightingLayoutExtractor",
     "LayoutExtraction",
     "PlugsLayoutExtractor",
+    # Circuit label scanner (v1.0)
+    "scan_circuit_labels",
+    "scan_layout_pages",
+    "aggregate_layout_counts",
+    "match_with_sld_counts",
+    "CircuitLabel",
+    "CircuitLabelScanResult",
+    "summarize_for_boq",
 ]

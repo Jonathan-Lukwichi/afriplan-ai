@@ -38,15 +38,41 @@ PIPELINE_AVAILABLE = False
 try:
     from agent.stages.ingest import ingest
     from agent.stages.interactive_passes import InteractivePipeline, InteractivePassResult
+    from agent.stages.classify_pages import (
+        classify_pages_from_list,
+        classify_service_tier,
+        get_classification_summary,
+    )
+    # v1.0 - Deterministic extraction (NO LLM)
+    from agent.stages.extract_sld import (
+        extract_all_dbs,
+        extract_db_names,
+        extract_circuit_counts,
+        SLDExtractionResult,
+    )
+    from agent.stages.extract_legend import (
+        extract_legend_from_pages,
+        LegendEntry,
+    )
+    from agent.stages.reconcile import (
+        reconcile_extraction,
+        ReconciliationResult,
+    )
+    from agent.extractors.circuit_label_scanner import (
+        scan_layout_pages,
+        aggregate_layout_counts,
+    )
     from agent.stages.validate import validate
     from agent.stages.price import price
     from agent.models import PageInfo, ExtractionResult, ServiceTier, PageType
     from exports.excel_bq import export_professional_bq, HAS_OPENPYXL
     from exports.pdf_summary import generate_pdf_summary
     PIPELINE_AVAILABLE = True
+    DETERMINISTIC_AVAILABLE = True
 except ImportError as e:
     PIPELINE_IMPORT_ERROR = str(e)
     HAS_OPENPYXL = False
+    DETERMINISTIC_AVAILABLE = False
 
 # Import benchmark validation module
 BENCHMARK_AVAILABLE = False
@@ -119,11 +145,15 @@ PROVIDER_MODELS = {
 # ============================================================================
 
 def init_session_state():
-    """Initialize all session state variables for v7.0 circuit-cluster-first flow."""
+    """Initialize all session state variables for v1.0 circuit-cluster-first flow."""
     defaults = {
         # Navigation (5 steps: 4 uploads + 1 review)
         "guided_step": 1,
         "max_completed_step": 0,
+
+        # Auto-classification mode (v1.0 - deterministic)
+        "auto_classified": False,
+        "classification_summary": None,
 
         # Document pages by type (4 separate documents)
         "cover_pages": [],
@@ -639,6 +669,85 @@ def render_step_1_cover():
     section_header("Step 1: Cover Page / Drawing Register",
                    "Upload the cover page to extract project information")
 
+    # ========================================================================
+    # AUTO-CLASSIFY ALL FILES (v1.0 - Recommended)
+    # ========================================================================
+    if not st.session_state.auto_classified:
+        with st.expander("Upload All Files at Once (Recommended)", expanded=True):
+            st.markdown("""
+            **Upload all your electrical drawing PDFs** and we'll automatically classify them:
+            - Cover pages / Drawing registers
+            - SLD / Circuit schedules
+            - Lighting layouts
+            - Power layouts
+            """)
+
+            all_files = st.file_uploader(
+                "Drop all your PDF files here",
+                type=["pdf", "png", "jpg", "jpeg"],
+                key="auto_classify_uploader",
+                accept_multiple_files=True
+            )
+
+            if all_files:
+                if st.button("Auto-Classify Pages", type="primary", key="btn_auto_classify"):
+                    with st.spinner("Processing and classifying pages..."):
+                        # Process all files
+                        all_pages = []
+                        for f in all_files:
+                            pages = process_uploaded_file(f)
+                            if pages:
+                                all_pages.extend(pages)
+
+                        if all_pages:
+                            # Auto-classify using KeywordClassifier (NO LLM!)
+                            categories = classify_pages_from_list(all_pages)
+                            summary = get_classification_summary(categories)
+
+                            # Store in session state
+                            st.session_state.cover_pages = categories["Cover"]
+                            st.session_state.sld_pages = categories["SLD"]
+                            st.session_state.lighting_pages = categories["Lighting"]
+                            st.session_state.power_pages = categories["Power"]
+                            st.session_state.auto_classified = True
+                            st.session_state.classification_summary = summary
+
+                            st.rerun()
+
+        st.markdown("---")
+        st.markdown("**OR** upload step-by-step:")
+
+    # Show auto-classification results
+    if st.session_state.auto_classified:
+        summary = st.session_state.classification_summary
+        st.success(f"""
+        **Auto-Classification Complete** (No AI used - instant!)
+
+        - Cover Pages: {len(st.session_state.cover_pages)}
+        - SLD Pages: {len(st.session_state.sld_pages)}
+        - Lighting Pages: {len(st.session_state.lighting_pages)}
+        - Power Pages: {len(st.session_state.power_pages)}
+        """)
+
+        if st.checkbox("Show classification details"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Pages", summary.total_pages if summary else 0)
+                st.metric("Avg Confidence", f"{(summary.avg_confidence * 100):.0f}%" if summary else "N/A")
+            with col2:
+                if summary and summary.low_confidence_pages:
+                    st.warning(f"Low confidence pages: {summary.low_confidence_pages[:5]}")
+
+        if st.button("Reset & Re-upload", key="reset_auto_classify"):
+            st.session_state.auto_classified = False
+            st.session_state.cover_pages = []
+            st.session_state.sld_pages = []
+            st.session_state.lighting_pages = []
+            st.session_state.power_pages = []
+            st.rerun()
+
+        st.markdown("---")
+
     st.info("""
     **What to upload:** `01_Cover_Page_Drawing_Register.pdf`
 
@@ -835,12 +944,27 @@ def render_step_2_sld():
         st.markdown("### Detecting Distribution Boards")
 
         if not st.session_state.detected_dbs:
-            with st.spinner("AI scanning for distribution boards (including DB-GF, DB-CA, etc.)..."):
-                result = pipeline.run_db_detection_pass(st.session_state.sld_pages)
-                if result.success:
-                    dbs = result.display_data.get("dbs", [])
-                    st.session_state.detected_dbs = [db["name"] for db in dbs]
-                    pipeline.apply_detected_dbs(st.session_state.detected_dbs)
+            # v1.0 - Try deterministic extraction FIRST (NO LLM)
+            if DETERMINISTIC_AVAILABLE:
+                with st.spinner("Scanning for distribution boards (instant - no AI)..."):
+                    try:
+                        db_names = extract_db_names(st.session_state.sld_pages)
+                        if db_names:
+                            st.session_state.detected_dbs = db_names
+                            st.success(f"Found {len(db_names)} DBs using deterministic extraction (no AI cost!)")
+                            if pipeline:
+                                pipeline.apply_detected_dbs(db_names)
+                    except Exception as e:
+                        st.warning(f"Deterministic extraction failed, falling back to AI: {e}")
+
+            # Fall back to AI only if deterministic failed
+            if not st.session_state.detected_dbs and pipeline:
+                with st.spinner("AI scanning for distribution boards..."):
+                    result = pipeline.run_db_detection_pass(st.session_state.sld_pages)
+                    if result.success:
+                        dbs = result.display_data.get("dbs", [])
+                        st.session_state.detected_dbs = [db["name"] for db in dbs]
+                        pipeline.apply_detected_dbs(st.session_state.detected_dbs)
 
         if st.session_state.detected_dbs:
             st.success(f"Found {len(st.session_state.detected_dbs)} distribution boards")
@@ -945,17 +1069,53 @@ def render_step_2_sld():
 
         # Extract if not done
         if current_db not in st.session_state.db_schedules:
-            with st.spinner(f"AI extracting circuits from {current_db}..."):
-                result = pipeline.run_db_schedule_pass(current_db, st.session_state.sld_pages)
-                if result.success:
-                    st.session_state.db_schedules[current_db] = result.display_data
-                else:
-                    st.session_state.db_schedules[current_db] = {
-                        "db_name": current_db,
-                        "main_breaker_a": 0,
-                        "circuits": [],
-                        "schedule_found": False,
-                    }
+            extracted = False
+
+            # v1.0 - Try deterministic extraction FIRST (NO LLM)
+            if DETERMINISTIC_AVAILABLE and not extracted:
+                with st.spinner(f"Extracting circuits from {current_db} (instant - no AI)..."):
+                    try:
+                        sld_result = extract_all_dbs(st.session_state.sld_pages)
+                        # Find matching DB
+                        for db in sld_result.dbs:
+                            if db.name.upper() == current_db.upper():
+                                st.session_state.db_schedules[current_db] = {
+                                    "db_name": db.name,
+                                    "main_breaker_a": db.main_breaker_a,
+                                    "supply_from": db.supply_from,
+                                    "total_ways": db.total_circuits,
+                                    "circuits": [
+                                        {
+                                            "circuit_id": c.circuit_id,
+                                            "circuit_type": c.circuit_type,
+                                            "breaker_a": c.breaker_a,
+                                            "wire_size": c.cable_mm2,
+                                            "num_points": c.num_points,
+                                            "wattage_w": c.wattage_w,
+                                        }
+                                        for c in db.circuits
+                                    ],
+                                    "schedule_found": len(db.circuits) > 0,
+                                }
+                                extracted = True
+                                st.success(f"Extracted {len(db.circuits)} circuits using deterministic parsing (no AI cost!)")
+                                break
+                    except Exception as e:
+                        st.warning(f"Deterministic extraction failed: {e}")
+
+            # Fall back to AI only if deterministic failed
+            if not extracted and pipeline:
+                with st.spinner(f"AI extracting circuits from {current_db}..."):
+                    result = pipeline.run_db_schedule_pass(current_db, st.session_state.sld_pages)
+                    if result.success:
+                        st.session_state.db_schedules[current_db] = result.display_data
+                    else:
+                        st.session_state.db_schedules[current_db] = {
+                            "db_name": current_db,
+                            "main_breaker_a": 0,
+                            "circuits": [],
+                            "schedule_found": False,
+                        }
 
         schedule = st.session_state.db_schedules.get(current_db, {})
         confidence = 0.75 if schedule.get("schedule_found") else 0.3
