@@ -30,6 +30,13 @@ try:
 except ImportError:
     Image = None
 
+try:
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    pytesseract = None
+    OCR_AVAILABLE = False
+
 from agent.models import (
     DocumentSet, DocumentInfo, PageInfo, PageType, StageResult, PipelineStage
 )
@@ -117,13 +124,56 @@ def ingest(
         return doc_set, result
 
 
+# Minimum text length to consider text extraction successful
+MIN_TEXT_LENGTH = 50
+
+
+def _ocr_image(img_bytes: bytes) -> str:
+    """
+    Run OCR on image bytes to extract text.
+
+    Args:
+        img_bytes: PNG image bytes
+
+    Returns:
+        Extracted text from OCR, or empty string if OCR unavailable
+    """
+    if not OCR_AVAILABLE or pytesseract is None or Image is None:
+        return ""
+
+    try:
+        # Open image from bytes
+        img = Image.open(io.BytesIO(img_bytes))
+
+        # Run OCR with custom config for electrical drawings
+        # PSM 6 = Assume uniform block of text
+        # OEM 3 = Default LSTM neural net
+        custom_config = r'--oem 3 --psm 6'
+        text = pytesseract.image_to_string(img, config=custom_config)
+
+        return text.strip()
+    except Exception as e:
+        # OCR failed, return empty string
+        return ""
+
+
 def _process_pdf(
     pdf_bytes: bytes,
     filename: str,
     dpi: int,
     max_pages: int,
+    use_ocr_fallback: bool = True,
 ) -> Optional[DocumentInfo]:
-    """Process PDF file into DocumentInfo."""
+    """
+    Process PDF file into DocumentInfo.
+
+    Args:
+        pdf_bytes: Raw PDF bytes
+        filename: Original filename
+        dpi: Resolution for rendering
+        max_pages: Maximum pages to process
+        use_ocr_fallback: If True, use OCR when text extraction yields minimal content
+    """
     if fitz is None:
         raise ImportError("PyMuPDF (fitz) is required for PDF processing")
 
@@ -148,8 +198,14 @@ def _process_pdf(
         img_bytes = pix.tobytes("png")
         img_base64 = encode_image_to_base64(img_bytes)
 
-        # Extract text content
+        # Extract text content (try native extraction first)
         text_content = page.get_text()
+
+        # If minimal text extracted and OCR is enabled, try OCR
+        if use_ocr_fallback and len(text_content.strip()) < MIN_TEXT_LENGTH:
+            ocr_text = _ocr_image(img_bytes)
+            if len(ocr_text) > len(text_content):
+                text_content = ocr_text
 
         page_info = PageInfo(
             page_number=page_num + 1,
@@ -171,8 +227,17 @@ def _process_image(
     img_bytes: bytes,
     filename: str,
     mime_type: str,
+    use_ocr: bool = True,
 ) -> Optional[DocumentInfo]:
-    """Process image file into DocumentInfo."""
+    """
+    Process image file into DocumentInfo.
+
+    Args:
+        img_bytes: Raw image bytes
+        filename: Original filename
+        mime_type: Image MIME type
+        use_ocr: If True, run OCR to extract text from image
+    """
     if Image is None:
         raise ImportError("Pillow is required for image processing")
 
@@ -186,7 +251,13 @@ def _process_image(
     # Encode to base64
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
-    img_base64 = encode_image_to_base64(buffer.getvalue())
+    png_bytes = buffer.getvalue()
+    img_base64 = encode_image_to_base64(png_bytes)
+
+    # Extract text via OCR if enabled
+    text_content = ""
+    if use_ocr:
+        text_content = _ocr_image(png_bytes)
 
     doc_info = DocumentInfo(
         filename=filename,
@@ -199,7 +270,7 @@ def _process_image(
         page_number=1,
         page_type=PageType.UNKNOWN,
         image_base64=img_base64,
-        text_content="",  # No text extraction from images
+        text_content=text_content,  # OCR extracted text
         width_px=img.width,
         height_px=img.height,
         source_document=filename,
