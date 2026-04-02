@@ -34,8 +34,14 @@ smart_upload = st.Page(
     icon="📤"
 )
 
-# Navigation (v1.0 - minimal)
-pg = st.navigation([welcome, smart_upload])
+boq_simulator = st.Page(
+    "pages/5_BOQ_Simulator.py",
+    title="BOQ Simulator",
+    icon="🔧"
+)
+
+# Navigation
+pg = st.navigation([welcome, smart_upload, boq_simulator])
 
 # Run the selected page
 pg.run()

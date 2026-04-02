@@ -124,9 +124,14 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Start button
-if st.button("🚀 Start Extraction", type="primary", use_container_width=True):
-    st.switch_page("pages/1_Smart_Upload.py")
+# Start buttons
+col_btns_1, col_btns_2 = st.columns(2)
+with col_btns_1:
+    if st.button("🚀 Start Smart Upload", type="primary", use_container_width=True, help="Step-by-step extraction with human validation"):
+        st.switch_page("pages/1_Smart_Upload.py")
+with col_btns_2:
+    if st.button("🔧 Run BOQ Simulator", type="secondary", use_container_width=True, help="Full 10-step automated pipeline (One-Shot)"):
+        st.switch_page("pages/5_BOQ_Simulator.py")
 
 st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
