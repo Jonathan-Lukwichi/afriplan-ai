@@ -380,26 +380,41 @@ class DXFExtractor:
         if not HAS_EZDXF:
             raise ImportError("ezdxf is required: pip install ezdxf")
 
+        import tempfile
+        import os
+
         start_time = time.time()
 
+        # Write bytes to a temp file and use ezdxf.readfile() which
+        # handles encoding detection (cp1252, utf-8, etc.) correctly.
+        # ezdxf.read(StringIO) breaks on files with binary data or
+        # non-utf-8 encodings like cp1252.
+        tmp_path = None
         try:
-            stream = io.StringIO(file_bytes.decode('utf-8', errors='replace'))
-            doc = ezdxf.read(stream)
-        except UnicodeDecodeError:
-            try:
-                stream = io.StringIO(file_bytes.decode('latin-1'))
-                doc = ezdxf.read(stream)
-            except Exception as e:
-                logger.error(f"Cannot decode DXF bytes: {e}")
-                return self._empty_result(filename, start_time)
+            with tempfile.NamedTemporaryFile(
+                suffix='.dxf', delete=False
+            ) as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
+
+            doc = ezdxf.readfile(tmp_path)
+            return self._process_document(doc, filename, start_time)
+
         except ezdxf.DXFStructureError as e:
             logger.error(f"Corrupt or malformed DXF data: {e}")
+            return self._empty_result(filename, start_time)
+        except ezdxf.DXFVersionError as e:
+            logger.error(f"Unsupported DXF version: {e}")
             return self._empty_result(filename, start_time)
         except Exception as e:
             logger.error(f"Failed to read DXF from bytes: {e}")
             return self._empty_result(filename, start_time)
-
-        return self._process_document(doc, filename, start_time)
+        finally:
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
 
     def _empty_result(self, filename: str, start_time: float) -> DocumentResult:
         return DocumentResult(
