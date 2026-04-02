@@ -15,3 +15,4 @@ openai>=1.0.0
 pydantic>=2.0.0
 groq>=0.4.0
 pytesseract>=0.3.10
+shapely>=2.0.0

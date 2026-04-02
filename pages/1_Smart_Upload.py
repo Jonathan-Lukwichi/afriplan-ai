@@ -106,7 +106,7 @@ except ImportError:
 # v5.1 — DXF Extractor (Zero-cost AutoCAD extraction)
 DXF_EXTRACTOR_AVAILABLE = False
 try:
-    from agent.dxf_extractor import DXFExtractor, extract_from_dxf
+    from agent.dxf_extractor import DXFExtractor, extract_from_dxf, extract_from_dxf_bytes
     DXF_EXTRACTOR_AVAILABLE = True
 except ImportError:
     pass
@@ -268,16 +268,10 @@ def run_universal_extraction(uploaded_file, enable_ai=False, ai_provider="anthro
     file_bytes = uploaded_file.getvalue()
     filename = uploaded_file.name.lower()
 
-    # DXF files — use DXF extractor (100% accuracy, R0.00)
+    # DXF files — use DXF extractor (zero AI cost)
     if filename.endswith(('.dxf', '.DXF')) and DXF_EXTRACTOR_AVAILABLE:
-        with tempfile.NamedTemporaryFile(suffix='.dxf', delete=False) as tmp:
-            tmp.write(file_bytes)
-            tmp_path = tmp.name
-        try:
-            result = extract_from_dxf(tmp_path)
-            return result
-        finally:
-            os.unlink(tmp_path)
+        result = extract_from_dxf_bytes(file_bytes, uploaded_file.name)
+        return result
 
     # PDF files — use Universal Extractor (5-strategy chain)
     if filename.endswith(('.pdf', '.PDF')):

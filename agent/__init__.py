@@ -116,6 +116,7 @@ from agent.universal_extractor import (
 from agent.dxf_extractor import (
     DXFExtractor,
     extract_from_dxf,
+    extract_from_dxf_bytes,
 )
 
 __all__ = [
@@ -197,6 +198,7 @@ __all__ = [
     # DXF Extractor (v5.1 - Zero-cost AutoCAD extraction)
     'DXFExtractor',
     'extract_from_dxf',
+    'extract_from_dxf_bytes',
 ]
 
 __version__ = '5.1.0'  # Universal Extractor + DXF support
