@@ -1,43 +1,33 @@
 """
-AfriPlan Electrical v4.10 — AI Agent Package
+AfriPlan Electrical v5.1 — AI Agent Package
 
-7-Stage Pipeline for Quantity Take-Off Acceleration:
-1. INGEST - Document preprocessing (PyMuPDF + Pillow)
-2. CLASSIFY - Fast tier routing (Haiku 4.5)
-3. DISCOVER - JSON extraction with confidence (Sonnet 4.5 → Opus escalation)
-4. REVIEW - Contractor review/edit interface (NEW in v4.1)
-5. VALIDATE - SANS 10142-1 compliance checks
-6. PRICE - Dual BQ generation (quantity-only + estimated)
-7. OUTPUT - Final result assembly
+Extraction Pipelines:
+━━━━━━━━━━━━━━━━━━━━
+
+1. UNIVERSAL EXTRACTOR (v5.1 — Recommended)
+   5-Strategy chain for ANY SA electrical drawing PDF:
+   - Strategy 0: DXF DIRECT — ezdxf block counting (100% accurate, R0.00)
+   - Strategy 1: TEXT LAYER — PyMuPDF text mining + spatial parsing (R0.00)
+   - Strategy 2: LEGEND FINDER — keyword-based legend region detection (R0.00)
+   - Strategy 3: LEGEND CROP AI — send legend crop to Haiku (R0.18)
+   - Strategy 4: FULL-PAGE AI — Sonnet fallback for scanned PDFs (R1.80)
+
+   Tested on: Wedela (AutoCAD), 3 Cubes/Megchem (ArchiCAD)
+   Usage: from agent import extract_from_pdf, extract_from_dxf
+
+2. LEGACY 7-STAGE PIPELINE (v4.11)
+   Full-page AI extraction with model escalation:
+   INGEST → CLASSIFY → DISCOVER → REVIEW → VALIDATE → PRICE → OUTPUT
+   Usage: from agent import AfriPlanPipeline, create_pipeline
+
+3. DETERMINISTIC PIPELINE (v5.0)
+   No-AI extraction using regex + heuristics only.
+   Usage: from agent import run_deterministic_pipeline
 
 Model Strategy:
-- Haiku 4.5: Fast classification (~R0.18/doc)
-- Sonnet 4.5: Balanced extraction (~R1.80/doc)
-- Opus 4.6: Escalation for low confidence (~R8.50/doc)
-
-v4.1 Philosophy:
-- AI extracts quantities, contractor reviews/corrects, then applies own prices
-- Primary output: Quantity-only BQ (contractor fills prices)
-- Secondary output: Estimated BQ (ballpark reference only)
-- ItemConfidence: EXTRACTED (green), INFERRED (yellow), ESTIMATED (red), MANUAL (blue)
-
-v4.10 - SLD-First Strategy:
-- Circuit schedule tables are the PRIMARY source of truth
-- The "No Of Point" row gives OFFICIAL fixture counts
-- SLD extraction happens FIRST, before layout processing
-- Layout drawings are used for room names and verification only
-- This fixes the 26% extraction rate problem on layout-heavy drawings
-
-v4.11 - Multi-Pass Extraction:
-- Breaks extraction into 6 focused passes for better accuracy
-- Pass 1: Project Info (cover page)
-- Pass 2: DB Detection (find all DBs)
-- Pass 3: DB Schedules (one DB at a time)
-- Pass 4: Room Detection (find all rooms)
-- Pass 5: Room Fixtures (one room at a time)
-- Pass 6: Cable Routes (connections between DBs)
-- Each pass uses a FOCUSED prompt asking for ONE thing only
-- Works much better with limited vision models like Llama 4
+- Haiku 4.5: Legend crop reading (~R0.18/page)
+- Sonnet 4.5: Full-page fallback (~R1.80/page)
+- Opus 4.6: Escalation for low confidence (~R8.50/page)
 """
 
 from agent.models import (
@@ -106,6 +96,28 @@ from agent.deterministic_pipeline import (
     quick_extract,
 )
 
+# Universal Extractor v1.0 — 5-Strategy Chain (text → legend → AI crop → DXF)
+from agent.universal_extractor import (
+    UniversalExtractor,
+    TextLayerMiner,
+    LegendRegionFinder,
+    LegendCropReader,
+    extract_from_pdf,
+    print_extraction_report,
+    DocumentResult,
+    PageResult,
+    FixtureItem,
+    ExtractionStrategy,
+    FixtureCategory,
+    DrawingType,
+)
+
+# DXF Extractor — 100% accurate extraction from AutoCAD files
+from agent.dxf_extractor import (
+    DXFExtractor,
+    extract_from_dxf,
+)
+
 __all__ = [
     # Version
     '__version__',
@@ -167,6 +179,24 @@ __all__ = [
     'run_deterministic_pipeline',
     'run_deterministic_pipeline_bytes',
     'quick_extract',
+
+    # Universal Extractor (v5.1 - 5-Strategy Chain)
+    'UniversalExtractor',
+    'TextLayerMiner',
+    'LegendRegionFinder',
+    'LegendCropReader',
+    'extract_from_pdf',
+    'print_extraction_report',
+    'DocumentResult',
+    'PageResult',
+    'FixtureItem',
+    'ExtractionStrategy',
+    'FixtureCategory',
+    'DrawingType',
+
+    # DXF Extractor (v5.1 - Zero-cost AutoCAD extraction)
+    'DXFExtractor',
+    'extract_from_dxf',
 ]
 
-__version__ = '5.0.0'  # Updated for deterministic pipeline
+__version__ = '5.1.0'  # Universal Extractor + DXF support

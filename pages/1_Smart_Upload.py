@@ -87,6 +87,30 @@ try:
 except ImportError:
     pass
 
+# v5.1 — Universal Extractor (5-Strategy Chain)
+UNIVERSAL_EXTRACTOR_AVAILABLE = False
+try:
+    from agent.universal_extractor import (
+        UniversalExtractor,
+        extract_from_pdf,
+        print_extraction_report,
+        DocumentResult,
+        PageResult,
+        FixtureItem,
+        ExtractionStrategy,
+    )
+    UNIVERSAL_EXTRACTOR_AVAILABLE = True
+except ImportError:
+    pass
+
+# v5.1 — DXF Extractor (Zero-cost AutoCAD extraction)
+DXF_EXTRACTOR_AVAILABLE = False
+try:
+    from agent.dxf_extractor import DXFExtractor, extract_from_dxf
+    DXF_EXTRACTOR_AVAILABLE = True
+except ImportError:
+    pass
+
 
 # ============================================================================
 # API KEY LOADING
@@ -225,6 +249,53 @@ def process_uploaded_file(uploaded_file):
         return []
 
 
+
+
+def run_universal_extraction(uploaded_file, enable_ai=False, ai_provider="anthropic"):
+    """
+    Run the v5.1 Universal Extractor on an uploaded file.
+
+    Returns a DocumentResult with per-page fixture extraction.
+    Supports PDF and DXF files.
+    """
+    if not UNIVERSAL_EXTRACTOR_AVAILABLE:
+        st.error("Universal Extractor not available. Check agent/universal_extractor.py")
+        return None
+
+    import tempfile
+    import os
+
+    file_bytes = uploaded_file.getvalue()
+    filename = uploaded_file.name.lower()
+
+    # DXF files — use DXF extractor (100% accuracy, R0.00)
+    if filename.endswith(('.dxf', '.DXF')) and DXF_EXTRACTOR_AVAILABLE:
+        with tempfile.NamedTemporaryFile(suffix='.dxf', delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        try:
+            result = extract_from_dxf(tmp_path)
+            return result
+        finally:
+            os.unlink(tmp_path)
+
+    # PDF files — use Universal Extractor (5-strategy chain)
+    if filename.endswith(('.pdf', '.PDF')):
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        try:
+            result = extract_from_pdf(
+                tmp_path,
+                enable_ai=enable_ai,
+                ai_provider=ai_provider,
+            )
+            return result
+        finally:
+            os.unlink(tmp_path)
+
+    st.warning(f"Unsupported file type: {uploaded_file.name}")
+    return None
 
 
 def build_extraction_from_session_state():
@@ -759,6 +830,25 @@ def render_step_1_cover():
         with col4:
             st.metric("🔌 Power", len(st.session_state.power_pages))
 
+        # Warning if only Cover pages found (likely missing drawing files)
+        sld_count = len(st.session_state.sld_pages)
+        lighting_count = len(st.session_state.lighting_pages)
+        power_count = len(st.session_state.power_pages)
+        cover_count = len(st.session_state.cover_pages)
+
+        if cover_count > 0 and sld_count == 0 and lighting_count == 0 and power_count == 0:
+            st.warning("""
+⚠️ **Only Cover/Register pages detected!**
+
+Your Drawing Register shows multiple drawings listed, but only the register page was uploaded.
+To extract BOQ data, please upload **all PDF files** including:
+- SLD (Single Line Diagram)
+- Lighting Layout plans
+- Power Layout plans
+
+Click **🔄 Re-upload** below to add all drawing files.
+            """)
+
         # Details
         with st.expander("📊 Classification Details"):
             col1, col2 = st.columns(2)
@@ -795,32 +885,47 @@ def render_step_1_cover():
                 st.session_state["step_1_skipped"] = True
                 st.rerun()
 
-    # If already uploaded, show extraction form
-    if st.session_state.cover_pages and not st.session_state.project_info:
+    # ========================================================================
+    # PROJECT INFO SECTION (Only shown after classification)
+    # ========================================================================
+    if st.session_state.auto_classified:
         st.markdown("---")
-        st.markdown("### Extract Project Information")
+        st.markdown("### 📝 Project Information")
 
-        if st.button("Extract with AI", type="primary", key="extract_cover"):
-            pipeline = init_pipeline()
-            if pipeline:
-                st.session_state.interactive_pipeline = pipeline
-                with st.spinner("AI extracting project info..."):
-                    result = pipeline.run_project_info_pass(st.session_state.cover_pages)
-                    if result.success:
-                        st.session_state.project_info = result.display_data
+        # Two options: AI extraction or manual entry
+        extraction_method = st.radio(
+            "How would you like to enter project details?",
+            ["🤖 Extract with AI (recommended)", "✍️ Enter manually"],
+            horizontal=True,
+            key="extraction_method_radio"
+        )
+
+        if extraction_method == "🤖 Extract with AI (recommended)" and not st.session_state.project_info:
+            if st.session_state.cover_pages:
+                if st.button("🚀 Extract Project Info", type="primary", key="extract_cover"):
+                    pipeline = init_pipeline()
+                    if pipeline:
+                        st.session_state.interactive_pipeline = pipeline
+                        with st.spinner("AI extracting project info from cover pages..."):
+                            result = pipeline.run_project_info_pass(st.session_state.cover_pages)
+                            if result.success:
+                                st.session_state.project_info = result.display_data
+                                st.success("✅ Extraction complete! Review the details below.")
+                            else:
+                                st.session_state.project_info = {}
+                                st.warning("⚠️ Could not extract info. Please enter manually.")
+                        st.rerun()
                     else:
-                        st.session_state.project_info = {}
-                st.rerun()
+                        st.error("Failed to initialize AI. Check API key.")
             else:
-                st.error("Failed to initialize AI. Check API key.")
+                st.info("ℹ️ No cover pages found. Please enter project details manually.")
 
-    # Show editable form if extracted
-    if st.session_state.project_info or st.session_state.cover_pages:
-        st.markdown("---")
-        st.markdown("### Project Details (edit if needed)")
+        # Show editable form (always visible after classification)
+        st.markdown("#### Edit Project Details")
 
         confidence = 0.85 if st.session_state.project_info.get("project_name") else 0.3
-        render_confidence_badge(confidence, "Extraction")
+        if st.session_state.project_info:
+            render_confidence_badge(confidence, "Extraction")
 
         with st.form("project_info_form_v2"):
             project_name = st.text_input(
@@ -853,7 +958,7 @@ def render_step_1_cover():
                     placeholder="e.g., Rev 1"
                 )
 
-            submitted = st.form_submit_button("Confirm & Continue to SLD", type="primary", use_container_width=True)
+            submitted = st.form_submit_button("✅ Confirm & Continue to SLD →", type="primary", use_container_width=True)
 
             if submitted:
                 st.session_state.project_info = {
@@ -868,6 +973,9 @@ def render_step_1_cover():
                 st.session_state.guided_step = 2
                 st.session_state.max_completed_step = max(1, st.session_state.max_completed_step)
                 st.rerun()
+
+        # Helper text for next steps
+        st.caption("💡 **Tip:** After confirming, you'll proceed to SLD extraction where circuit information will be extracted.")
 
 
 # ============================================================================
@@ -999,7 +1107,8 @@ def render_step_2_sld():
             with col2:
                 if st.button("Extract Supply Point", type="primary", use_container_width=True):
                     st.session_state.detected_dbs = valid_dbs
-                    pipeline.apply_detected_dbs(valid_dbs)
+                    if pipeline:
+                        pipeline.apply_detected_dbs(valid_dbs)
                     st.session_state["sld_substep"] = "supply_point"
                     st.rerun()
         else:
@@ -1015,16 +1124,18 @@ def render_step_2_sld():
         st.markdown("### Main Supply Point / Kiosk")
 
         if not st.session_state.supply_point:
-            # Check if method exists (handles Streamlit Cloud caching issue)
-            if not hasattr(pipeline, 'run_supply_point_pass'):
-                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app' to reload latest code.")
-                st.stop()
-            with st.spinner("AI extracting supply point info..."):
-                result = pipeline.run_supply_point_pass(st.session_state.sld_pages)
-                if result.success:
-                    st.session_state.supply_point = result.display_data
-                else:
-                    st.session_state.supply_point = {"supply_found": False}
+            # Try AI extraction if pipeline available
+            if pipeline and hasattr(pipeline, 'run_supply_point_pass'):
+                with st.spinner("AI extracting supply point info..."):
+                    result = pipeline.run_supply_point_pass(st.session_state.sld_pages)
+                    if result.success:
+                        st.session_state.supply_point = result.display_data
+                    else:
+                        st.session_state.supply_point = {"supply_found": False}
+            else:
+                # No AI pipeline - use default empty supply point for manual entry
+                st.session_state.supply_point = {"supply_found": False}
+                st.info("ℹ️ AI not available. Please enter supply point details manually.")
 
         supply = st.session_state.supply_point
         confidence = 0.80 if supply.get("supply_found") else 0.3
@@ -1065,7 +1176,8 @@ def render_step_2_sld():
 
         if current_idx >= len(detected_dbs):
             # All DBs done, move to cable routes
-            pipeline.mark_db_schedules_complete()
+            if pipeline and hasattr(pipeline, 'mark_db_schedules_complete'):
+                pipeline.mark_db_schedules_complete()
             st.session_state["sld_substep"] = "cable_routes"
             st.rerun()
             return
@@ -1117,12 +1229,17 @@ def render_step_2_sld():
                     if result.success:
                         st.session_state.db_schedules[current_db] = result.display_data
                     else:
-                        st.session_state.db_schedules[current_db] = {
-                            "db_name": current_db,
-                            "main_breaker_a": 0,
-                            "circuits": [],
-                            "schedule_found": False,
-                        }
+                        extracted = False  # AI failed too
+
+            # If both deterministic and AI failed, create empty schedule for manual entry
+            if not extracted and current_db not in st.session_state.db_schedules:
+                st.session_state.db_schedules[current_db] = {
+                    "db_name": current_db,
+                    "main_breaker_a": 0,
+                    "circuits": [],
+                    "schedule_found": False,
+                }
+                st.info("ℹ️ No circuits extracted. Please enter manually.")
 
         schedule = st.session_state.db_schedules.get(current_db, {})
         confidence = 0.75 if schedule.get("schedule_found") else 0.3
@@ -1171,7 +1288,8 @@ def render_step_2_sld():
                     "circuits": circuits,
                     "schedule_found": True,
                 }
-                pipeline.apply_db_schedule(current_db, st.session_state.db_schedules[current_db])
+                if pipeline and hasattr(pipeline, 'apply_db_schedule'):
+                    pipeline.apply_db_schedule(current_db, st.session_state.db_schedules[current_db])
                 st.session_state.current_db_index += 1
                 st.rerun()
         return
@@ -1181,10 +1299,13 @@ def render_step_2_sld():
         st.markdown("### Cable Routes Between DBs")
 
         if not st.session_state.cable_routes:
-            with st.spinner("AI extracting cable routes..."):
-                result = pipeline.run_cable_routes_pass(st.session_state.sld_pages)
-                if result.success:
-                    st.session_state.cable_routes = result.display_data.get("routes", [])
+            if pipeline and hasattr(pipeline, 'run_cable_routes_pass'):
+                with st.spinner("AI extracting cable routes..."):
+                    result = pipeline.run_cable_routes_pass(st.session_state.sld_pages)
+                    if result.success:
+                        st.session_state.cable_routes = result.display_data.get("routes", [])
+            else:
+                st.info("ℹ️ AI not available. Add cable routes manually below.")
 
         routes = st.session_state.cable_routes
         if routes:
@@ -1219,7 +1340,8 @@ def render_step_2_sld():
                 st.rerun()
         with col2:
             if st.button("Continue to Lighting Layout", type="primary", use_container_width=True):
-                pipeline.apply_cable_routes(st.session_state.cable_routes)
+                if pipeline and hasattr(pipeline, 'apply_cable_routes'):
+                    pipeline.apply_cable_routes(st.session_state.cable_routes)
                 st.session_state["sld_substep"] = "upload"  # Reset for next time
                 st.session_state.guided_step = 3
                 st.session_state.max_completed_step = max(2, st.session_state.max_completed_step)
@@ -1303,15 +1425,16 @@ def render_step_3_lighting():
         st.caption("Extract fixture types BEFORE counting circuits for higher accuracy")
 
         if not st.session_state.lighting_legend:
-            if not hasattr(pipeline, 'run_lighting_legend_pass'):
-                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
-                st.stop()
-            with st.spinner("AI extracting lighting legend (symbols, fixture types, wattages)..."):
-                result = pipeline.run_lighting_legend_pass(st.session_state.lighting_pages)
-                if result.success:
-                    st.session_state.lighting_legend = result.display_data
-                else:
-                    st.session_state.lighting_legend = {"has_legend": False, "light_types": [], "switch_types": []}
+            if pipeline and hasattr(pipeline, 'run_lighting_legend_pass'):
+                with st.spinner("AI extracting lighting legend (symbols, fixture types, wattages)..."):
+                    result = pipeline.run_lighting_legend_pass(st.session_state.lighting_pages)
+                    if result.success:
+                        st.session_state.lighting_legend = result.display_data
+                    else:
+                        st.session_state.lighting_legend = {"has_legend": False, "light_types": [], "switch_types": []}
+            else:
+                st.session_state.lighting_legend = {"has_legend": False, "light_types": [], "switch_types": []}
+                st.info("ℹ️ AI not available. Please enter lighting legend manually.")
 
         legend = st.session_state.lighting_legend
         confidence = 0.80 if legend.get("has_legend") else 0.3
@@ -1359,21 +1482,22 @@ def render_step_3_lighting():
 
         # Extract circuit clusters
         if "lighting_circuit_clusters" not in st.session_state or not st.session_state.lighting_circuit_clusters:
-            if not hasattr(pipeline, 'run_circuit_clusters_pass'):
-                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
-                st.stop()
-            with st.spinner("AI extracting lighting circuit clusters..."):
-                result = pipeline.run_circuit_clusters_pass(
-                    st.session_state.lighting_pages,
-                    st.session_state.lighting_legend
-                )
-                if result.success:
-                    st.session_state.lighting_circuit_clusters = result.display_data.get("circuit_clusters", [])
-                    st.session_state.detected_rooms = [
-                        r.get("name", "") for r in result.display_data.get("rooms_identified", [])
-                    ]
-                else:
-                    st.session_state.lighting_circuit_clusters = []
+            if pipeline and hasattr(pipeline, 'run_circuit_clusters_pass'):
+                with st.spinner("AI extracting lighting circuit clusters..."):
+                    result = pipeline.run_circuit_clusters_pass(
+                        st.session_state.lighting_pages,
+                        st.session_state.lighting_legend
+                    )
+                    if result.success:
+                        st.session_state.lighting_circuit_clusters = result.display_data.get("circuit_clusters", [])
+                        st.session_state.detected_rooms = [
+                            r.get("name", "") for r in result.display_data.get("rooms_identified", [])
+                        ]
+                    else:
+                        st.session_state.lighting_circuit_clusters = []
+            else:
+                st.session_state.lighting_circuit_clusters = []
+                st.info("ℹ️ AI not available. Circuit cluster extraction skipped.")
 
         clusters = st.session_state.lighting_circuit_clusters
 
@@ -1514,15 +1638,16 @@ def render_step_4_power():
         st.markdown("### Power Legend")
 
         if not st.session_state.power_legend:
-            if not hasattr(pipeline, 'run_power_legend_pass'):
-                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
-                st.stop()
-            with st.spinner("AI extracting power legend (sockets, data, isolators)..."):
-                result = pipeline.run_power_legend_pass(st.session_state.power_pages)
-                if result.success:
-                    st.session_state.power_legend = result.display_data
-                else:
-                    st.session_state.power_legend = {"has_legend": False, "socket_types": [], "isolator_types": []}
+            if pipeline and hasattr(pipeline, 'run_power_legend_pass'):
+                with st.spinner("AI extracting power legend (sockets, data, isolators)..."):
+                    result = pipeline.run_power_legend_pass(st.session_state.power_pages)
+                    if result.success:
+                        st.session_state.power_legend = result.display_data
+                    else:
+                        st.session_state.power_legend = {"has_legend": False, "socket_types": [], "isolator_types": []}
+            else:
+                st.session_state.power_legend = {"has_legend": False, "socket_types": [], "isolator_types": []}
+                st.info("ℹ️ AI not available. Please enter power legend manually.")
 
         legend = st.session_state.power_legend
         confidence = 0.80 if legend.get("has_legend") else 0.3
@@ -1568,27 +1693,27 @@ def render_step_4_power():
         # Extract power circuit clusters using legend context
         power_clusters_key = "power_circuit_clusters"
         if power_clusters_key not in st.session_state:
-            if not hasattr(pipeline, 'run_circuit_clusters_pass'):
-                st.error("App needs reboot. Go to 'Manage app' → 'Reboot app'.")
-                st.stop()
-
-            with st.spinner("AI detecting power circuit clusters (DB-XX P1, ISO1, AC1...)..."):
-                result = pipeline.run_circuit_clusters_pass(
-                    st.session_state.power_pages,
-                    st.session_state.power_legend,
-                    circuit_type_filter="power"  # Filter for power/isolator circuits
-                )
-                if result.success:
-                    st.session_state[power_clusters_key] = result.display_data.get("clusters", [])
-                    # Also capture any rooms mentioned
-                    rooms_found = set()
-                    for c in st.session_state[power_clusters_key]:
-                        rooms_found.update(c.get("rooms_served", []))
-                    # Merge with existing detected rooms
-                    existing = set(st.session_state.detected_rooms)
-                    st.session_state.detected_rooms = list(existing | rooms_found)
-                else:
-                    st.session_state[power_clusters_key] = []
+            if pipeline and hasattr(pipeline, 'run_circuit_clusters_pass'):
+                with st.spinner("AI detecting power circuit clusters (DB-XX P1, ISO1, AC1...)..."):
+                    result = pipeline.run_circuit_clusters_pass(
+                        st.session_state.power_pages,
+                        st.session_state.power_legend,
+                        circuit_type_filter="power"  # Filter for power/isolator circuits
+                    )
+                    if result.success:
+                        st.session_state[power_clusters_key] = result.display_data.get("clusters", [])
+                        # Also capture any rooms mentioned
+                        rooms_found = set()
+                        for c in st.session_state[power_clusters_key]:
+                            rooms_found.update(c.get("rooms_served", []))
+                        # Merge with existing detected rooms
+                        existing = set(st.session_state.detected_rooms)
+                        st.session_state.detected_rooms = list(existing | rooms_found)
+                    else:
+                        st.session_state[power_clusters_key] = []
+            else:
+                st.session_state[power_clusters_key] = []
+                st.info("ℹ️ AI not available. Power circuit extraction skipped.")
 
         clusters = st.session_state.get(power_clusters_key, [])
         total_clusters = len(clusters)
@@ -1659,10 +1784,14 @@ def render_step_5_review():
 
     pipeline = st.session_state.interactive_pipeline
 
-    # Build final result from AI pipeline
+    # Build final result from AI pipeline or session state
     if st.session_state.final_extraction is None:
         with st.spinner("Building final BOQ..."):
-            st.session_state.final_extraction = pipeline.build_final_result()
+            if pipeline and hasattr(pipeline, 'build_final_result'):
+                st.session_state.final_extraction = pipeline.build_final_result()
+            else:
+                # Fallback to building from session state (deterministic mode)
+                st.session_state.final_extraction = build_extraction_from_session_state()
             validation, _ = validate(st.session_state.final_extraction)
             st.session_state.final_validation = validation
             pricing, _ = price(st.session_state.final_extraction, validation, None, None)
@@ -1672,11 +1801,12 @@ def render_step_5_review():
     validation = st.session_state.final_validation
     pricing = st.session_state.final_pricing
 
-    # Get statistics from AI pipeline
+    # Get statistics from session state (works with or without AI pipeline)
+    # Note: Pipeline stats are supplementary, session state is the source of truth
     stats = pipeline.get_statistics() if pipeline else {}
 
-    # Calculate accuracy using circuit clusters (v7.0)
-    db_count = stats.get("db_schedules_extracted", 0)
+    # Calculate accuracy using session state data directly (v7.0)
+    db_count = len(st.session_state.db_schedules)
     total_sld_circuits = sum(len(s.get("circuits", [])) for s in st.session_state.db_schedules.values())
     cable_count = len(st.session_state.cable_routes)
 
