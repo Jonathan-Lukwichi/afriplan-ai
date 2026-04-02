@@ -2127,42 +2127,423 @@ def render_step_5_review():
 
 
 # ============================================================================
+# UNIVERSAL EXTRACTOR UI (v5.1)
+# ============================================================================
+
+def render_universal_extractor():
+    """
+    v5.1 Universal Extractor — fast, free extraction from any electrical PDF/DXF.
+    No API key needed for text-layer extraction.
+    """
+    st.subheader("📐 Universal Drawing Extractor")
+    st.caption("Upload any SA electrical drawing PDF or AutoCAD DXF — fixture extraction in seconds, R0.00 cost")
+
+    # ── Sidebar Settings ──
+    with st.sidebar:
+        st.markdown("### ⚙️ Extraction Settings")
+
+        enable_ai = st.toggle(
+            "Enable AI Enhancement",
+            value=False,
+            help="When ON, sends legend crops to AI for better accuracy (costs ~R0.18/page). "
+                 "When OFF, uses text mining only (100% free)."
+        )
+
+        if enable_ai:
+            ai_provider = st.selectbox(
+                "AI Provider",
+                ["anthropic", "groq", "gemini"],
+                help="Groq = Free, Anthropic Haiku = R0.18/page, Gemini = Free"
+            )
+            if ai_provider == "anthropic" and not LLM_API_KEY:
+                st.warning("No Anthropic API key found. Add it to secrets or use Groq (free).")
+        else:
+            ai_provider = "anthropic"
+
+        confidence_threshold = st.slider(
+            "Confidence Threshold",
+            min_value=0.40,
+            max_value=0.95,
+            value=0.70,
+            step=0.05,
+            help="Minimum confidence to accept extraction without AI fallback"
+        )
+
+        st.divider()
+        st.markdown("### 📊 Strategy Chain")
+        st.markdown("""
+        1. **Text Layer** — Free, instant
+        2. **Legend Finder** — Free, instant
+        3. **Legend AI** — R0.18/page
+        4. **Full-Page AI** — R1.80/page
+        """)
+        if DXF_EXTRACTOR_AVAILABLE:
+            st.success("✅ DXF Support Active")
+        else:
+            st.info("DXF support: install ezdxf")
+
+    # ── File Upload ──
+    accepted_types = ["pdf"]
+    if DXF_EXTRACTOR_AVAILABLE:
+        accepted_types.append("dxf")
+
+    uploaded_files = st.file_uploader(
+        "Drop your electrical drawing PDFs or DXF files here",
+        type=accepted_types,
+        accept_multiple_files=True,
+        key="universal_uploader",
+        help="Supports PDF (from AutoCAD, ArchiCAD, Revit) and DXF files"
+    )
+
+    if not uploaded_files:
+        # Show info cards
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.info("**PDF Drawings**\nAutoCAD, ArchiCAD, Revit exports. Text layer + legend detection.")
+        with col2:
+            st.info("**DXF Files**\nAutoCAD native format. 100% accurate block counting, R0.00.")
+        with col3:
+            st.info("**Any Layout**\nLighting, power, combined plans. Legends at any position.")
+        return
+
+    # ── Process Button ──
+    st.success(f"✅ {len(uploaded_files)} file(s) ready")
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        extract_btn = st.button(
+            "⚡ Extract Fixtures",
+            type="primary",
+            use_container_width=True,
+            key="btn_universal_extract"
+        )
+
+    if extract_btn:
+        all_results = []
+        progress = st.progress(0, text="Starting extraction...")
+
+        for idx, uf in enumerate(uploaded_files):
+            progress.progress(
+                (idx) / len(uploaded_files),
+                text=f"Processing: {uf.name}"
+            )
+
+            result = run_universal_extraction(
+                uf,
+                enable_ai=enable_ai,
+                ai_provider=ai_provider,
+            )
+            if result:
+                all_results.append(result)
+
+        progress.progress(1.0, text="✅ Extraction complete!")
+        st.session_state["universal_results"] = all_results
+
+    # ── Display Results ──
+    if "universal_results" in st.session_state and st.session_state["universal_results"]:
+        results = st.session_state["universal_results"]
+        _render_universal_results(results)
+
+
+def _render_universal_results(results):
+    """Render extraction results from the Universal Extractor."""
+    import pandas as pd
+
+    # ── Summary Metrics ──
+    total_pages = sum(r.total_pages for r in results)
+    total_fixtures = sum(r.total_fixtures for r in results)
+    total_value = sum(r.total_value_zar for r in results)
+    avg_conf = sum(r.average_confidence for r in results) / max(1, len(results))
+    total_time_ms = sum(r.processing_time_ms for r in results)
+
+    st.markdown("---")
+    st.subheader("📊 Extraction Results")
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.metric("Documents", len(results))
+    with col2:
+        st.metric("Pages", total_pages)
+    with col3:
+        st.metric("Fixtures", total_fixtures)
+    with col4:
+        if total_value > 0:
+            st.metric("Est. Value", f"R{total_value:,.0f}")
+        else:
+            st.metric("Est. Value", "—")
+    with col5:
+        conf_color = "🟢" if avg_conf >= 0.80 else "🟡" if avg_conf >= 0.60 else "🔴"
+        st.metric("Confidence", f"{conf_color} {avg_conf:.0%}")
+
+    st.caption(f"Processed in {total_time_ms/1000:.1f}s | Cost: R0.00 (text layer only)")
+
+    # ── Per-Document Tabs ──
+    if len(results) == 1:
+        _render_single_document(results[0])
+    else:
+        tabs = st.tabs([f"📄 {r.filename[:40]}" for r in results])
+        for tab, result in zip(tabs, results):
+            with tab:
+                _render_single_document(result)
+
+    # ── Combined Fixture Summary ──
+    st.markdown("---")
+    st.subheader("📦 Combined Fixture Summary (All Documents)")
+    _render_combined_fixtures(results)
+
+
+def _render_single_document(result):
+    """Render results for a single document."""
+    import pandas as pd
+
+    st.markdown(f"**{result.filename}** — {result.total_pages} pages, {result.total_fixtures} fixtures")
+
+    # Strategy breakdown
+    if result.strategies_summary:
+        strat_text = " | ".join(
+            f"{k.replace('_', ' ').title()}: {v} pages"
+            for k, v in result.strategies_summary.items()
+        )
+        st.caption(f"Strategies: {strat_text}")
+
+    # Per-page breakdown
+    for page in result.pages:
+        fixtures_with_qty = [f for f in page.fixtures if f.quantity > 0]
+        fixtures_no_qty = [f for f in page.fixtures if f.quantity == 0]
+
+        # Page header with confidence badge
+        conf = page.confidence
+        badge = "🟢" if conf >= 0.80 else "🟡" if conf >= 0.60 else "🔴"
+
+        with st.expander(
+            f"Page {page.page_number}: {page.drawing_type.value.upper()} — "
+            f"{badge} {conf:.0%} confidence | "
+            f"{len(fixtures_with_qty)} fixtures extracted",
+            expanded=(len(fixtures_with_qty) > 0)
+        ):
+            # Title block info
+            tb = page.title_block
+            if tb.drawing_number or tb.building_name:
+                cols = st.columns(3)
+                if tb.drawing_number:
+                    cols[0].markdown(f"**Drawing:** {tb.drawing_number}")
+                if tb.building_name:
+                    cols[1].markdown(f"**Building:** {tb.building_name}")
+                if tb.project_name:
+                    cols[2].markdown(f"**Project:** {tb.project_name}")
+
+            # Legend detection info
+            if page.legend_region:
+                lr = page.legend_region
+                st.caption(
+                    f"Legend detected via {lr.detection_method} "
+                    f"at ({lr.x0:.0f},{lr.y0:.0f})-({lr.x1:.0f},{lr.y1:.0f}) | "
+                    f"Keywords: {', '.join(lr.keywords_found[:5])}"
+                )
+
+            # Fixtures table
+            if fixtures_with_qty:
+                rows = []
+                for f in sorted(fixtures_with_qty, key=lambda x: (-x.quantity, x.category.value)):
+                    conf_icon = "✅" if f.confidence >= 0.70 else "⚠️"
+                    price_str = f"R{f.unit_price_zar:,.0f}" if f.unit_price_zar > 0 else "—"
+                    total_str = f"R{f.quantity * f.unit_price_zar:,.0f}" if f.unit_price_zar > 0 else "—"
+                    rows.append({
+                        "": conf_icon,
+                        "Category": f.category.value.title(),
+                        "Fixture": f.fixture_type,
+                        "Qty": f.quantity,
+                        "Unit Price": price_str,
+                        "Total": total_str,
+                        "Brand": f.brand or "—",
+                    })
+                df = pd.DataFrame(rows)
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "": st.column_config.TextColumn(width="small"),
+                        "Qty": st.column_config.NumberColumn(width="small"),
+                    }
+                )
+
+                # Totals
+                total_qty = sum(f.quantity for f in fixtures_with_qty)
+                total_val = sum(f.quantity * f.unit_price_zar for f in fixtures_with_qty if f.unit_price_zar > 0)
+                col1, col2 = st.columns(2)
+                col1.metric("Total Fixtures", total_qty)
+                if total_val > 0:
+                    col2.metric("Page Value", f"R{total_val:,.0f}")
+
+            # Types found but no quantity
+            if fixtures_no_qty:
+                types_list = ", ".join(set(f.fixture_type for f in fixtures_no_qty))
+                st.caption(f"⚠️ Types detected but qty not extracted: {types_list}")
+
+            # Warnings
+            for w in page.warnings:
+                st.warning(w)
+
+
+def _render_combined_fixtures(results):
+    """Render combined fixture totals across all documents."""
+    import pandas as pd
+
+    # Aggregate fixtures by type
+    combined = {}
+    for r in results:
+        for p in r.pages:
+            for f in p.fixtures:
+                if f.quantity <= 0:
+                    continue
+                key = f.fixture_type
+                if key not in combined:
+                    combined[key] = {
+                        "category": f.category.value.title(),
+                        "fixture": f.fixture_type,
+                        "qty": 0,
+                        "unit_price": f.unit_price_zar,
+                        "brand": f.brand or "—",
+                    }
+                combined[key]["qty"] += f.quantity
+                # Keep highest price / brand found
+                if f.unit_price_zar > combined[key]["unit_price"]:
+                    combined[key]["unit_price"] = f.unit_price_zar
+                if f.brand and combined[key]["brand"] == "—":
+                    combined[key]["brand"] = f.brand
+
+    if not combined:
+        st.info("No fixtures with quantities extracted. Try enabling AI enhancement in the sidebar.")
+        return
+
+    rows = []
+    for key, info in sorted(combined.items(), key=lambda x: (-x[1]["qty"], x[1]["category"])):
+        price_str = f"R{info['unit_price']:,.0f}" if info['unit_price'] > 0 else "—"
+        total = info['qty'] * info['unit_price'] if info['unit_price'] > 0 else 0
+        total_str = f"R{total:,.0f}" if total > 0 else "—"
+        rows.append({
+            "Category": info["category"],
+            "Fixture Type": info["fixture"],
+            "Total Qty": info["qty"],
+            "Unit Price": price_str,
+            "Total Value": total_str,
+            "Brand": info["brand"],
+        })
+
+    df = pd.DataFrame(rows)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    # Grand totals
+    grand_qty = sum(info["qty"] for info in combined.values())
+    grand_val = sum(info["qty"] * info["unit_price"] for info in combined.values() if info["unit_price"] > 0)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Fixture Types", len(combined))
+    col2.metric("Total Fixtures", grand_qty)
+    if grand_val > 0:
+        col3.metric("Estimated Total", f"R{grand_val:,.0f}")
+
+    # ── Export to CSV ──
+    csv_data = df.to_csv(index=False)
+    st.download_button(
+        "📥 Download Fixture Summary (CSV)",
+        data=csv_data,
+        file_name="afriplan_fixture_extraction.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+
+# ============================================================================
 # MAIN PAGE
 # ============================================================================
 
 inject_custom_css()
 init_session_state()
 
+# Initialize extraction mode in session state
+if "extraction_mode" not in st.session_state:
+    st.session_state["extraction_mode"] = "universal"
+
 page_header(
     title="Smart Upload",
     subtitle="Upload your drawings, get your BOQ"
 )
 
-# Check if pipeline is available
-if not PIPELINE_AVAILABLE:
-    st.error("Pipeline not available. Check imports.")
-    st.stop()
+# ── Extraction Mode Selector ──
+st.markdown("### Choose Extraction Mode")
 
-if not LLM_API_KEY:
-    st.error("No API key configured. Add GROQ_API_KEY, XAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY to secrets.")
-    st.stop()
+col1, col2 = st.columns(2)
 
-# Sidebar: Simple help
-st.sidebar.markdown("### Need Help?")
-st.sidebar.info("Upload your electrical drawings step by step. The AI will extract quantities for your BOQ.")
+with col1:
+    universal_selected = st.session_state.get("extraction_mode") == "universal"
+    if st.button(
+        "⚡ Universal Extractor (Recommended)",
+        type="primary" if universal_selected else "secondary",
+        use_container_width=True,
+        key="btn_mode_universal",
+        help="Fast, free text-based extraction for any PDF/DXF. No API key needed."
+    ):
+        st.session_state["extraction_mode"] = "universal"
+        st.rerun()
 
-# Render the 4-step guided upload
-render_progress_indicator()
+with col2:
+    legacy_selected = st.session_state.get("extraction_mode") == "legacy"
+    if st.button(
+        "🔬 Legacy Pipeline (5-Step)",
+        type="primary" if legacy_selected else "secondary",
+        use_container_width=True,
+        key="btn_mode_legacy",
+        help="Full AI pipeline with Cover → SLD → Lighting → Power → Review. Requires API key."
+    ):
+        st.session_state["extraction_mode"] = "legacy"
+        st.rerun()
 
-step = st.session_state.guided_step
+# Mode description
+mode = st.session_state.get("extraction_mode", "universal")
+if mode == "universal":
+    st.caption("⚡ **Universal Extractor** — Upload any PDF/DXF → instant fixture extraction. Text mining + spatial analysis + optional AI legend reading. Works for Wedela, 3 Cubes, and any SA electrical drawing.")
+else:
+    st.caption("🔬 **Legacy Pipeline** — Step-by-step guided extraction: Cover → SLD → Lighting → Power → Review. Requires API key for AI classification.")
 
-if step == 1:
-    render_step_1_cover()
-elif step == 2:
-    render_step_2_sld()
-elif step == 3:
-    render_step_3_lighting()
-elif step == 4:
-    render_step_4_power()
-elif step == 5:
-    render_step_5_review()
+st.divider()
+
+# ── Render Selected Mode ──
+if mode == "universal":
+    if UNIVERSAL_EXTRACTOR_AVAILABLE:
+        render_universal_extractor()
+    else:
+        st.error("Universal Extractor not available. Check that agent/universal_extractor.py exists.")
+        st.code("pip install PyMuPDF Pillow", language="bash")
+
+elif mode == "legacy":
+    # Check if legacy pipeline is available
+    if not PIPELINE_AVAILABLE:
+        st.error("Legacy pipeline not available. Check imports.")
+        st.stop()
+
+    if not LLM_API_KEY:
+        st.warning("No API key configured. Add GROQ_API_KEY, XAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY to .streamlit/secrets.toml")
+        st.info("💡 Tip: Switch to **Universal Extractor** mode — it works without an API key!")
+        st.stop()
+
+    # Sidebar: Simple help
+    st.sidebar.markdown("### Need Help?")
+    st.sidebar.info("Upload your electrical drawings step by step. The AI will extract quantities for your BOQ.")
+
+    # Render the 5-step guided upload
+    render_progress_indicator()
+
+    step = st.session_state.guided_step
+
+    if step == 1:
+        render_step_1_cover()
+    elif step == 2:
+        render_step_2_sld()
+    elif step == 3:
+        render_step_3_lighting()
+    elif step == 4:
+        render_step_4_power()
+    elif step == 5:
+        render_step_5_review()
