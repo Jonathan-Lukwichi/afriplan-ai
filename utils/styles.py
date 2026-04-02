@@ -1361,6 +1361,113 @@ CUSTOM_CSS = """
         }
     }
 
+    /* ========================================
+       FILE UPLOADER - Premium Styled
+    ======================================== */
+    [data-testid="stFileUploader"] {
+        background: linear-gradient(135deg, rgba(17, 24, 39, 0.8), rgba(15, 23, 42, 0.9)) !important;
+        border: 2px dashed rgba(0, 212, 255, 0.35) !important;
+        border-radius: 16px !important;
+        padding: 2rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+    }
+
+    [data-testid="stFileUploader"]:hover {
+        border-color: rgba(0, 212, 255, 0.7) !important;
+        box-shadow: 0 0 25px rgba(0, 212, 255, 0.12), inset 0 0 25px rgba(0, 212, 255, 0.04) !important;
+        background: linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(15, 23, 42, 1.0)) !important;
+    }
+
+    /* Upload label text */
+    [data-testid="stFileUploader"] label {
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+        color: #e2e8f0 !important;
+        letter-spacing: 0.3px !important;
+    }
+
+    /* The small help/info text */
+    [data-testid="stFileUploader"] .uploadMessage,
+    [data-testid="stFileUploader"] small,
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzoneInstructions"] {
+        color: #94a3b8 !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+
+    /* Browse files button */
+    [data-testid="stFileUploaderDropzone"] button,
+    [data-testid="stFileUploader"] button[kind="secondary"] {
+        background: linear-gradient(135deg, #00D4FF, #0099FF) !important;
+        color: #0a0e1a !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 0.55rem 1.8rem !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(0, 212, 255, 0.25) !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] button:hover,
+    [data-testid="stFileUploader"] button[kind="secondary"]:hover {
+        box-shadow: 0 6px 25px rgba(0, 212, 255, 0.4) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Dropzone area */
+    [data-testid="stFileUploaderDropzone"] {
+        background: transparent !important;
+        border: none !important;
+        padding: 1.5rem !important;
+    }
+
+    /* File size / type text */
+    [data-testid="stFileUploaderDropzone"] div[data-testid="stFileUploaderDropzoneInstructions"] div {
+        color: #64748b !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Uploaded file chips */
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] {
+        background: rgba(0, 212, 255, 0.08) !important;
+        border: 1px solid rgba(0, 212, 255, 0.25) !important;
+        border-radius: 10px !important;
+        padding: 0.5rem 0.75rem !important;
+        margin-top: 0.5rem !important;
+    }
+
+    /* Uploaded filename text */
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] span {
+        color: #e2e8f0 !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* Remove button on uploaded files */
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] button {
+        background: rgba(239, 68, 68, 0.15) !important;
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        border-radius: 50% !important;
+        color: #EF4444 !important;
+        box-shadow: none !important;
+        padding: 0.2rem !important;
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        min-height: unset !important;
+        font-size: 0.75rem !important;
+        transform: none !important;
+    }
+
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] button:hover {
+        background: rgba(239, 68, 68, 0.3) !important;
+        transform: none !important;
+    }
+
 </style>
 
 <!-- Glow Orbs HTML -->
