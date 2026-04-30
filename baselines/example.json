@@ -1,0 +1,38 @@
+{
+  "project_name": "Example Reference Project",
+  "source_pdf": "example.pdf",
+  "source_dxf": "example.dxf",
+  "validated_by": "auto-generated",
+  "validated_at": "2026-04-30",
+  "notes": "Synthetic baseline to demonstrate the schema. Replace with real data.",
+
+  "pdf_fixture_counts": {
+    "downlights": 24,
+    "panel_lights": 8,
+    "double_sockets": 20,
+    "single_sockets": 8,
+    "data_outlets": 16,
+    "switches_2lever": 12,
+    "emergency_lights": 6,
+    "exit_signs": 4
+  },
+
+  "dxf_block_counts_by_type": {
+    "LED Downlight": 24,
+    "LED Panel": 8,
+    "Double Socket": 20,
+    "Single Socket": 8,
+    "Data Socket (RJ45)": 16,
+    "2-Lever Switch": 12,
+    "Emergency Light": 6,
+    "Exit Sign": 4
+  },
+
+  "boq_section_subtotals_zar": {
+    "SECTION 5: LIGHTING INSTALLATION": 12480,
+    "SECTION 6: POWER OUTLETS INSTALLATION": 4160,
+    "SECTION 7: DATA & COMMUNICATIONS": 7200
+  },
+
+  "total_excl_vat_zar": 32550
+}

@@ -1,18 +1,25 @@
+# AfriPlan Electrical v6.1 dependencies
+
+# UI
 streamlit>=1.30.0
-matplotlib>=3.8.0
-numpy>=1.24.0
-fpdf2>=2.7.0
-Pillow>=10.0.0
-plotly>=5.18.0
-ezdxf
-pandas>=2.0.0
-PuLP>=2.7.0
-openpyxl>=3.1.0
-anthropic>=0.18.0
-PyMuPDF>=1.23.0
-google-generativeai>=0.4.0
-openai>=1.0.0
+
+# Data + validation
 pydantic>=2.0.0
-groq>=0.4.0
-pytesseract>=0.3.10
-shapely>=2.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# PDF pipeline
+anthropic>=0.40.0
+PyMuPDF>=1.23.0
+Pillow>=10.0.0
+
+# DXF pipeline
+ezdxf>=1.4.0
+
+# Exporters
+openpyxl>=3.1.0
+fpdf2>=2.7.0
+
+# Plots / charts (optional, for any future analytics views)
+matplotlib>=3.8.0
+plotly>=5.18.0

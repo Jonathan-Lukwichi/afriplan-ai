@@ -1,1 +1,0 @@
-# AfriPlan Electrical - Components Package

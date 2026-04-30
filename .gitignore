@@ -54,3 +54,18 @@ credentials.json
 *.key
 .streamlit/secrets.toml
 nul
+
+# v6.1 — per-pipeline run logs (regenerated each run)
+runs/
+
+# Reference fixtures the user keeps locally but not in git
+# (gitignore patterns need real spaces, not quoted strings)
+test\ 1/
+test\ 2/
+training_data/
+Electrical\ plan/
+Electrical\ plan_extracted/
+*.docx
+Wedela_BOQ_*.xlsx
+extraction_results.json
+extract_electrical_dwg.py
