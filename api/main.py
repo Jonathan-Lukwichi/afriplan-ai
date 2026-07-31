@@ -14,8 +14,6 @@ load_dotenv()
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _SERVE_FRONTEND = _STATIC_DIR.is_dir()
 
-# Routers registered here as each build phase lands (see routers/ package).
-
 app = FastAPI(
     title="AfriPlan Electrical — Web API",
     description="Dual-pipeline electrical Bill-of-Quantities extraction (PDF vision + deterministic DXF), FastAPI + React rewrite.",
@@ -35,10 +33,11 @@ def health():
     return {"status": "ok"}
 
 
-# Registered as each phase lands:
-# app.include_router(dxf.router)
-# app.include_router(pdf.router)
-# app.include_router(runs.router)
+from routers import runs  # noqa: E402
+
+app.include_router(runs.router)
+
+# Registered as each later phase lands:
 # app.include_router(compare.router)
 # app.include_router(export.router)
 # app.include_router(pricing.router)

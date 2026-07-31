@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import Welcome from './pages/Welcome';
+import Upload from './pages/Upload';
+import Extraction from './pages/Extraction';
 
 // Demo login only (per project decision) — no backend call, no real session,
 // just a client-side flag. See CLAUDE.md for why, and what upgrading to real
@@ -8,8 +11,11 @@ import Login from './pages/Login';
 const AUTH_KEY = 'afriplan_demo_authed';
 
 const PAGES = {
-  // Populated as each build phase lands:
-  // welcome: Welcome, upload: Upload, extraction: Extraction, boq: Boq, pricing: Pricing,
+  welcome: Welcome,
+  upload: Upload,
+  extraction: Extraction,
+  // Populated as each later build phase lands:
+  // boq: Boq, pricing: Pricing,
 };
 
 function readHash() {
@@ -19,6 +25,7 @@ function readHash() {
 
 export default function App() {
   const [page, setPageState] = useState(readHash);
+  const [runId, setRunId] = useState(null);
   const setPage = (p) => {
     setPageState(p);
     try { window.location.hash = p; } catch {}
@@ -39,14 +46,13 @@ export default function App() {
 
   const PageComponent = PAGES[page];
   if (!PageComponent) {
-    // Wizard pages land in later build phases — placeholder keeps the app
-    // runnable and the auth gate demonstrably working in the meantime.
+    // Remaining wizard pages (BOQ, Pricing) land in later build phases.
     return (
       <div style={{ padding: 40, fontFamily: 'var(--sans)' }}>
         <h1>Signed in</h1>
-        <p>The wizard (Welcome → Upload → Extraction → BOQ → Pricing) lands in later build phases.</p>
+        <p>The BOQ and Pricing pages land in later build phases.</p>
       </div>
     );
   }
-  return <PageComponent onNavigate={setPage} />;
+  return <PageComponent onNavigate={setPage} runId={runId} onRunCreated={setRunId} />;
 }

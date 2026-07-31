@@ -27,8 +27,17 @@ async function request(path, { method = 'GET', body, signal } = {}) {
 export const api = {
   health: (signal) => request('/api/health', { signal }),
 
-  // Populated as each build phase lands:
-  // runs: { create: (formData) => request('/api/runs', { method: 'POST', body: formData }), last: (id) => request(`/api/runs/${id}`) },
+  runs: {
+    create: (file, pipeline = 'dxf') => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('pipeline', pipeline);
+      return request('/api/runs', { method: 'POST', body: form });
+    },
+    get: (runId, signal) => request(`/api/runs/${runId}`, { signal }),
+  },
+
+  // Populated as each later build phase lands:
   // compare: { get: (a, b) => request(`/api/compare?a=${a}&b=${b}`) },
   // export: { excel: (runId) => `${API_BASE}/api/export/excel/${runId}`, pdf: (runId) => `${API_BASE}/api/export/pdf/${runId}` },
 };

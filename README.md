@@ -15,8 +15,8 @@ Under active build, phase by phase:
 
 - [x] Phase 1 — repo scaffold, independence-rule test harness
 - [x] Phase 2 — public Landing page, demo Login gate
-- [ ] Phase 3 — shared types + core config/pricing/standards ported
-- [ ] Phase 4 — DXF pipeline
+- [x] Phase 3 — shared types + core config/pricing/standards ported
+- [x] Phase 4 — DXF pipeline
 - [ ] Phase 5 — PDF pipeline
 - [ ] Phase 6 — cross-pipeline comparison (resurrected as a real feature)
 - [ ] Phase 7 — BOQ Generation, export, email delivery
