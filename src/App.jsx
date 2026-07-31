@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Welcome from './pages/Welcome';
 import Upload from './pages/Upload';
 import Extraction from './pages/Extraction';
+import Compare from './pages/Compare';
 
 // Demo login only (per project decision) — no backend call, no real session,
 // just a client-side flag. See CLAUDE.md for why, and what upgrading to real
@@ -14,6 +15,7 @@ const PAGES = {
   welcome: Welcome,
   upload: Upload,
   extraction: Extraction,
+  compare: Compare,
   // Populated as each later build phase lands:
   // boq: Boq, pricing: Pricing,
 };
@@ -26,6 +28,7 @@ function readHash() {
 export default function App() {
   const [page, setPageState] = useState(readHash);
   const [runId, setRunId] = useState(null);
+  const [compareId, setCompareId] = useState(null);
   const setPage = (p) => {
     setPageState(p);
     try { window.location.hash = p; } catch {}
@@ -54,5 +57,13 @@ export default function App() {
       </div>
     );
   }
-  return <PageComponent onNavigate={setPage} runId={runId} onRunCreated={setRunId} />;
+  return (
+    <PageComponent
+      onNavigate={setPage}
+      runId={runId}
+      onRunCreated={setRunId}
+      compareId={compareId}
+      onCompareCreated={setCompareId}
+    />
+  );
 }

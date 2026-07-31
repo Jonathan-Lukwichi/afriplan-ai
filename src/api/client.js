@@ -38,7 +38,17 @@ export const api = {
     get: (runId, signal) => request(`/api/runs/${runId}`, { signal }),
   },
 
+  compare: {
+    create: (dxfFile, pdfFiles) => {
+      const form = new FormData();
+      form.append('dxf_file', dxfFile);
+      pdfFiles.forEach((f) => form.append('pdf_files', f));
+      return request('/api/compare', { method: 'POST', body: form });
+    },
+    get: (compareId, signal) => request(`/api/compare/${compareId}`, { signal }),
+    pdfUrl: (compareId) => `${API_BASE}/api/compare/${compareId}/pdf`,
+  },
+
   // Populated as each later build phase lands:
-  // compare: { get: (a, b) => request(`/api/compare?a=${a}&b=${b}`) },
   // export: { excel: (runId) => `${API_BASE}/api/export/excel/${runId}`, pdf: (runId) => `${API_BASE}/api/export/pdf/${runId}` },
 };

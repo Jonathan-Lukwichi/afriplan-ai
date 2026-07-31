@@ -18,7 +18,7 @@ Under active build, phase by phase:
 - [x] Phase 3 — shared types + core config/pricing/standards ported
 - [x] Phase 4 — DXF pipeline
 - [x] Phase 5 — PDF pipeline
-- [ ] Phase 6 — cross-pipeline comparison (resurrected as a real feature)
+- [x] Phase 6 — cross-pipeline comparison (resurrected as a real feature)
 - [ ] Phase 7 — BOQ Generation, export, email delivery
 - [ ] Phase 8 — design system
 - [ ] Phase 9 — Live Pricing
