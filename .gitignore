@@ -1,0 +1,13 @@
+node_modules/
+dist/
+api/.venv/
+api/__pycache__/
+**/__pycache__/
+api/data/
+api/static/
+*.pyc
+.env
+api/.env
+test-results/
+playwright-report/
+.DS_Store

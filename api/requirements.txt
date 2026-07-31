@@ -1,0 +1,32 @@
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.0.0
+python-multipart>=0.0.20
+python-dotenv>=1.0
+httpx>=0.27
+truststore>=0.10  # OS cert store for httpx on corporate Windows networks
+certifi>=2024.7   # fallback when truststore is unavailable
+orjson>=3.9
+
+# Domain: shared across both pipelines
+pandas>=2.0.0
+numpy>=1.24.0
+
+# PDF pipeline
+anthropic>=0.40.0
+PyMuPDF>=1.23.0
+Pillow>=10.0.0
+
+# DXF pipeline
+ezdxf>=1.4.0
+opencv-python-headless>=4.9.0  # template-matching mode (agent/dxf_pipeline/passes/template_count.py); degrades gracefully if absent
+
+# Exporters (kept server-side — see plan)
+openpyxl>=3.1.0
+fpdf2>=2.7.0
+
+# Persistence
+sqlmodel>=0.0.22
+
+# Report email delivery
+email-validator>=2.2
