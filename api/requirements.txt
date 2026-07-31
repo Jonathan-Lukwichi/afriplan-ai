@@ -30,3 +30,7 @@ sqlmodel>=0.0.22
 
 # Report email delivery
 email-validator>=2.2
+
+# Testing (tool-schema validation in tests/pdf_pipeline/unit/test_pass_schemas.py)
+jsonschema>=4.20.0
+pytest>=8.0
