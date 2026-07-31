@@ -28,9 +28,10 @@ export const api = {
   health: (signal) => request('/api/health', { signal }),
 
   runs: {
-    create: (file, pipeline = 'dxf') => {
+    // `files` is a single File (dxf) or an array of Files (pdf, multi-drawing).
+    create: (files, pipeline = 'dxf') => {
       const form = new FormData();
-      form.append('file', file);
+      (Array.isArray(files) ? files : [files]).forEach((f) => form.append('files', f));
       form.append('pipeline', pipeline);
       return request('/api/runs', { method: 'POST', body: form });
     },
