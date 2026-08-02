@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import PipelineStatusCard from '../components/ui/PipelineStatusCard';
 import LegendPanel from '../components/ui/LegendPanel';
 import PageHeader from '../components/ui/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
 
 /* Polls the keyed run cache every 2s until the job resolves — the same
    /last-pattern spirit as the original app's materialized results, just
@@ -39,12 +40,7 @@ export default function Extraction({ runId, onNavigate }) {
   }, [runId]);
 
   if (!runId) {
-    return (
-      <div style={{ padding: 'var(--space-xl)' }}>
-        <p>No run selected.</p>
-        <button onClick={() => onNavigate('upload')}>Upload a drawing</button>
-      </div>
-    );
+    return <EmptyState message="No run selected." actionLabel="Upload a drawing" onAction={() => onNavigate('upload')} />;
   }
 
   const boq = run?.result?.boq;

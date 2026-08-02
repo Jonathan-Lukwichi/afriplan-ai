@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import PageHeader from '../components/ui/PageHeader';
 import MetricTile from '../components/ui/MetricTile';
+import EmptyState from '../components/ui/EmptyState';
 
 /* Optional Step 4 — port of pages/4_Live_Pricing.py: request real supplier
    quotes for material lines, compare, apply the best one back into the
@@ -34,12 +35,7 @@ export default function Pricing({ runId, onNavigate }) {
   }, [runId]);
 
   if (!runId) {
-    return (
-      <div style={{ padding: 'var(--space-xl)' }}>
-        <p>No run selected.</p>
-        <button onClick={() => onNavigate('upload')}>Upload a drawing</button>
-      </div>
-    );
+    return <EmptyState message="No run selected." actionLabel="Upload a drawing" onAction={() => onNavigate('upload')} />;
   }
 
   const toggle = (ref) => {

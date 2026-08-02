@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import ComparisonPanel from '../components/ui/ComparisonPanel';
+import EmptyState from '../components/ui/EmptyState';
 
 /* Polls the keyed comparison cache (core/compare_store.py) every 2s until
    both underlying runs resolve and compare_runs has fired. */
@@ -34,12 +35,7 @@ export default function Compare({ compareId, onNavigate }) {
   }, [compareId]);
 
   if (!compareId) {
-    return (
-      <div style={{ padding: 'var(--space-xl)' }}>
-        <p>No comparison selected.</p>
-        <button onClick={() => onNavigate('upload')}>Upload drawings</button>
-      </div>
-    );
+    return <EmptyState message="No comparison selected." actionLabel="Upload drawings" onAction={() => onNavigate('upload')} />;
   }
 
   return (

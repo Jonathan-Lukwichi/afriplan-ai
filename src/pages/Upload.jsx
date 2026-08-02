@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 
+// Native file inputs render a short (~21px) hit box by default in most
+// browsers, under the WCAG 2.5.8 24px AA floor — caught by the responsive
+// E2E harness. minHeight + padding fixes the actual clickable box height.
+const fileInputStyle = { display: 'block', minHeight: 44, padding: '10px 0', boxSizing: 'border-box' };
+
 const PIPELINES = [
   { id: 'dxf', label: 'DXF / DWG' },
   { id: 'pdf', label: 'PDF drawing set' },
@@ -76,7 +81,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
             type="file"
             accept=".dxf,.dwg"
             onChange={(e) => setFiles(e.target.files?.[0] ? [e.target.files[0]] : [])}
-            style={{ marginBottom: 'var(--space-md)', display: 'block' }}
+            style={{ ...fileInputStyle, marginBottom: 'var(--space-md)' }}
           />
         )}
 
@@ -86,7 +91,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
             accept=".pdf"
             multiple
             onChange={(e) => setFiles(Array.from(e.target.files || []))}
-            style={{ marginBottom: 'var(--space-md)', display: 'block' }}
+            style={{ ...fileInputStyle, marginBottom: 'var(--space-md)' }}
           />
         )}
 
@@ -97,7 +102,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
               type="file"
               accept=".dxf,.dwg"
               onChange={(e) => setDxfFile(e.target.files?.[0] || null)}
-              style={{ marginBottom: 12, display: 'block' }}
+              style={{ ...fileInputStyle, marginBottom: 12 }}
             />
             <label style={{ fontSize: 13, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>PDF drawing set</label>
             <input
@@ -105,7 +110,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
               accept=".pdf"
               multiple
               onChange={(e) => setPdfFiles(Array.from(e.target.files || []))}
-              style={{ display: 'block' }}
+              style={fileInputStyle}
             />
           </div>
         )}

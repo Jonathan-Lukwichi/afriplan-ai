@@ -22,7 +22,7 @@ Under active build, phase by phase:
 - [x] Phase 7 — BOQ Generation, export, email delivery
 - [x] Phase 8 — design system
 - [x] Phase 9 — Live Pricing
-- [ ] Phase 10 — responsive E2E harness
+- [x] Phase 10 — responsive E2E harness
 - [ ] Phase 11 — SQLite persistence
 - [ ] Phase 12 — verification against real fixtures
 

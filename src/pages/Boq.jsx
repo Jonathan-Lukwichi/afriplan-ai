@@ -5,6 +5,7 @@ import MetricTile from '../components/ui/MetricTile';
 import LineItemsTable from '../components/ui/LineItemsTable';
 import GapReport from '../components/ui/GapReport';
 import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
+import EmptyState from '../components/ui/EmptyState';
 
 /* Step 3 — port of the original app's pages/3_BOQ_Generation.py: pick
    pricing, preview the priced bill, download Excel/PDF/JSON, or email it
@@ -42,12 +43,7 @@ export default function Boq({ runId, onNavigate }) {
   useEffect(() => { refreshPreview(); }, [runId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!runId) {
-    return (
-      <div style={{ padding: 'var(--space-xl)' }}>
-        <p>No run selected.</p>
-        <button onClick={() => onNavigate('upload')}>Upload a drawing</button>
-      </div>
-    );
+    return <EmptyState message="No run selected." actionLabel="Upload a drawing" onAction={() => onNavigate('upload')} />;
   }
 
   const exportParams = { markup, contingency, vat, quote_ref: quoteRef, validity_days: validityDays };
