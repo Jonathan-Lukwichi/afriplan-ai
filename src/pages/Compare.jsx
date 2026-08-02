@@ -41,13 +41,13 @@ export default function Compare({ compareId, onNavigate }) {
 
   return (
     <div style={{ maxWidth: 900, padding: 'var(--space-xl) var(--space-md)' }}>
-      <PageHeader title="Cross-pipeline comparison" />
+      <PageHeader title="Cross-engine comparison" />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
       {record?.status === 'running' && (
         <span className="afp-tag-running" style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
-          Running both pipelines…
+          Running both engines…
         </span>
       )}
 

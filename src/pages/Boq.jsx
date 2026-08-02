@@ -72,7 +72,7 @@ export default function Boq({ runId, onNavigate }) {
 
   return (
     <div style={{ maxWidth: 860, padding: 'var(--space-xl) var(--space-md)' }}>
-      <PageHeader title="Generate the tender BoQ" subtitle="Fine-tune your pricing, then download the SANS 10142-1 compliant Excel and PDF." />
+      <PageHeader title="BoQ & quotation" subtitle="Set your margin and tax, review the SANS 10142-1 checked bill, then send the quotation from here." />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
@@ -113,7 +113,7 @@ export default function Boq({ runId, onNavigate }) {
           <h3 style={{ fontSize: 16, marginBottom: 10 }}>Downloads</h3>
           <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-xl)', flexWrap: 'wrap' }}>
             <a href={api.boq.excelUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>Excel BoQ (.xlsx)</a>
-            <a href={api.boq.pdfUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>PDF BoQ (.pdf)</a>
+            <a href={api.boq.pdfUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>Quotation (.pdf)</a>
           </div>
 
           <p style={{ fontSize: 13, marginBottom: 'var(--space-lg)' }}>

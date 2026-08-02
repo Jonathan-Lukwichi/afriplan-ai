@@ -11,7 +11,7 @@ export default function Welcome({ onNavigate }) {
       <PageHeader
         eyebrow="AFRIPLAN ELECTRICAL"
         title="Start a new Bill of Quantities"
-        subtitle="Upload a drawing and we'll run it through the DXF pipeline — a deterministic, zero-cost parser that reads block counts, circuits and cable lengths straight off the CAD geometry."
+        subtitle="Upload a drawing and we'll run it through the DXF engine — a deterministic, zero-cost parser that reads block counts, circuits and cable lengths straight off the CAD geometry."
       />
       <button onClick={() => onNavigate('upload')} className="btn-gradient" style={{ fontSize: 16, padding: '14px 28px' }}>
         Upload a drawing →

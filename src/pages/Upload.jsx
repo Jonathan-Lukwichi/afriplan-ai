@@ -58,7 +58,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
     <div style={{ maxWidth: 640, padding: 'var(--space-xl) var(--space-md)' }}>
       <PageHeader
         title="Upload a drawing"
-        subtitle="Run a DXF, a PDF drawing set, or both — and see exactly where the two pipelines agree, where they disagree, and by how much."
+        subtitle="Run a DXF, a PDF drawing set, or both — and see exactly where the two engines agree, where they disagree, and by how much."
       />
 
       <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
@@ -117,7 +117,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
         {error && <p style={{ color: 'var(--rose)', fontSize: 14 }}>{error}</p>}
 
         <button onClick={submit} disabled={!ready || busy} className="btn-gradient" style={{ fontSize: 15 }}>
-          {busy ? 'Uploading…' : pipeline === 'both' ? 'Run both, compare →' : `Run ${pipeline.toUpperCase()} pipeline →`}
+          {busy ? 'Uploading…' : pipeline === 'both' ? 'Run both, compare →' : `Run ${pipeline.toUpperCase()} engine →`}
         </button>
       </div>
     </div>

@@ -18,7 +18,7 @@ export default function PipelineStatusCard({ pipeline, status, inputFile, error,
     <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--ink-muted)' }}>
-          {pipeline.toUpperCase()} PIPELINE
+          {pipeline.toUpperCase()} ENGINE
         </div>
         <span className={TAG_CLASS[status] || 'afp-tag-idle'} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
           {LABEL[status] || status}

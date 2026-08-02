@@ -1,39 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FileText, GitCompare, Home, Layers, LogOut, Menu, Upload as UploadIcon, Wallet, X, Zap,
 } from 'lucide-react';
-import headerBanner from '../../assets/images/header-banner-goldenhour.jpg';
 
 const NAV_ITEMS = [
-  { page: 'welcome', label: 'Welcome', icon: Home },
-  { page: 'upload', label: 'Upload', icon: UploadIcon },
-  { page: 'extraction', label: 'Extraction', icon: Layers },
-  { page: 'compare', label: 'Compare', icon: GitCompare },
-  { page: 'boq', label: 'BoQ', icon: FileText },
-  { page: 'pricing', label: 'Pricing', icon: Wallet },
+  { page: 'welcome', label: 'Welcome', step: '01', icon: Home },
+  { page: 'upload', label: 'Upload', step: '02', icon: UploadIcon },
+  { page: 'extraction', label: 'Take-off', step: '03', icon: Layers },
+  { page: 'compare', label: 'Compare', step: '04', icon: GitCompare },
+  { page: 'boq', label: 'BoQ', step: '05', icon: FileText },
+  { page: 'pricing', label: 'Pricing', step: '06', icon: Wallet },
 ];
 
-/* Persistent authenticated-app layout: icon-labeled sidebar (nav between
-   every in-app page) + a photo header banner shared across all of them,
-   replacing the old pattern of each page being a lone full-bleed <div>
-   with its own ad-hoc "back to X" button. */
+const STORAGE_KEY = 'afriplan.sidebarOpen';
+
+/* Persistent authenticated-app layout — light editorial refresh.
+   The sidebar is now collapsible on every viewport (☰ in the top bar), and
+   the desktop preference persists. Below 820px the sidebar is hidden by the
+   stylesheet and the same button opens it as an overlay drawer. */
 export default function AppShell({ activePage, onNavigate, onSignOut, children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem(STORAGE_KEY) !== 'false';
+  });
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, String(sidebarOpen));
+  }, [sidebarOpen]);
 
   const go = (page) => {
     onNavigate(page);
     setDrawerOpen(false);
   };
 
+  const onToggle = () => {
+    // Narrow viewports hide the docked sidebar entirely (see tokens.css), so
+    // the same control opens the overlay drawer there instead.
+    if (window.matchMedia('(max-width: 820px)').matches) setDrawerOpen(true);
+    else setSidebarOpen((v) => !v);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)', display: 'flex' }}>
-      <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} className="app-sidebar" />
+      {sidebarOpen && (
+        <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} className="app-sidebar" />
+      )}
 
       {drawerOpen && (
         <>
           <div
             onClick={() => setDrawerOpen(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(16,26,51,0.45)', zIndex: 40 }}
           />
           <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 50, width: 'var(--sidebar-width)' }}>
             <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} onClose={() => setDrawerOpen(false)} showClose />
@@ -42,28 +60,38 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
       )}
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        {/* Persistent header banner — real photo across every in-app page */}
-        <div style={{ position: 'relative', height: 84, flexShrink: 0, overflow: 'hidden' }}>
-          <img src={headerBanner} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(10,14,26,0.94), rgba(10,14,26,0.75) 60%, rgba(10,14,26,0.5))' }} />
-          <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 var(--space-md)' }}>
+        <div style={{
+          height: 52, flexShrink: 0, background: '#16203C',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 16, padding: '0 clamp(16px, 3vw, 36px)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, minWidth: 0 }}>
             <button
-              className="app-mobile-topbar"
-              onClick={() => setDrawerOpen(true)}
-              style={{ display: 'none', background: 'none', border: 'none', color: 'var(--ink)', cursor: 'pointer', padding: 8, alignItems: 'center', justifyContent: 'center' }}
-              aria-label="Open menu"
+              onClick={onToggle}
+              aria-label={sidebarOpen ? 'Hide menu' : 'Show menu'}
+              style={{
+                width: 30, height: 30, borderRadius: 7, flexShrink: 0,
+                border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)',
+                color: '#FCFCFD', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
             >
-              <Menu size={22} />
+              <Menu size={16} />
             </button>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.12em', color: 'var(--circuit-2)' }}>
-              DUAL-PIPELINE · SANS 10142-1:2017
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-2)' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: '#05070F' }}>
-                DM
-              </div>
-              <span className="navbar-link-wide">Demo Contractor</span>
-            </div>
+            <span style={{
+              fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.12em', color: '#9FB0D6',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              TAKE-OFF ENGINE
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <span style={{
+              fontFamily: 'var(--mono)', fontSize: 12, color: '#9FB0D6',
+              border: '1px solid rgba(255,255,255,0.18)', borderRadius: 6, padding: '4px 10px',
+            }}>
+              ZAR
+            </span>
+            <span className="navbar-link-wide" style={{ fontSize: 13, color: '#C7CEE2' }}>Demo Engineer</span>
           </div>
         </div>
 
@@ -78,16 +106,19 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
 function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, showClose }) {
   return (
     <aside className={className} style={{
-      width: 'var(--sidebar-width)', flexShrink: 0, height: '100vh', position: showClose ? 'relative' : 'sticky', top: 0,
+      width: 'var(--sidebar-width)', flexShrink: 0, height: '100vh',
+      position: showClose ? 'relative' : 'sticky', top: 0,
       background: 'var(--paper-2)', borderRight: '1px solid var(--hairline)',
-      display: 'flex', flexDirection: 'column', padding: 'var(--space-md)',
+      display: 'flex', flexDirection: 'column', padding: '28px 18px',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-lg)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Zap size={17} color="#05070F" strokeWidth={2.5} />
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--blueprint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Zap size={15} color="#fff" strokeWidth={2.5} />
           </div>
-          <span style={{ fontWeight: 800, fontSize: 15 }}>AfriPlan</span>
+          <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em' }}>
+            Afri<span style={{ color: 'var(--blueprint)' }}>Plan</span>
+          </span>
         </div>
         {showClose && (
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: 4 }} aria-label="Close menu">
@@ -96,37 +127,41 @@ function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, s
         )}
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-        {NAV_ITEMS.map(({ page, label, icon: Icon }) => {
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+        {NAV_ITEMS.map(({ page, label, step, icon: Icon }) => {
           const active = page === activePage;
           return (
             <button
               key={page}
               onClick={() => onNavigate(page)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', minHeight: 44,
-                background: active ? 'var(--gradient-primary)' : 'transparent',
-                color: active ? '#05070F' : 'var(--ink-2)',
-                border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: active ? 700 : 500,
-                cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s ease',
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 44,
+                background: active ? '#FFFFFF' : 'transparent',
+                border: active ? '1px solid rgba(46,91,232,0.28)' : '1px solid transparent',
+                boxShadow: active ? '0 1px 2px rgba(16,26,51,0.05)' : 'none',
+                color: active ? 'var(--ink)' : 'var(--ink-2)',
+                borderRadius: 'var(--radius-sm)', fontFamily: 'var(--sans)', fontSize: 15,
+                fontWeight: active ? 600 : 400, cursor: 'pointer', textAlign: 'left',
+                transition: 'background 0.15s ease',
               }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'rgba(16,26,51,0.035)'; }}
               onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
             >
-              <Icon size={18} strokeWidth={2.25} />
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: active ? 'var(--blueprint)' : 'var(--ink-muted)' }}>{step}</span>
+              <Icon size={17} strokeWidth={2} />
               {label}
             </button>
           );
         })}
       </nav>
 
-      <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 'var(--space-md)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: '#05070F', flexShrink: 0 }}>
-          DM
+      <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, color: '#fff', flexShrink: 0 }}>
+          DE
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Demo Contractor</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>Demo mode</div>
+          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Demo Engineer</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Demo mode</div>
         </div>
         <button onClick={onSignOut} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: 6 }} aria-label="Sign out">
           <LogOut size={17} />
