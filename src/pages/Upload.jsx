@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import PageHeader from '../components/ui/PageHeader';
 
 // Native file inputs render a short (~21px) hit box by default in most
 // browsers, under the WCAG 2.5.8 24px AA floor — caught by the responsive
 // E2E harness. minHeight + padding fixes the actual clickable box height.
-const fileInputStyle = { display: 'block', minHeight: 44, padding: '10px 0', boxSizing: 'border-box' };
+const fileInputStyle = {
+  display: 'block', minHeight: 44, padding: '10px 12px', boxSizing: 'border-box',
+  width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--hairline-2)',
+  borderRadius: 'var(--radius-sm)', color: 'var(--ink)', fontSize: 13,
+};
 
 const PIPELINES = [
   { id: 'dxf', label: 'DXF / DWG' },
@@ -50,26 +55,20 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: 'var(--space-xl) var(--space-md)' }}>
-        <h1 style={{ fontSize: 'var(--text-xl)', marginBottom: 10 }}>Upload a drawing</h1>
-        <p style={{ fontSize: 14, color: 'var(--ink-muted)', marginBottom: 'var(--space-md)' }}>
-          Run a DXF, a PDF drawing set, or both — and see exactly where the
-          two pipelines agree, where they disagree, and by how much.
-        </p>
+    <div style={{ maxWidth: 640, padding: 'var(--space-xl) var(--space-md)' }}>
+      <PageHeader
+        title="Upload a drawing"
+        subtitle="Run a DXF, a PDF drawing set, or both — and see exactly where the two pipelines agree, where they disagree, and by how much."
+      />
 
+      <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-md)', flexWrap: 'wrap' }}>
           {PIPELINES.map((opt) => (
             <button
               key={opt.id}
               onClick={() => selectPipeline(opt.id)}
-              style={{
-                padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600,
-                cursor: 'pointer', minHeight: 40,
-                background: pipeline === opt.id ? 'var(--blueprint)' : 'transparent',
-                color: pipeline === opt.id ? 'white' : 'var(--blueprint)',
-                border: '1px solid var(--blueprint)',
-              }}
+              className={pipeline === opt.id ? 'btn-gradient' : 'btn-ghost'}
+              style={{ padding: '9px 18px', minHeight: 40, fontSize: 14 }}
             >
               {opt.label}
             </button>
@@ -117,15 +116,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
 
         {error && <p style={{ color: 'var(--rose)', fontSize: 14 }}>{error}</p>}
 
-        <button
-          onClick={submit}
-          disabled={!ready || busy}
-          style={{
-            padding: '12px 26px', background: !ready || busy ? 'var(--ink-muted)' : 'var(--blueprint)',
-            color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 15,
-            fontWeight: 600, cursor: !ready || busy ? 'not-allowed' : 'pointer', minHeight: 44,
-          }}
-        >
+        <button onClick={submit} disabled={!ready || busy} className="btn-gradient" style={{ fontSize: 15 }}>
           {busy ? 'Uploading…' : pipeline === 'both' ? 'Run both, compare →' : `Run ${pipeline.toUpperCase()} pipeline →`}
         </button>
       </div>

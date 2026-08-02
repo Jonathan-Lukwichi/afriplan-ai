@@ -51,46 +51,34 @@ export default function Extraction({ runId, onNavigate }) {
   ] : null;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-xl) var(--space-md)' }}>
-        <PageHeader title="Extraction" />
+    <div style={{ maxWidth: 720, padding: 'var(--space-xl) var(--space-md)' }}>
+      <PageHeader title="Extraction" />
 
-        {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
-        {run && (
-          <PipelineStatusCard
-            pipeline={run.pipeline}
-            status={run.status}
-            inputFile={run.input_file}
-            error={run.error}
-            summary={summary}
-          />
-        )}
+      {run && (
+        <PipelineStatusCard
+          pipeline={run.pipeline}
+          status={run.status}
+          inputFile={run.input_file}
+          error={run.error}
+          summary={summary}
+        />
+      )}
 
-        {run?.status === 'passed' && <LegendPanel legend={run.result?.legend} />}
+      {run?.status === 'passed' && <LegendPanel legend={run.result?.legend} />}
 
-        {run?.status === 'passed' && (
-          <button
-            onClick={() => onNavigate('boq')}
-            style={{
-              marginTop: 'var(--space-lg)', padding: '12px 26px', background: 'var(--blueprint)',
-              color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 15,
-              fontWeight: 600, cursor: 'pointer', minHeight: 44,
-            }}
-          >
-            View Bill of Quantities →
-          </button>
-        )}
+      {run?.status === 'passed' && (
+        <button onClick={() => onNavigate('boq')} className="btn-gradient" style={{ marginTop: 'var(--space-lg)', fontSize: 15 }}>
+          View Bill of Quantities →
+        </button>
+      )}
 
-        {run?.status === 'failed' && (
-          <button
-            onClick={() => onNavigate('upload')}
-            style={{ marginTop: 'var(--space-lg)', padding: '12px 26px', background: 'transparent', color: 'var(--blueprint)', border: '1px solid var(--blueprint)', borderRadius: 'var(--radius-sm)', fontSize: 15, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}
-          >
-            Try another drawing
-          </button>
-        )}
-      </div>
+      {run?.status === 'failed' && (
+        <button onClick={() => onNavigate('upload')} className="btn-ghost" style={{ marginTop: 'var(--space-lg)', fontSize: 15 }}>
+          Try another drawing
+        </button>
+      )}
     </div>
   );
 }

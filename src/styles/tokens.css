@@ -1,33 +1,51 @@
-/* Design tokens — ported exactly from the original AfriPlan Streamlit app's
-   ui/styles.py ("blueprint architectural" theme: off-white paper background,
-   blueprint-blue ink, cyan circuit accents, serif headings). Values are
-   copied verbatim, not approximated — see engineering-webapp-skills'
-   frontend-design-system skill for the METHOD this follows. */
+/* Design tokens — dark "AI product" redesign (Robotiko/Dashdark X-inspired),
+   built on AfriPlan's own blueprint-blue + circuit-cyan identity rather than
+   a generic purple palette. Token NAMES are unchanged from the original
+   light theme on purpose — every component that already reads var(--paper)/
+   var(--ink)/etc. re-themes automatically; only the values changed. See
+   engineering-webapp-skills' frontend-design-system skill for the METHOD. */
 :root {
-  --paper:        #F5F2EA;
-  --paper-2:      #EDEAE0;
-  --paper-edge:   #E2DDD0;
-  --ink:          #0F1B3D;
-  --ink-2:        #2A3556;
-  --ink-muted:    #6B7280;
-  --blueprint:    #1E40AF;
-  --blueprint-2:  #1D4ED8;
-  --blueprint-3:  #3B82F6;
-  --circuit:      #00B8D4;
-  --circuit-2:    #00879B;
-  --amber:        #B45309;
-  --emerald:      #047857;
-  --rose:         #B91C1C;
+  /* Backgrounds — near-black navy instead of cream paper */
+  --paper:        #0A0E1A;
+  --paper-2:      #10172A;
+  --paper-edge:   #1A2338;
 
-  --hairline:     rgba(15, 27, 61, 0.10);
-  --hairline-2:   rgba(15, 27, 61, 0.18);
+  /* Text — light instead of dark-on-light */
+  --ink:          #F1F5FF;
+  --ink-2:        #C3CBE0;
+  --ink-muted:    #7C88A8;
 
-  --serif: 'Fraunces', 'Georgia', 'Times New Roman', serif;
+  /* Brand blues + cyan — brightened for dark-bg contrast, same identity */
+  --blueprint:    #3B6EF6;
+  --blueprint-2:  #5B85FF;
+  --blueprint-3:  #4F8CFF;
+  --circuit:      #22D3EE;
+  --circuit-2:    #67E8F9;
+
+  /* Status */
+  --amber:        #F59E0B;
+  --emerald:      #34D399;
+  --rose:         #F87171;
+
+  --hairline:     rgba(241, 245, 255, 0.08);
+  --hairline-2:   rgba(241, 245, 255, 0.14);
+
+  /* Glass card + glow system — new for this redesign */
+  --card-bg:      rgba(255, 255, 255, 0.035);
+  --card-bg-2:    rgba(255, 255, 255, 0.06);
+  --card-border:  rgba(255, 255, 255, 0.09);
+  --glow-blue:    rgba(59, 110, 246, 0.35);
+  --glow-cyan:    rgba(34, 211, 238, 0.25);
+  --shadow-card:  0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-glow:  0 0 40px rgba(59, 110, 246, 0.25);
+  --gradient-primary: linear-gradient(135deg, var(--blueprint-3), var(--circuit));
+  --gradient-text:    linear-gradient(135deg, #7CA8FF, var(--circuit-2));
+
+  --serif: 'Fraunces', 'Georgia', 'Times New Roman', serif; /* unused by headings now, kept for back-compat */
   --sans:  'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
   --mono:  'JetBrains Mono', 'SF Mono', 'Monaco', monospace;
 
-  /* Fluid space/type scale — new for the React rewrite (AfriPlan's Streamlit
-     version had no equivalent; per frontend-design-system skill, Step 1). */
+  /* Fluid space/type scale — unchanged */
   --space-xs: clamp(4px, 1vw, 8px);
   --space-sm: clamp(8px, 1.5vw, 14px);
   --space-md: clamp(14px, 3vw, 24px);
@@ -40,25 +58,83 @@
   --text-xl:  clamp(1.6rem, 4vw, 2.4rem);
   --text-2xl: clamp(2.1rem, 6vw, 3.4rem);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --sidebar-width: 264px;
 }
 
-/* Status tags — pass=emerald, fail=rose, running=amber, idle=muted gray,
-   exact rgba values ported from the Streamlit app's .afp-tag-* classes. */
-.afp-tag-pass    { background: rgba(4,120,87,0.10);   color: var(--emerald);   border: 1px solid rgba(4,120,87,.25); }
-.afp-tag-fail    { background: rgba(185,28,28,0.08);  color: var(--rose);      border: 1px solid rgba(185,28,28,.25); }
-.afp-tag-running { background: rgba(180,83,9,0.08);   color: var(--amber);     border: 1px solid rgba(180,83,9,.25); }
-.afp-tag-idle    { background: rgba(15,27,61,0.04);   color: var(--ink-muted); border: 1px solid var(--hairline-2); }
+/* Status tags — brightened for dark bg, same semantics/class names */
+.afp-tag-pass    { background: rgba(52,211,153,0.14);  color: var(--emerald); border: 1px solid rgba(52,211,153,.3); }
+.afp-tag-fail    { background: rgba(248,113,113,0.12); color: var(--rose);    border: 1px solid rgba(248,113,113,.3); }
+.afp-tag-running { background: rgba(245,158,11,0.12);  color: var(--amber);   border: 1px solid rgba(245,158,11,.3); }
+.afp-tag-idle    { background: rgba(241,245,255,0.06); color: var(--ink-muted); border: 1px solid var(--hairline-2); }
 
-/* Confidence badges — the 6-way ItemConfidence mapping documented in the
-   original agent/shared/boq.py but never actually rendered in the old UI. */
+/* Confidence badges — the 6-way ItemConfidence mapping */
 .afp-conf-extracted   { color: var(--emerald); }
 .afp-conf-inferred    { color: var(--circuit-2); }
 .afp-conf-assumed     { color: var(--amber); }
 .afp-conf-provisional { color: var(--ink-muted); }
 .afp-conf-estimated   { color: var(--rose); }
-.afp-conf-manual      { color: var(--blueprint); }
+.afp-conf-manual      { color: var(--blueprint-2); }
+
+/* Glass-card + button primitives — new, shared across every page instead of
+   each page hand-rolling its own card/button inline styles. */
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.text-gradient {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-gradient {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  min-height: 44px;
+  background: var(--gradient-primary);
+  color: #05070F;
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(59, 110, 246, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.btn-gradient:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 26px rgba(59, 110, 246, 0.45); }
+.btn-gradient:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  min-height: 44px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid var(--hairline-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-ghost:hover:not(:disabled) { border-color: var(--blueprint-3); background: rgba(255,255,255,0.03); }
+.btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -68,4 +144,28 @@ body {
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3 { font-family: var(--serif); color: var(--ink); margin: 0; }
+h1, h2, h3 {
+  font-family: var(--sans);
+  color: var(--ink);
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 700px) {
+  .navbar-link-wide { display: none; }
+}
+
+@media (max-width: 820px) {
+  /* !important needed: the sidebar's own inline style sets display:flex
+     (React-set inline styles beat external class selectors regardless of
+     specificity), so a plain class rule here would never actually hide it
+     — caught by a real-device screenshot check during the redesign. */
+  .app-sidebar { display: none !important; }
+  .app-mobile-topbar { display: flex !important; }
+}
+
+@media (min-width: 900px) {
+  .login-photo-side { display: block !important; }
+  .login-grid { grid-template-columns: 1fr 1fr !important; }
+}

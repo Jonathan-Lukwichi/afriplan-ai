@@ -8,12 +8,12 @@ export default function SectionSubtotalsChart({ subtotals }) {
   const max = Math.max(...entries.map(([, v]) => v));
 
   return (
-    <div style={{ marginBottom: 'var(--space-lg)' }}>
+    <div className="glass-card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
       {entries.map(([label, value]) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <div style={{ width: 130, fontSize: 12, color: 'var(--ink-muted)', flexShrink: 0 }}>{label}</div>
-          <div style={{ flex: 1, background: 'var(--paper-2)', borderRadius: 4, overflow: 'hidden', height: 18 }}>
-            <div style={{ width: `${(value / max) * 100}%`, background: 'var(--blueprint)', height: '100%' }} />
+          <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 4, overflow: 'hidden', height: 18 }}>
+            <div style={{ width: `${(value / max) * 100}%`, background: 'var(--gradient-primary)', height: '100%', borderRadius: 4 }} />
           </div>
           <div style={{ width: 90, fontSize: 12, color: 'var(--ink-2)', textAlign: 'right', flexShrink: 0 }}>
             R {value.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}

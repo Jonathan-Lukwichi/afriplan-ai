@@ -15,10 +15,7 @@ const LABEL = {
 
 export default function PipelineStatusCard({ pipeline, status, inputFile, error, summary }) {
   return (
-    <div style={{
-      border: '1px solid var(--hairline-2)', borderRadius: 'var(--radius-md)',
-      padding: 'var(--space-md)', background: 'var(--paper-2)',
-    }}>
+    <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--ink-muted)' }}>
           {pipeline.toUpperCase()} PIPELINE

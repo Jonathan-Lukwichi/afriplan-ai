@@ -10,7 +10,7 @@ export default function LegendPanel({ legend }) {
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>
         Legend ({legend.entries.length} symbol{legend.entries.length === 1 ? '' : 's'} — {legend.source.toUpperCase()})
       </h3>
-      <div style={{ overflowX: 'auto' }}>
+      <div className="glass-card" style={{ overflowX: 'auto', padding: 4 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--paper-2)', textAlign: 'left' }}>

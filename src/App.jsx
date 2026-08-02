@@ -7,6 +7,7 @@ import Extraction from './pages/Extraction';
 import Compare from './pages/Compare';
 import Boq from './pages/Boq';
 import Pricing from './pages/Pricing';
+import AppShell from './components/ui/AppShell';
 
 // Demo login only (per project decision) — no backend call, no real session,
 // just a client-side flag. See CLAUDE.md for why, and what upgrading to real
@@ -43,6 +44,10 @@ export default function App() {
     try { localStorage.setItem(AUTH_KEY, '1'); } catch {}
     setPage('welcome');
   };
+  const signOut = () => {
+    try { localStorage.removeItem(AUTH_KEY); } catch {}
+    setPage('landing');
+  };
 
   if (page === 'landing') return <Landing onNavigate={setPage} />;
   if (page === 'login') return <Login onNavigate={setPage} onSignIn={signIn} />;
@@ -59,12 +64,14 @@ export default function App() {
     );
   }
   return (
-    <PageComponent
-      onNavigate={setPage}
-      runId={runId}
-      onRunCreated={setRunId}
-      compareId={compareId}
-      onCompareCreated={setCompareId}
-    />
+    <AppShell activePage={page} onNavigate={setPage} onSignOut={signOut}>
+      <PageComponent
+        onNavigate={setPage}
+        runId={runId}
+        onRunCreated={setRunId}
+        compareId={compareId}
+        onCompareCreated={setCompareId}
+      />
+    </AppShell>
   );
 }

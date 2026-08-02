@@ -26,7 +26,7 @@ export default function ComparisonPanel({ cmp, onDownloadPdf }) {
       </p>
 
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>Section-by-section breakdown</h3>
-      <div style={{ overflowX: 'auto', marginBottom: 'var(--space-lg)' }}>
+      <div className="glass-card" style={{ overflowX: 'auto', marginBottom: 'var(--space-lg)', padding: 4 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--paper-2)', textAlign: 'left' }}>
@@ -69,10 +69,7 @@ export default function ComparisonPanel({ cmp, onDownloadPdf }) {
       )}
 
       {onDownloadPdf && (
-        <button
-          onClick={onDownloadPdf}
-          style={{ padding: '10px 22px', background: 'transparent', color: 'var(--blueprint)', border: '1px solid var(--blueprint)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600, cursor: 'pointer', minHeight: 40 }}
-        >
+        <button onClick={onDownloadPdf} className="btn-ghost" style={{ fontSize: 14 }}>
           Download comparison report (PDF)
         </button>
       )}

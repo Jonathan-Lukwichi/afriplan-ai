@@ -7,7 +7,7 @@ import ConfidenceBadge from './ConfidenceBadge';
    it anywhere. */
 export default function LineItemsTable({ items }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="glass-card" style={{ overflowX: 'auto', padding: 4 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr style={{ background: 'var(--paper-2)', textAlign: 'left' }}>
