@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import PipelineStatusCard from '../components/ui/PipelineStatusCard';
+import LegendPanel from '../components/ui/LegendPanel';
+import PageHeader from '../components/ui/PageHeader';
 
 /* Polls the keyed run cache every 2s until the job resolves — the same
    /last-pattern spirit as the original app's materialized results, just
@@ -55,7 +57,7 @@ export default function Extraction({ runId, onNavigate }) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-xl) var(--space-md)' }}>
-        <h1 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--space-md)' }}>Extraction</h1>
+        <PageHeader title="Extraction" />
 
         {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
@@ -68,6 +70,8 @@ export default function Extraction({ runId, onNavigate }) {
             summary={summary}
           />
         )}
+
+        {run?.status === 'passed' && <LegendPanel legend={run.result?.legend} />}
 
         {run?.status === 'passed' && (
           <button

@@ -1,3 +1,5 @@
+import MetricTile from './MetricTile';
+
 /* Renders a PipelineComparison (agent/comparison/models.py). Replaces the
    original app's Streamlit render_comparison_panel() — same content, a
    React component instead, since this is now a real page, not a dead
@@ -8,13 +10,13 @@ export default function ComparisonPanel({ cmp, onDownloadPdf }) {
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-        <Metric label="Total difference" value={cmp.total_difference_pct != null ? `${(cmp.total_difference_pct * 100).toFixed(1)}%` : '—'} />
-        <Metric label="Agreement score" value={`${Math.round(cmp.agreement_score * 100)}%`} />
-        <Metric
+        <MetricTile label="Total difference" value={cmp.total_difference_pct != null ? `${(cmp.total_difference_pct * 100).toFixed(1)}%` : '—'} />
+        <MetricTile label="Agreement score" value={`${Math.round(cmp.agreement_score * 100)}%`} />
+        <MetricTile
           label="Winner vs baseline"
           value={cmp.winner_vs_baseline && cmp.winner_vs_baseline !== 'no_baseline' ? cmp.winner_vs_baseline.toUpperCase() : '—'}
         />
-        <Metric label="PDF cost" value={`R ${cmp.pdf_cost_zar.toFixed(2)}`} />
+        <MetricTile label="PDF cost" value={`R ${cmp.pdf_cost_zar.toFixed(2)}`} />
       </div>
 
       <p style={{ fontSize: 14, color: 'var(--ink-2)', marginBottom: 'var(--space-lg)' }}>
@@ -74,15 +76,6 @@ export default function ComparisonPanel({ cmp, onDownloadPdf }) {
           Download comparison report (PDF)
         </button>
       )}
-    </div>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)' }}>{value}</div>
-      <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{label}</div>
     </div>
   );
 }

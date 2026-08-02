@@ -1,3 +1,6 @@
+import ValueCard from '../components/ui/ValueCard';
+import StepStrip from '../components/ui/StepStrip';
+
 /* Public marketing page — new for the FastAPI+React rewrite. AfriPlan's
    original Streamlit app had no public landing page (pages/0_Welcome.py is
    an in-wizard step behind no auth at all). Value-card copy below is drawn
@@ -61,11 +64,7 @@ export default function Landing({ onNavigate }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
           {VALUE_CARDS.map((c) => (
-            <div key={c.title} style={{ border: '1px solid var(--hairline-2)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md)', background: 'var(--paper-2)' }}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>{c.icon}</div>
-              <h3 style={{ fontSize: 17, marginBottom: 8 }}>{c.title}</h3>
-              <p style={{ fontSize: 14, color: 'var(--ink-muted)', margin: 0, lineHeight: 1.5 }}>{c.body}</p>
-            </div>
+            <ValueCard key={c.title} icon={c.icon} title={c.title} body={c.body} />
           ))}
         </div>
 
@@ -75,11 +74,7 @@ export default function Landing({ onNavigate }) {
         <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--space-lg)' }}>Four steps from drawing to tender.</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)' }}>
           {STEPS.map((s) => (
-            <div key={s.n}>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-muted)', marginBottom: 6 }}>STEP {s.n}</div>
-              <h3 style={{ fontSize: 16, marginBottom: 6 }}>{s.title}</h3>
-              <p style={{ fontSize: 13, color: 'var(--ink-muted)', margin: 0 }}>{s.body}</p>
-            </div>
+            <StepStrip key={s.n} n={s.n} title={s.title} body={s.body} />
           ))}
         </div>
 

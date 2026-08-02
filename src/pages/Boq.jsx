@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import PageHeader from '../components/ui/PageHeader';
+import MetricTile from '../components/ui/MetricTile';
+import LineItemsTable from '../components/ui/LineItemsTable';
+import GapReport from '../components/ui/GapReport';
+import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
 
 /* Step 3 — port of the original app's pages/3_BOQ_Generation.py: pick
    pricing, preview the priced bill, download Excel/PDF/JSON, or email it
@@ -67,10 +72,7 @@ export default function Boq({ runId, onNavigate }) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
       <div style={{ maxWidth: 860, margin: '0 auto', padding: 'var(--space-xl) var(--space-md)' }}>
-        <h1 style={{ fontSize: 'var(--text-xl)', marginBottom: 10 }}>Generate the tender BoQ</h1>
-        <p style={{ fontSize: 14, color: 'var(--ink-muted)', marginBottom: 'var(--space-lg)' }}>
-          Fine-tune your pricing, then download the SANS 10142-1 compliant Excel and PDF.
-        </p>
+        <PageHeader title="Generate the tender BoQ" subtitle="Fine-tune your pricing, then download the SANS 10142-1 compliant Excel and PDF." />
 
         {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
@@ -92,49 +94,21 @@ export default function Boq({ runId, onNavigate }) {
         {priced && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-              <Metric label="Subtotal" value={`R ${priced.subtotal_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-              <Metric label="Total ex VAT" value={`R ${priced.total_excl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-              <Metric label="VAT" value={`R ${priced.vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-              <Metric label="Total incl. VAT" value={`R ${priced.total_incl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+              <MetricTile label="Subtotal" value={`R ${priced.subtotal_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+              <MetricTile label="Total ex VAT" value={`R ${priced.total_excl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+              <MetricTile label="VAT" value={`R ${priced.vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+              <MetricTile label="Total incl. VAT" value={`R ${priced.total_incl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
             </div>
+
+            <h3 style={{ fontSize: 16, marginBottom: 10 }}>Section subtotals</h3>
+            <SectionSubtotalsChart subtotals={priced.section_subtotals_short} />
 
             <h3 style={{ fontSize: 16, marginBottom: 10 }}>Line items ({priced.total_items})</h3>
-            <div style={{ overflowX: 'auto', marginBottom: 'var(--space-lg)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: 'var(--paper-2)', textAlign: 'left' }}>
-                    {['#', 'Section', 'Description', 'Unit', 'Qty', 'Rate (R)', 'Total (R)'].map((h) => (
-                      <th key={h} style={{ padding: '8px 10px', borderBottom: '1px solid var(--hairline-2)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {priced.line_items.map((it, i) => (
-                    // item_no restarts per section, not globally unique - index is the stable identity here.
-                    <tr key={i} style={{ borderBottom: '1px solid var(--hairline)' }}>
-                      <td style={{ padding: '8px 10px' }}>{it.item_no}</td>
-                      <td style={{ padding: '8px 10px' }}>{it.section}</td>
-                      <td style={{ padding: '8px 10px' }}>{it.description}</td>
-                      <td style={{ padding: '8px 10px' }}>{it.unit}</td>
-                      <td style={{ padding: '8px 10px' }}>{it.qty}</td>
-                      <td style={{ padding: '8px 10px' }}>{it.unit_price_zar.toLocaleString('en-ZA')}</td>
-                      <td style={{ padding: '8px 10px' }}>{it.total_zar.toLocaleString('en-ZA')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ marginBottom: 'var(--space-lg)' }}>
+              <LineItemsTable items={priced.line_items} />
             </div>
 
-            {priced.gaps?.length > 0 && (
-              <>
-                <h3 style={{ fontSize: 16, marginBottom: 10 }}>Gap report — {priced.gaps.length} assumption(s) to verify</h3>
-                <ul style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 'var(--space-lg)', paddingLeft: 18 }}>
-                  {priced.gaps.map((g, i) => (
-                    <li key={i}><strong>[{g.severity}]</strong> {g.description} — {g.assumption} → {g.suggested_action}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+            <GapReport gaps={priced.gaps} />
 
             <h3 style={{ fontSize: 16, marginBottom: 10 }}>Downloads</h3>
             <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-xl)', flexWrap: 'wrap' }}>
@@ -176,15 +150,6 @@ function Field({ label, value, onChange, onBlur }) {
         type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur}
         style={{ width: '100%', padding: 8, border: '1px solid var(--hairline-2)', borderRadius: 'var(--radius-sm)' }}
       />
-    </div>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)' }}>{value}</div>
-      <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{label}</div>
     </div>
   );
 }

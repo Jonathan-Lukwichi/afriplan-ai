@@ -20,7 +20,7 @@ Under active build, phase by phase:
 - [x] Phase 5 — PDF pipeline
 - [x] Phase 6 — cross-pipeline comparison (resurrected as a real feature)
 - [x] Phase 7 — BOQ Generation, export, email delivery
-- [ ] Phase 8 — design system
+- [x] Phase 8 — design system
 - [ ] Phase 9 — Live Pricing
 - [ ] Phase 10 — responsive E2E harness
 - [ ] Phase 11 — SQLite persistence
