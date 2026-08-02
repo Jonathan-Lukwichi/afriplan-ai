@@ -49,6 +49,12 @@ export const api = {
     pdfUrl: (compareId) => `${API_BASE}/api/compare/${compareId}/pdf`,
   },
 
-  // Populated as each later build phase lands:
-  // export: { excel: (runId) => `${API_BASE}/api/export/excel/${runId}`, pdf: (runId) => `${API_BASE}/api/export/pdf/${runId}` },
+  boq: {
+    getProfile: (signal) => request('/api/boq/profile', { signal }),
+    saveProfile: (profile) => request('/api/boq/profile', { method: 'PUT', body: profile }),
+    json: (runId, params, signal) => request(`/api/export/json/${runId}?${new URLSearchParams(params)}`, { signal }),
+    excelUrl: (runId, params) => `${API_BASE}/api/export/excel/${runId}?${new URLSearchParams(params)}`,
+    pdfUrl: (runId, params) => `${API_BASE}/api/export/pdf/${runId}?${new URLSearchParams(params)}`,
+    email: (payload) => request('/api/export/email', { method: 'POST', body: payload }),
+  },
 };
