@@ -9,17 +9,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from agent.dxf_pipeline.passes.run import DxfEstimatorRun
 from agent.shared import BillOfQuantities, BQLineItem, BQSection, ItemConfidence
 from core.run_store import RunRecord, run_store
 from routers.export import EmailBoqRequest, email_boq, export_excel, export_json, export_pdf
 
 
-class _FakeResult:
-    def __init__(self, boq):
-        self.boq = boq
-
-
 def _seed_run(run_id: str) -> None:
+    # A real DxfEstimatorRun (not a fake stand-in) - run_store now round-trips
+    # every record through JSON (SQLite-backed, Phase 11), so the seeded
+    # result must be an actual model with model_dump_json()/model_validate_json().
     items = [
         BQLineItem(item_no=1, section=BQSection.LIGHTING, description="LED Downlight",
                    qty=24, unit_price_zar=220.0, total_zar=5280.0, source=ItemConfidence.EXTRACTED),
@@ -29,9 +28,9 @@ def _seed_run(run_id: str) -> None:
         line_items=items, subtotal_zar=5280.0, total_excl_vat_zar=6600.0,
         total_incl_vat_zar=7590.0, items_extracted=1,
     )
+    result = DxfEstimatorRun(run_id=run_id, input_file="test.dxf", boq=boq, success=True)
     run_store.put(RunRecord(
-        run_id=run_id, pipeline="dxf", status="passed", input_file="test.dxf",
-        result=_FakeResult(boq),
+        run_id=run_id, pipeline="dxf", status="passed", input_file="test.dxf", result=result,
     ))
 
 

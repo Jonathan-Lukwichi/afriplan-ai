@@ -118,6 +118,7 @@ def apply_chosen_quotes(run_id: str, body: ApplyQuotesBody):
 
     updated = apply_quotes(base_boq, chosen_quotes)
     record.sourced_boq = updated
+    run_store.put(record)
     return {
         "applied": len(chosen_quotes),
         "subtotal_before_zar": base_boq.subtotal_zar,

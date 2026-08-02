@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
+from agent.dxf_pipeline.passes.run import DxfEstimatorRun
 from agent.shared import BillOfQuantities, BQLineItem, BQSection, ItemConfidence
 from core.run_store import RunRecord, run_store
 from routers.pricing import (
@@ -23,12 +24,10 @@ from routers.pricing import (
 )
 
 
-class _FakeResult:
-    def __init__(self, boq):
-        self.boq = boq
-
-
 def _seed_run(run_id: str) -> BillOfQuantities:
+    # A real DxfEstimatorRun - run_store now round-trips every record through
+    # JSON (SQLite-backed, Phase 11), so a fake stand-in without
+    # model_dump_json()/model_validate_json() no longer works here.
     items = [
         BQLineItem(item_no=1, section=BQSection.LIGHTING, description="LED Downlight",
                    qty=40, unit_price_zar=260.0, total_zar=10400.0, source=ItemConfidence.EXTRACTED),
@@ -40,7 +39,8 @@ def _seed_run(run_id: str) -> BillOfQuantities:
         line_items=items, subtotal_zar=20025.0, total_excl_vat_zar=25031.25,
         total_incl_vat_zar=28785.94, items_extracted=2,
     )
-    run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="passed", input_file="test.dxf", result=_FakeResult(boq)))
+    result = DxfEstimatorRun(run_id=run_id, input_file="test.dxf", boq=boq, success=True)
+    run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="passed", input_file="test.dxf", result=result))
     return boq
 
 

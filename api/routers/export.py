@@ -18,11 +18,11 @@ from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 
 from agent.shared import ContractorProfile, ProjectMetadata
-from agent.shared.contractor_io import load_contractor_profile, save_contractor_profile
 from ai import boq_email
 from core import notify
 from core.boq_pricing import reprice_boq
 from core.run_store import run_store
+from db.contractor_profile import load_contractor_profile, save_contractor_profile
 from exports import export_boq_to_excel, export_boq_to_pdf
 
 router = APIRouter(prefix="/api", tags=["export"])
@@ -51,8 +51,8 @@ def get_contractor_profile():
 @router.put("/boq/profile")
 def put_contractor_profile(profile: dict):
     contractor = ContractorProfile.model_validate(profile)
-    path = save_contractor_profile(contractor)
-    return {"saved": path is not None, "profile": contractor.model_dump(mode="json")}
+    save_contractor_profile(contractor)
+    return {"saved": True, "profile": contractor.model_dump(mode="json")}
 
 
 @router.get("/export/excel/{run_id}")

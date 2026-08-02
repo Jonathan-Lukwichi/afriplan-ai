@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from db.connection import init_db  # noqa: E402
+
+init_db()
+
 # In production (Docker) the built frontend is copied to api/static and served
 # by this same process — one service, same origin, no CORS. In dev the folder
 # doesn't exist and Vite serves the frontend on :5173 as before.

@@ -24,10 +24,12 @@ def run_dxf_job(run_id: str, file_bytes: bytes, file_name: str) -> None:
         record.result = result
         record.status = "passed" if result.success else "failed"
         record.error = result.error
+        run_store.put(record)
     except Exception as e:  # noqa: BLE001 — a crashed job must still resolve the poll
         record = run_store.get(run_id)
         record.status = "failed"
         record.error = str(e)
+        run_store.put(record)
 
 
 def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
@@ -37,10 +39,12 @@ def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
         record.result = result
         record.status = "passed" if result.success else "failed"
         record.error = result.error
+        run_store.put(record)
     except Exception as e:  # noqa: BLE001 — a crashed job must still resolve the poll
         record = run_store.get(run_id)
         record.status = "failed"
         record.error = str(e)
+        run_store.put(record)
 
 
 def launch_dxf_run(background_tasks: BackgroundTasks, file_bytes: bytes, file_name: str) -> str:
