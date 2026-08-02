@@ -28,6 +28,10 @@ class RunRecord:
     input_file: str
     result: Optional[Any] = None   # DxfEstimatorRun / PdfEstimatorRun once done
     error: Optional[str] = None
+    # Set once live-sourced supplier prices are applied (sourcing.apply_quotes)
+    # - overrides result.boq as the export/pricing basis, mirroring the
+    # original app's session_state.priced_boq override semantics.
+    sourced_boq: Optional[Any] = None
 
 
 class RunStore:

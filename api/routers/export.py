@@ -36,7 +36,11 @@ def _priced_boq_for(
         raise HTTPException(404, "run not found")
     if record.status != "passed" or record.result is None or record.result.boq is None:
         raise HTTPException(409, "this run has no BoQ to export yet")
-    return reprice_boq(record.result.boq, markup, contingency, vat)
+    # sourced_boq (live supplier prices applied via /api/pricing/apply) takes
+    # priority over the raw pipeline output, matching the original app's
+    # session_state.priced_boq override.
+    base = record.sourced_boq if record.sourced_boq is not None else record.result.boq
+    return reprice_boq(base, markup, contingency, vat)
 
 
 @router.get("/boq/profile")
