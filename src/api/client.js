@@ -57,4 +57,13 @@ export const api = {
     pdfUrl: (runId, params) => `${API_BASE}/api/export/pdf/${runId}?${new URLSearchParams(params)}`,
     email: (payload) => request('/api/export/email', { method: 'POST', body: payload }),
   },
+
+  pricing: {
+    getRequests: (runId, signal) => request(`/api/pricing/requests/${runId}`, { signal }),
+    requestQuotes: (runId, itemRefs) => request(`/api/pricing/quotes/${runId}`, { method: 'POST', body: { item_refs: itemRefs } }),
+    getQuotes: (runId, signal) => request(`/api/pricing/quotes/${runId}`, { signal }),
+    apply: (runId, choices) => request(`/api/pricing/apply/${runId}`, { method: 'POST', body: { choices } }),
+    draftRfq: (runId, payload) => request(`/api/pricing/rfq/draft/${runId}`, { method: 'POST', body: payload }),
+    parseRfqReply: (runId, payload) => request(`/api/pricing/rfq/parse/${runId}`, { method: 'POST', body: payload }),
+  },
 };

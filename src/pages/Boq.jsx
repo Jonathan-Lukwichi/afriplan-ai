@@ -116,6 +116,12 @@ export default function Boq({ runId, onNavigate }) {
               <a href={api.boq.pdfUrl(runId, exportParams)} style={downloadBtn}>PDF BoQ (.pdf)</a>
             </div>
 
+            <p style={{ fontSize: 13, marginBottom: 'var(--space-lg)' }}>
+              <button onClick={() => onNavigate('pricing')} style={{ background: 'none', border: 'none', color: 'var(--blueprint)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                Get real supplier prices for this BoQ →
+              </button>
+            </p>
+
             <h3 style={{ fontSize: 16, marginBottom: 10 }}>Email this BoQ</h3>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
               <input placeholder="client@example.com" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} style={{ flex: '1 1 220px', padding: 8, border: '1px solid var(--hairline-2)', borderRadius: 'var(--radius-sm)' }} />

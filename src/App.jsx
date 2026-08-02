@@ -6,6 +6,7 @@ import Upload from './pages/Upload';
 import Extraction from './pages/Extraction';
 import Compare from './pages/Compare';
 import Boq from './pages/Boq';
+import Pricing from './pages/Pricing';
 
 // Demo login only (per project decision) — no backend call, no real session,
 // just a client-side flag. See CLAUDE.md for why, and what upgrading to real
@@ -18,8 +19,7 @@ const PAGES = {
   extraction: Extraction,
   compare: Compare,
   boq: Boq,
-  // Populated as each later build phase lands:
-  // pricing: Pricing,
+  pricing: Pricing,
 };
 
 function readHash() {
@@ -51,11 +51,10 @@ export default function App() {
 
   const PageComponent = PAGES[page];
   if (!PageComponent) {
-    // Live Pricing lands in a later build phase.
     return (
       <div style={{ padding: 40, fontFamily: 'var(--sans)' }}>
         <h1>Signed in</h1>
-        <p>The Live Pricing page lands in a later build phase.</p>
+        <p>Page not found.</p>
       </div>
     );
   }
