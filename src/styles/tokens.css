@@ -196,3 +196,8 @@ input, select, textarea { font-family: var(--sans); }
   .login-photo-side { display: block !important; }
   .login-grid { grid-template-columns: 1fr 1fr !important; }
 }
+
+.upload-grid { grid-template-columns: minmax(0, 1fr) minmax(280px, 400px); }
+@media (max-width: 760px) {
+  .upload-grid { grid-template-columns: 1fr; }
+}

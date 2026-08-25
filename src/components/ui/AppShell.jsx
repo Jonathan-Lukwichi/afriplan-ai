@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  FileText, GitCompare, Home, Layers, LogOut, Menu, Upload as UploadIcon, Wallet, X, Zap,
+  ChevronLeft, FileText, GitCompare, Home, Layers, LogOut, Menu, Upload as UploadIcon, Wallet, X, Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -44,7 +44,7 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)', display: 'flex' }}>
       {sidebarOpen && (
-        <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} className="app-sidebar" />
+        <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} onCollapse={onToggle} className="app-sidebar" />
       )}
 
       {drawerOpen && (
@@ -69,11 +69,15 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
             <button
               onClick={onToggle}
               aria-label={sidebarOpen ? 'Hide menu' : 'Show menu'}
+              title={sidebarOpen ? 'Hide menu' : 'Show menu'}
               style={{
                 width: 30, height: 30, borderRadius: 7, flexShrink: 0,
                 border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)',
                 color: '#FCFCFD', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.15s ease',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
             >
               <Menu size={16} />
             </button>
@@ -103,7 +107,7 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
   );
 }
 
-function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, showClose }) {
+function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, showClose, onCollapse }) {
   return (
     <aside className={className} style={{
       width: 'var(--sidebar-width)', flexShrink: 0, height: '100vh',
@@ -123,6 +127,22 @@ function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, s
         {showClose && (
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: 4 }} aria-label="Close menu">
             <X size={20} />
+          </button>
+        )}
+        {!showClose && onCollapse && (
+          <button
+            onClick={onCollapse}
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+            style={{
+              background: 'none', border: '1px solid var(--hairline)', borderRadius: 7, width: 26, height: 26,
+              color: 'var(--ink-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, transition: 'background 0.15s ease, color 0.15s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,26,51,0.05)'; e.currentTarget.style.color = 'var(--ink)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--ink-muted)'; }}
+          >
+            <ChevronLeft size={15} />
           </button>
         )}
       </div>

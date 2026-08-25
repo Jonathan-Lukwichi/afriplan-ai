@@ -64,7 +64,8 @@ def test_routes_each_sheet_type_to_its_pass_tool(mock_llm):
     assert facts.spine.feeders[0].length_m == 35
     assert facts.spine.incoming_supply.kiosk_present is True
     assert facts.takeoff.rooms[0].room_name == "Tuck Shop"
-    assert len(costs) == 3
+    # register (1) + SLD self-consistency voting (3 samples) + lighting (1)
+    assert len(costs) == 5
 
 
 def test_plugs_and_lighting_both_feed_takeoff(mock_llm):
@@ -79,7 +80,8 @@ def test_unknown_pages_are_skipped(mock_llm):
     llm = mock_llm(tool_responses={"read_power_spine": POWER_SPINE})
     classifications = _classifications([PageType.UNKNOWN, PageType.SLD])
     facts, costs = extract_facts(llm, _pages(2), classifications)
-    assert len(costs) == 1                       # only the SLD page called a tool
+    # only the SLD page called a tool — 3 self-consistency samples, unknown page skipped
+    assert len(costs) == 3
     assert len(facts.spine.distribution_boards) == 1
 
 

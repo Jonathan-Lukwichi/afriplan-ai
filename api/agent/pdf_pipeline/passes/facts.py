@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
+from agent.shared import GapItem
+
 
 # ─── Pass 2 — power spine ────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ class SpineCircuit(BaseModel):
     load_type: str = "other"
     is_spare: bool = False
     notes: str = ""
+    source_snippet: str = ""
 
 
 class SpineDB(BaseModel):
@@ -41,6 +44,11 @@ class SpineDB(BaseModel):
     surge_protection: bool = False
     circuits: List[SpineCircuit] = Field(default_factory=list)
     confidence: float = 0.0
+    # Verbatim text the model read the rating from (e.g. "DB-AB1  400V, 100A,
+    # 15kA") — lets a deterministic check confirm main_breaker_a actually
+    # appears in the quoted source rather than being a misattributed number
+    # from elsewhere on the page (see assemble.py's alignment check).
+    source_snippet: str = ""
 
 
 class Feeder(BaseModel):
@@ -157,6 +165,11 @@ class PdfFacts(BaseModel):
     context: ProjectContext = Field(default_factory=ProjectContext)
     spine: PowerSpine = Field(default_factory=PowerSpine)
     takeoff: LayoutTakeoff = Field(default_factory=LayoutTakeoff)
+    # Gaps found during extraction itself (self-consistency disagreement,
+    # DB names referenced by a feeder but never itemized as their own panel)
+    # — separate from the gaps assemble.py finds while pricing, but flow into
+    # the same final BillOfQuantities.gaps list (see build_boq_from_facts).
+    extraction_gaps: List[GapItem] = Field(default_factory=list)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -223,6 +236,7 @@ def _parse_circuit(d: Dict[str, Any]) -> SpineCircuit:
         load_type=_s(d, "load_type", "other"),
         is_spare=_b(d, "is_spare"),
         notes=_s(d, "notes"),
+        source_snippet=_s(d, "source_snippet"),
     )
 
 
@@ -240,6 +254,7 @@ def parse_power_spine(tool_input: Dict[str, Any]) -> PowerSpine:
             surge_protection=_b(db, "surge_protection"),
             circuits=[_parse_circuit(c) for c in db.get("circuits", []) or []],
             confidence=_f(db, "confidence"),
+            source_snippet=_s(db, "source_snippet"),
         )
         for db in tool_input.get("distribution_boards", []) or []
     ]

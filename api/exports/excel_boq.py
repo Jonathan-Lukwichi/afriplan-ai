@@ -84,6 +84,8 @@ def export_boq_to_excel(
     _build_cover(wb.active, boq, project, contractor, quote_ref, issued, valid_until)
     _build_executive_summary(wb.create_sheet("Executive Summary"), boq, contractor)
     _build_boq_sheet(wb.create_sheet("Bill of Quantities"), boq)
+    if boq.gaps:
+        _build_gap_report(wb.create_sheet("Gap Report"), boq)
     _build_compliance(wb.create_sheet("Compliance"), boq, project)
     _build_acceptance(wb.create_sheet("Acceptance"), boq, contractor, valid_until)
 
@@ -381,6 +383,64 @@ def _grand_total(
     if heavy or big:
         cell_label.border = _HEAVY_BOTTOM
         cell_value.border = _HEAVY_BOTTOM
+
+
+# ─── Sheet — Gap report ────────────────────────────────────────────────
+#
+# Every assumption, extraction disagreement, and possible misread flagged
+# internally — previously tracked but dropped at export time, so a reader
+# of only this file had no way to know which numbers were measured versus
+# guessed. Sorted worst-first.
+
+_ROSE = "C6423C"
+_AMBER = "B5730B"
+_SEVERITY_COLOR = {"high": _ROSE, "medium": _AMBER, "low": "6B7280"}
+_SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
+def _build_gap_report(ws: Worksheet, boq: BillOfQuantities) -> None:
+    ws.sheet_view.showGridLines = False
+    headers = ["Severity", "Section", "Description", "Assumption", "Suggested action"]
+    widths = {1: 10, 2: 30, 3: 44, 4: 40, 5: 40}
+    for c, w in widths.items():
+        ws.column_dimensions[get_column_letter(c)].width = w
+
+    ws.row_dimensions[1].height = 28
+    ws.merge_cells("A1:E1")
+    _heading(ws["A1"], "GAP REPORT", size=14, color=_BLUEPRINT)
+
+    note = ws.cell(row=2, column=1)
+    ws.merge_cells("A2:E2")
+    note.value = (
+        "Every row below was assumed, estimated, or flagged as uncertain during "
+        "extraction — not measured directly off the drawing. Verify before tender."
+    )
+    note.font = Font(name="Calibri", size=9.5, italic=True, color="6B7280")
+    note.alignment = Alignment(wrap_text=True)
+
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=4, column=col_idx, value=h)
+        cell.fill = _HEADER_FILL
+        cell.font = Font(name="Calibri", size=10, bold=True, color=_PAPER)
+        cell.border = _BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    row = 5
+    gaps = sorted(boq.gaps, key=lambda g: _SEVERITY_ORDER.get(g.severity, 9))
+    for gap in gaps:
+        sev = ws.cell(row=row, column=1, value=gap.severity.upper())
+        sev.font = Font(name="Calibri", size=10, bold=True, color=_SEVERITY_COLOR.get(gap.severity, "6B7280"))
+        ws.cell(row=row, column=2, value=gap.section.short_label)
+        desc = ws.cell(row=row, column=3, value=gap.description)
+        assum = ws.cell(row=row, column=4, value=gap.assumption)
+        action = ws.cell(row=row, column=5, value=gap.suggested_action)
+        for c in (desc, assum, action):
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+            c.font = Font(name="Calibri", size=10, color=_INK)
+        for c in range(1, 6):
+            ws.cell(row=row, column=c).border = _BORDER
+        ws.row_dimensions[row].height = 32
+        row += 1
 
 
 # ─── Sheet 4 — Compliance ─────────────────────────────────────────────

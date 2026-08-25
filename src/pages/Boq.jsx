@@ -6,6 +6,7 @@ import LineItemsTable from '../components/ui/LineItemsTable';
 import GapReport from '../components/ui/GapReport';
 import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
 import EmptyState from '../components/ui/EmptyState';
+import Tabs from '../components/ui/Tabs';
 
 const inputStyle = {
   width: '100%', padding: 10, background: 'rgba(255,255,255,0.03)',
@@ -23,6 +24,7 @@ export default function Boq({ runId, onNavigate }) {
   const [validityDays, setValidityDays] = useState(30);
   const [priced, setPriced] = useState(null);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const [emailTo, setEmailTo] = useState('');
   const [emailName, setEmailName] = useState('');
@@ -71,7 +73,7 @@ export default function Boq({ runId, onNavigate }) {
   };
 
   return (
-    <div style={{ maxWidth: 860, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
       <PageHeader title="BoQ & quotation" subtitle="Set your margin and tax, review the SANS 10142-1 checked bill, then send the quotation from here." />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
@@ -93,47 +95,76 @@ export default function Boq({ runId, onNavigate }) {
 
       {priced && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-            <MetricTile label="Subtotal" value={`R ${priced.subtotal_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-            <MetricTile label="Total ex VAT" value={`R ${priced.total_excl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-            <MetricTile label="VAT" value={`R ${priced.vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-            <MetricTile label="Total incl. VAT" value={`R ${priced.total_incl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
-          </div>
+          <Tabs
+            tabs={[
+              { id: 'overview', label: 'Overview' },
+              { id: 'items', label: 'Line items', count: priced.total_items },
+              { id: 'gaps', label: 'Gap report', count: priced.gaps?.length ?? 0 },
+              { id: 'export', label: 'Export & email' },
+            ]}
+            active={activeTab}
+            onChange={setActiveTab}
+          />
 
-          <h3 style={{ fontSize: 16, marginBottom: 10 }}>Section subtotals</h3>
-          <SectionSubtotalsChart subtotals={priced.section_subtotals_short} />
+          {activeTab === 'overview' && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+                <MetricTile label="Subtotal" value={`R ${priced.subtotal_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+                <MetricTile label="Total ex VAT" value={`R ${priced.total_excl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+                <MetricTile label="VAT" value={`R ${priced.vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+                <MetricTile label="Total incl. VAT" value={`R ${priced.total_incl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} />
+              </div>
 
-          <h3 style={{ fontSize: 16, marginBottom: 10 }}>Line items ({priced.total_items})</h3>
-          <div style={{ marginBottom: 'var(--space-lg)' }}>
-            <LineItemsTable items={priced.line_items} />
-          </div>
+              <h3 style={{ fontSize: 16, marginBottom: 10 }}>Section subtotals</h3>
+              <SectionSubtotalsChart subtotals={priced.section_subtotals_short} />
+            </div>
+          )}
 
-          <GapReport gaps={priced.gaps} />
+          {activeTab === 'items' && (
+            <div>
+              <h3 style={{ fontSize: 16, marginBottom: 10 }}>Line items ({priced.total_items})</h3>
+              <LineItemsTable items={priced.line_items} />
+            </div>
+          )}
 
-          <h3 style={{ fontSize: 16, marginBottom: 10 }}>Downloads</h3>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-xl)', flexWrap: 'wrap' }}>
-            <a href={api.boq.excelUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>Excel BoQ (.xlsx)</a>
-            <a href={api.boq.pdfUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>Quotation (.pdf)</a>
-          </div>
+          {activeTab === 'gaps' && (
+            <div>
+              {priced.gaps?.length ? (
+                <GapReport gaps={priced.gaps} />
+              ) : (
+                <p style={{ fontSize: 14, color: 'var(--ink-muted)' }}>No assumptions were flagged on this bill — every line item was extracted or inferred directly.</p>
+              )}
+            </div>
+          )}
 
-          <p style={{ fontSize: 13, marginBottom: 'var(--space-lg)' }}>
-            <button onClick={() => onNavigate('pricing')} style={{ background: 'none', border: 'none', color: 'var(--blueprint-2)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 13 }}>
-              Get real supplier prices for this BoQ →
-            </button>
-          </p>
+          {activeTab === 'export' && (
+            <div>
+              <h3 style={{ fontSize: 16, marginBottom: 10 }}>Downloads</h3>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-xl)', flexWrap: 'wrap' }}>
+                <a href={api.boq.excelUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>Excel BoQ (.xlsx)</a>
+                <a href={api.boq.pdfUrl(runId, exportParams)} className="btn-ghost" style={{ textDecoration: 'none', fontSize: 14 }}>Quotation (.pdf)</a>
+              </div>
 
-          <h3 style={{ fontSize: 16, marginBottom: 10 }}>Email this BoQ</h3>
-          <div className="glass-card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: 'var(--space-md)', marginBottom: 10 }}>
-            <input placeholder="client@example.com" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} style={{ ...inputStyle, flex: '1 1 220px' }} />
-            <input placeholder="Recipient name (optional)" value={emailName} onChange={(e) => setEmailName(e.target.value)} style={{ ...inputStyle, flex: '1 1 180px' }} />
-            <button onClick={sendEmail} disabled={!emailTo || emailBusy} className="btn-gradient" style={{ padding: '10px 22px', fontSize: 14 }}>
-              {emailBusy ? 'Sending…' : 'Send'}
-            </button>
-          </div>
-          {emailResult && (
-            <p style={{ fontSize: 13, color: emailResult.sent ? 'var(--emerald)' : 'var(--rose)' }}>
-              {emailResult.sent ? `Sent: "${emailResult.subject}"` : `Not sent${emailResult.error ? `: ${emailResult.error}` : ' — email provider not configured'}`}
-            </p>
+              <p style={{ fontSize: 13, marginBottom: 'var(--space-lg)' }}>
+                <button onClick={() => onNavigate('pricing')} style={{ background: 'none', border: 'none', color: 'var(--blueprint-2)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                  Get real supplier prices for this BoQ →
+                </button>
+              </p>
+
+              <h3 style={{ fontSize: 16, marginBottom: 10 }}>Email this BoQ</h3>
+              <div className="glass-card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: 'var(--space-md)', marginBottom: 10 }}>
+                <input placeholder="client@example.com" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} style={{ ...inputStyle, flex: '1 1 220px' }} />
+                <input placeholder="Recipient name (optional)" value={emailName} onChange={(e) => setEmailName(e.target.value)} style={{ ...inputStyle, flex: '1 1 180px' }} />
+                <button onClick={sendEmail} disabled={!emailTo || emailBusy} className="btn-gradient" style={{ padding: '10px 22px', fontSize: 14 }}>
+                  {emailBusy ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+              {emailResult && (
+                <p style={{ fontSize: 13, color: emailResult.sent ? 'var(--emerald)' : 'var(--rose)' }}>
+                  {emailResult.sent ? `Sent: "${emailResult.subject}"` : `Not sent${emailResult.error ? `: ${emailResult.error}` : ' — email provider not configured'}`}
+                </p>
+              )}
+            </div>
           )}
         </>
       )}

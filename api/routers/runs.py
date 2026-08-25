@@ -3,10 +3,14 @@ POST /api/runs, GET /api/runs/{run_id} — the keyed run-cache pattern.
 
 DXF is a single-file, no-LLM, sub-second job. PDF is a multi-file, LLM-backed
 job that can take up to ~60s (vision calls with retry/escalation inside
-PdfLLM.call_with_tool) - both run as background threadpool jobs behind the
-same create/poll contract so the frontend doesn't need to know which. The
-"both, compare" option lives at /api/compare (routers/compare.py), which
-launches one of each via the same core.run_jobs helpers.
+PdfLLM.call_with_tool) - both run as threadpool jobs behind the same
+create/poll contract so the frontend doesn't need to know which. Off Vercel
+that threadpool job is scheduled as a BackgroundTask (instant response,
+frontend polls); on Vercel it's awaited directly before responding, since
+Vercel's Python runtime gives no guarantee background work continues after
+a response is sent (see core.run_jobs.ON_VERCEL). The "both, compare" option
+lives at /api/compare (routers/compare.py), which launches one of each via
+the same core.run_jobs helpers.
 """
 
 from __future__ import annotations
@@ -34,12 +38,16 @@ async def create_run(
 
     if pipeline == "dxf":
         file_bytes = await files[0].read()
-        run_id = launch_dxf_run(background_tasks, file_bytes, files[0].filename or "input.dxf")
+        run_id = await launch_dxf_run(background_tasks, file_bytes, files[0].filename or "input.dxf")
     else:
         pairs = [(await f.read(), f.filename or "input.pdf") for f in files]
-        run_id = launch_pdf_run(background_tasks, pairs)
+        run_id = await launch_pdf_run(background_tasks, pairs)
 
-    return {"run_id": run_id, "status": "running"}
+    # Off Vercel this is always "running" (the job is still in the
+    # threadpool queue). On Vercel the job has already been awaited above,
+    # so the record may already be "passed"/"failed" by the time we
+    # respond — report the real status rather than a stale hardcoded one.
+    return {"run_id": run_id, "status": run_store.get(run_id).status}
 
 
 @router.get("/{run_id}")

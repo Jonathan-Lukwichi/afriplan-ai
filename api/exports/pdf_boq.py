@@ -28,6 +28,9 @@ _INK_MUTED = (107, 114, 128)
 _PAPER = (245, 242, 234)
 _PAPER_DARK = (237, 234, 224)
 _HAIRLINE = (220, 215, 200)
+_ROSE = (198, 66, 60)      # high-severity gap
+_AMBER = (181, 115, 11)    # medium-severity gap
+_SEVERITY_COLOR = {"high": _ROSE, "medium": _AMBER, "low": _INK_MUTED}
 
 
 def _safe(s: str) -> str:
@@ -101,6 +104,8 @@ def export_boq_to_pdf(
     _draw_cover(pdf, boq, project, contractor, quote_ref, issued, valid_until)
     _draw_executive_summary(pdf, boq)
     _draw_boq(pdf, boq)
+    if boq.gaps:
+        _draw_gap_report(pdf, boq)
     _draw_compliance(pdf, project)
     _draw_acceptance(pdf, boq, contractor, valid_until)
 
@@ -363,6 +368,60 @@ def _truncate(s: str, n: int) -> str:
 
 def _fmt_num(x: float) -> str:
     return f"{int(x)}" if x == int(x) else f"{x:.2f}"
+
+
+# ─── Gap report ──────────────────────────────────────────────────────
+#
+# Every assumption, extraction disagreement, and possible misread the
+# pipeline flagged internally — previously tracked but never shown in the
+# exported document (only on the web app's own BoQ page). A contractor or
+# client reading only this PDF had no way to know which numbers were
+# measured versus guessed. Sorted worst-first so it reads as a priority
+# checklist, not a wall of caveats.
+
+_SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
+def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
+    pdf.add_page()
+    pdf.set_font("times", "B", 18)
+    pdf.set_text_color(*_INK)
+    pdf.cell(0, 10, "Gap Report", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(*_INK)
+    pdf.set_line_width(0.5)
+    pdf.line(10, pdf.get_y() + 1, 200, pdf.get_y() + 1)
+    pdf.ln(4)
+    pdf.set_font("helvetica", "I", 9)
+    pdf.set_text_color(*_INK_MUTED)
+    pdf.multi_cell(
+        0, 5,
+        _safe(
+            "Every quantity or reading below was assumed, estimated, or flagged as "
+            "uncertain during extraction — not measured directly off the drawing. "
+            "Verify these before the bill is used for tender."
+        ),
+    )
+    pdf.ln(4)
+
+    gaps = sorted(boq.gaps, key=lambda g: _SEVERITY_ORDER.get(g.severity, 9))
+    for gap in gaps:
+        color = _SEVERITY_COLOR.get(gap.severity, _INK_MUTED)
+        pdf.set_font("helvetica", "B", 8)
+        pdf.set_text_color(*color)
+        pdf.cell(0, 5, _safe(f"[{gap.severity.upper()}] {gap.section.short_label}"),
+                  new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("helvetica", "B", 9)
+        pdf.set_text_color(*_INK)
+        pdf.multi_cell(0, 5, _safe(gap.description))
+        if gap.assumption:
+            pdf.set_font("helvetica", "", 9)
+            pdf.set_text_color(*_INK_MUTED)
+            pdf.multi_cell(0, 5, _safe(f"Assumption: {gap.assumption}"))
+        if gap.suggested_action:
+            pdf.set_font("helvetica", "I", 9)
+            pdf.set_text_color(*_INK_MUTED)
+            pdf.multi_cell(0, 5, _safe(f"Action: {gap.suggested_action}"))
+        pdf.ln(3)
 
 
 # ─── Compliance page ─────────────────────────────────────────────────

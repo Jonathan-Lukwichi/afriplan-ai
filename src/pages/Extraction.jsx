@@ -51,7 +51,7 @@ export default function Extraction({ runId, onNavigate }) {
   ] : null;
 
   return (
-    <div style={{ maxWidth: 720, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
       <PageHeader title="Take-off" />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}

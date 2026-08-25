@@ -40,7 +40,7 @@ export default function Compare({ compareId, onNavigate }) {
   }
 
   return (
-    <div style={{ maxWidth: 900, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
       <PageHeader title="Cross-engine comparison" />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}

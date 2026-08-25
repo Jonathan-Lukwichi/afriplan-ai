@@ -197,6 +197,15 @@ _SPINE_DB = {
         "surge_protection": {"type": "boolean"},
         "circuits":         {"type": "array", "items": _SPINE_CIRCUIT_ROW},
         "confidence":       _CONFIDENCE,
+        "source_snippet": {
+            "type": "string",
+            "description": (
+                "Quote the exact busbar header text you read this board's name "
+                "and main_breaker_a from, verbatim, e.g. 'DB-AB1  400V, 100A, "
+                "15kA'. Used to catch misreads (e.g. reporting the voltage "
+                "figure as the amperage)."
+            ),
+        },
     },
     "required": ["name", "circuits", "confidence"],
     "additionalProperties": False,

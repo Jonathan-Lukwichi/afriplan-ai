@@ -153,6 +153,7 @@ def build_boq_from_facts(
 ) -> BillOfQuantities:
     """Deterministically turn extracted facts into a priced Bill of Quantities."""
     acc = _Acc()
+    acc.gaps.extend(facts.extraction_gaps)
 
     _assemble_incoming(acc, facts, config, params)
     _assemble_distribution(acc, facts)

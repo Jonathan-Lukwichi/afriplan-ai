@@ -146,6 +146,7 @@ class PdfLLM:
         validator: Optional[type[BaseModel]] = None,
         retries: int = DEFAULT_RETRIES_ON_VALIDATION,
         escalate_to: Optional[ModelSpec] = None,
+        temperature: float = 0.0,
     ) -> ToolCallResult:
         """
         Send one vision-enabled request that MUST emit a tool call.
@@ -155,6 +156,12 @@ class PdfLLM:
         validation error pasted back to the model. If that retry also
         fails AND `escalate_to` is set, we re-issue with the higher-tier
         model. The cost record reflects the total token spend.
+
+        `temperature` defaults to 0 — extraction passes are reading a fixed
+        ground truth off a drawing, not generating creative text, so the
+        least-noisy sample is the right default everywhere except callers
+        doing deliberate self-consistency sampling (which pass a non-zero
+        value themselves; see passes/orchestrator.py's power-spine voting).
         """
         cost = StageCost(stage_name=stage_name, model_id=model.model_id)
         last_validation_error: Optional[str] = None
@@ -172,6 +179,7 @@ class PdfLLM:
                     tools=tools,
                     forced_tool_name=forced_tool_name,
                     messages=messages,
+                    temperature=temperature,
                 )
             except Exception as e:  # noqa: BLE001 — preserve error chain for caller
                 raise LLMError(f"Anthropic API call failed: {e}") from e
@@ -225,6 +233,7 @@ class PdfLLM:
                 validator=validator,
                 retries=0,           # one shot at the escalated model
                 escalate_to=None,    # no further escalation
+                temperature=temperature,
             )
 
         raise LLMError(
@@ -267,10 +276,12 @@ class PdfLLM:
         tools: List[Dict[str, Any]],
         forced_tool_name: Optional[str],
         messages: List[Dict[str, Any]],
+        temperature: float = 0.0,
     ):
         kwargs: Dict[str, Any] = {
             "model": model_id,
             "max_tokens": max_tokens,
+            "temperature": temperature,
             "system": [
                 {
                     "type": "text",

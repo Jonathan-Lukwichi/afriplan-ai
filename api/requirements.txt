@@ -25,8 +25,12 @@ opencv-python-headless>=4.9.0  # template-matching mode (agent/dxf_pipeline/pass
 openpyxl>=3.1.0
 fpdf2>=2.7.0
 
-# Persistence: plain stdlib sqlite3 (api/db/) — every table here is
-# fundamentally a JSON blob keyed by id, no relational mapping needed.
+# Persistence (api/db/connection.py): plain stdlib sqlite3 for local dev and
+# the Docker/Render path (DATABASE_URL unset or sqlite://), psycopg for a
+# hosted Postgres (DATABASE_URL=postgresql://... — used on Vercel, since its
+# serverless filesystem can't hold a SQLite file between requests). Every
+# table is fundamentally a JSON blob keyed by id, no ORM needed either way.
+psycopg[binary]>=3.1
 
 # Report email delivery
 email-validator>=2.2
