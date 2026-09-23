@@ -108,6 +108,38 @@ def test_neither_pipeline_imports_comparison_layer():
     )
 
 
+_READ_ONLY_LAYERS = ("evaluation", "audit", "scoring", "sourcing", "ml")
+
+
+def test_agent_package_does_not_import_read_only_layers():
+    """evaluation/audit/scoring/sourcing/ml read pipeline output; never the reverse."""
+    bad: list[tuple[Path, int, str]] = []
+    for path in _python_files(REPO_ROOT / "agent"):
+        for lineno, line, mod in _imports_in(path):
+            if any(mod == p or mod.startswith(p + ".") for p in _READ_ONLY_LAYERS):
+                bad.append((path, lineno, line))
+    assert not bad, "agent/ imports a read-only layer:\n" + "\n".join(
+        f"  {p}:{i}: {ln}" for p, i, ln in bad
+    )
+
+
+def test_evaluation_and_audit_do_not_import_pipelines_or_llm_sdks():
+    """
+    The scorer must be independent of what it scores: evaluation/ and audit/
+    use only agent.shared + core, and never an LLM (they must be deterministic).
+    """
+    forbidden = ("agent.pdf_pipeline", "agent.dxf_pipeline", "anthropic", "openai")
+    bad: list[tuple[Path, int, str]] = []
+    for layer in ("evaluation", "audit"):
+        for path in _python_files(REPO_ROOT / layer):
+            for lineno, line, mod in _imports_in(path):
+                if any(mod == p or mod.startswith(p + ".") for p in forbidden):
+                    bad.append((path, lineno, line))
+    assert not bad, "evaluation/audit import a pipeline or an LLM SDK:\n" + "\n".join(
+        f"  {p}:{i}: {ln}" for p, i, ln in bad
+    )
+
+
 def test_shared_does_not_import_either_pipeline():
     """agent.shared must be a leaf — it cannot depend on pipeline code."""
     shared_dir = REPO_ROOT / "agent" / "shared"
