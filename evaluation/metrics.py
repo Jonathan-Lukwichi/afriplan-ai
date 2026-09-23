@@ -7,6 +7,8 @@ Scores a predicted BOQ against a reference BOQ. Changing this file changes what
 Matching
     Lines are matched on (building, ItemKey). Roles are collapsed: a reference
     Supply+Install pair and a predicted combined line are the same item.
+    A spec-less prediction ('PVC conduit') is compared with the reference family
+    total when the reference only has spec'd lines ('conduit|20mm', '|25mm').
       physical qty = Σ qty of supply + combined lines (install rows repeat the qty)
       value        = Σ value of all roles
 
@@ -136,6 +138,28 @@ def _aggregate(rows: Iterable[Tuple[str, str, str, float, float]]) -> _Agg:
     return agg
 
 
+def _collapse_to_family(ref_agg: _Agg, pred_agg: _Agg, labels: Dict) -> None:
+    """
+    A prediction that names a family without a spec ('PVC conduit', 'terminations')
+    claims the family TOTAL. When the reference only has spec'd lines for that
+    family in that building, merge them into one family-level item so the two are
+    compared like for like. Spec'd predictions are never collapsed.
+    """
+    for (bld, key) in list(pred_agg):
+        if "|" in key or (bld, key) in ref_agg:
+            continue
+        members = [k for k in ref_agg if k[0] == bld and k[1].split("|", 1)[0] == key]
+        if not members:
+            continue
+        merged = {"qty": 0.0, "value": 0.0}
+        for k in members:
+            merged["qty"] += ref_agg[k]["qty"]
+            merged["value"] += ref_agg[k]["value"]
+            del ref_agg[k]
+        ref_agg[(bld, key)] = merged
+        labels[(bld, key)] = f"{key} (all sizes)"
+
+
 def _acc(pred: float, actual: float) -> float:
     if actual <= 0:
         return 1.0 if pred <= 0 else 0.0
@@ -196,6 +220,7 @@ def score(
     ref_agg = _aggregate((l.building, l.key, l.role, l.qty, l.value) for l in ref_lines)
     pred_agg = _aggregate((p.building, _key(p.family, p.spec), p.role, p.qty, p.total)
                           for p in pred if p.building in wanted)
+    _collapse_to_family(ref_agg, pred_agg, labels)
 
     def up_for(bld: str) -> Set[DrawingType]:
         return set(uploaded.get(bld, set())) if isinstance(uploaded, Mapping) else set(uploaded)

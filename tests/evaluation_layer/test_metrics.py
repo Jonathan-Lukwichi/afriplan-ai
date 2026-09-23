@@ -65,6 +65,16 @@ def test_supply_install_split_matches_a_combined_line(ref):
     assert card.reproduction_score == pytest.approx(1.0)
 
 
+def test_spec_less_prediction_matches_the_family_total():
+    ref = ReferenceBoq(project="t", buildings=[RefBuilding(name="H", sheet="H", in_summary=True, lines=[
+        _l("conduit", 100, 80, "20mm"), _l("conduit", 40, 100, "25mm")])])       # 12 000 total
+    pred = [PredLine(building="H", family="conduit", spec="", qty=140, rate=85.71, total=12_000,
+                     description="PVC conduit (inferred)")]
+    card = score(pred, ref, uploaded=ALL)
+    assert card.coverage == pytest.approx(1.0)
+    assert card.qty_accuracy == pytest.approx(1.0)
+
+
 def test_extra_prediction_lowers_precision_only(ref):
     pred = pred_lines_from_reference(ref) + [
         PredLine(building="H", family="light_flood", qty=5, rate=2000, total=10_000, description="x")]
