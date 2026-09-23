@@ -370,3 +370,23 @@ def build_dataset(manifest, out_dir: Path) -> List[SheetSample]   # writes image
 ### Task 16: Close-out
 
 - [ ] Full suite green; update memory (`project` memory: evaluation framework + baselines); final summary to user with the baseline numbers, the reference-BOQ audit findings, and the drawing-requirements matrix.
+
+---
+
+## Execution notes (2026-09-23) — deviations from the plan as written
+
+- **Test dirs** are `tests/evaluation_layer/`, `tests/audit_layer/`, `tests/ml_layer/`: a
+  `tests/evaluation/` package shadowed the top-level `evaluation` package.
+- **Wedela raw set** is 28 files (not 29); `WD-PB-01-LIGHTING 100225` is flagged `superseded`.
+  The site plan DWG got its own role `site_plan` (DrawingType.SITE).
+- **`audit/lines.py` dropped** — the audit reuses `evaluation.reference.RefLine` via
+  `audit.boq_rules.building_from_boq` (one line model, not two).
+- **Scorer additions before freezing:** Supply/Install roles collapsed per item;
+  spec-less predictions compared with the reference family total; `coverage_items` field.
+- **Taxonomy fixes found by the baselines** (re-scored in the same commits): DB lines naming
+  an MCCB incomer, a trench mentioning the kiosk, an energy meter "installed in kiosk".
+- **`scripts/run_baseline.py --from-runs`** added so saved runs re-score at R 0 (the paid
+  PDF run is re-scored, not re-bought).
+- **Hook** implemented as `scripts/hooks/check_architecture.py` (jq is not installed);
+  verified firing live.
+- **Baselines:** DXF RS 2.4 % / PDF 16.9 % project-level — see `reports/baselines/README.md`.
