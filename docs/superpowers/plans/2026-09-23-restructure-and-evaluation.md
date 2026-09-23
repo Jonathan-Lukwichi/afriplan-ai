@@ -49,7 +49,7 @@ audit/{__init__,lines,boq_rules,sufficiency,completer}.py
 ml/symbol_dataset.py               DWG → labelled symbol-image dataset generator
 scripts/{verify_data,build_reference,evaluate,audit_boq,run_baseline,build_symbol_dataset}.py
 reports/baselines/                 committed baseline score reports
-tests/evaluation/, tests/audit/, tests/ml/
+tests/evaluation_layer/, tests/audit_layer/, tests/ml_layer/
 ```
 
 ---
@@ -69,7 +69,7 @@ tests/evaluation/, tests/audit/, tests/ml/
 **Files:**
 - Create: `data/projects/wedela/manifest.json`, `data/README.md`, `scripts/verify_data.py`, `evaluation/__init__.py`, `evaluation/dataset.py`
 - Modify: `.gitignore` (add `data/**/raw/`)
-- Test: `tests/evaluation/__init__.py`, `tests/evaluation/test_dataset.py`
+- Test: `tests/evaluation_layer/__init__.py`, `tests/evaluation_layer/test_dataset.py`
 
 **Interfaces — Produces:**
 ```python
@@ -90,9 +90,9 @@ def sha256_file(path: Path) -> str
 ```
 
 - [ ] **Step 1: Write failing tests** — `test_dataset.py`: (a) `verify_manifest` returns `[]` for a tmp dir whose file matches its sha; (b) returns a "checksum mismatch" problem when content changes; (c) returns "missing" when file absent; (d) `load_manifest("wedela")` parses and lists 7 buildings.
-- [ ] **Step 2:** Run `python -m pytest tests/evaluation/test_dataset.py -q` → FAIL (module missing).
+- [ ] **Step 2:** Run `python -m pytest tests/evaluation_layer/test_dataset.py -q` → FAIL (module missing).
 - [ ] **Step 3:** Copy `Downloads/wetransfer_4-autocad-drawings-client_2026-08-25_1003/*` into `data/projects/wedela/raw/` (exclude `.bak/.dwl/.dwl2/plot.log`). Implement `evaluation/dataset.py`. Generate `manifest.json` with a one-off `scripts/verify_data.py --write wedela` mode that hashes files and assigns role/building from the file-name convention `WD-<CODE>-01-<ROLE>`: AB=Ablution Retail Block, ECH=Existing Community Hall, LGH=Large Guard House, SGH=Small Guard House, PB=Swimming Pool, KIOSK=Main Kiosk, OL=Swimming Pool (outdoor lighting SLD — site/pool lighting is billed on the Swimming Pool sheet).
-- [ ] **Step 4:** Tests pass; `python scripts/verify_data.py wedela` prints `OK — 29 files verified`.
+- [ ] **Step 4:** Tests pass; `python scripts/verify_data.py wedela` prints `OK — 28 files verified`.
 - [ ] **Step 5:** Commit `feat(data): reproducible Wedela reference dataset with checksummed manifest`.
 
 ---
@@ -103,7 +103,7 @@ def sha256_file(path: Path) -> str
 
 - [ ] **Step 1:** `pyproject.toml` with `[project] name="afriplan-electrical" version="6.2.0" requires-python=">=3.11"` and `[tool.pytest.ini_options] testpaths=["tests"] addopts="-q" filterwarnings=["ignore::DeprecationWarning:agent.*"]`.
 - [ ] **Step 2:** `requirements.txt` += `opencv-python-headless>=4.8` (already used by `agent/dxf_pipeline/passes/template_count.py`). `requirements-dev.txt` = `-r requirements.txt` + `pytest>=8`.
-- [ ] **Step 3:** CI: DXF job installs `-r requirements.txt` (it currently misses numpy/opencv needed by DXF tests); add an `evaluation-audit` job running `pytest tests/evaluation tests/audit tests/ml tests/shared tests/eval tests/sourcing_layer`.
+- [ ] **Step 3:** CI: DXF job installs `-r requirements.txt` (it currently misses numpy/opencv needed by DXF tests); add an `evaluation-audit` job running `pytest tests/evaluation_layer tests/audit_layer tests/ml_layer tests/shared tests/eval tests/sourcing_layer`.
 - [ ] **Step 4:** `python -m pytest` → 259+ passed (the new dataset tests included).
 - [ ] **Step 5:** Commit `build: pyproject, dev requirements, CI installs full deps + evaluation job`.
 
@@ -111,7 +111,7 @@ def sha256_file(path: Path) -> str
 
 ### Task 3: Item taxonomy (ItemKey)
 
-**Files:** Create `evaluation/taxonomy.py`; Test `tests/evaluation/test_taxonomy.py`.
+**Files:** Create `evaluation/taxonomy.py`; Test `tests/evaluation_layer/test_taxonomy.py`.
 
 **Interfaces — Produces:**
 ```python
@@ -142,7 +142,7 @@ Ordered regex rules, first match wins; `parent` is the header row above a Supply
 
 ### Task 4: Reference BOQ parser (ground truth)
 
-**Files:** Create `evaluation/reference.py`, `scripts/build_reference.py`, `data/projects/wedela/reference_boq.json`; Test `tests/evaluation/test_reference.py`.
+**Files:** Create `evaluation/reference.py`, `scripts/build_reference.py`, `data/projects/wedela/reference_boq.json`; Test `tests/evaluation_layer/test_reference.py`.
 
 **Interfaces — Produces:**
 ```python
@@ -175,7 +175,7 @@ Parsing rules: a sheet is a **building bill** if it contains a header row `('ITE
 
 ### Task 5: The layered BOQ network (drawing → evidence → item)
 
-**Files:** Create `evaluation/network.py`; Test `tests/evaluation/test_network.py`.
+**Files:** Create `evaluation/network.py`; Test `tests/evaluation_layer/test_network.py`.
 
 **Interfaces — Produces:**
 ```python
@@ -205,7 +205,7 @@ Key edges: `db`,`breaker` ← SLD|SCHEDULE (count); `swa_cable`,`bcew` ← SLD (
 
 ### Task 6: Fitted ratios ("weights") with leave-one-building-out validation
 
-**Files:** Create `evaluation/ratios.py`, `data/projects/wedela/ratio_model.json`; Test `tests/evaluation/test_ratios.py`.
+**Files:** Create `evaluation/ratios.py`, `data/projects/wedela/ratio_model.json`; Test `tests/evaluation_layer/test_ratios.py`.
 
 **Interfaces — Produces:**
 ```python
@@ -233,7 +233,7 @@ def fit_ratios(ref: ReferenceBoq, specs=DEFAULT_RATIO_SPECS) -> RatioModel
 
 ### Task 7: The frozen scorer
 
-**Files:** Create `evaluation/metrics.py`; Test `tests/evaluation/test_metrics.py`.
+**Files:** Create `evaluation/metrics.py`; Test `tests/evaluation_layer/test_metrics.py`.
 
 **Interfaces — Produces:**
 ```python
@@ -265,7 +265,7 @@ Matching key `(building, family|spec, role)`; quantities of duplicates summed on
 
 ### Task 8: Report + evaluate CLI
 
-**Files:** Create `evaluation/report.py`, `scripts/evaluate.py`; Test `tests/evaluation/test_report.py`.
+**Files:** Create `evaluation/report.py`, `scripts/evaluate.py`; Test `tests/evaluation_layer/test_report.py`.
 
 **Interfaces:** `render_markdown(card: Scorecard, *, top_n: int = 25) -> str`; CLI `python scripts/evaluate.py --project wedela (--run runs/<p>/<id>.json | --boq file.json | --self-test) [--building NAME] [--uploaded sld,lighting_layout,plug_layout] [--out reports/x.md]`. `--self-test` scores the reference against itself and must print `RS 100.0%`.
 
@@ -275,7 +275,7 @@ Matching key `(building, family|spec, role)`; quantities of duplicates summed on
 
 ### Task 9: BOQ audit rules
 
-**Files:** Create `audit/__init__.py`, `audit/lines.py`, `audit/boq_rules.py`, `scripts/audit_boq.py`; Test `tests/audit/__init__.py`, `tests/audit/test_boq_rules.py`.
+**Files:** Create `audit/__init__.py`, `audit/lines.py`, `audit/boq_rules.py`, `scripts/audit_boq.py`; Test `tests/audit_layer/__init__.py`, `tests/audit_layer/test_boq_rules.py`.
 
 **Interfaces — Produces:**
 ```python
@@ -293,7 +293,7 @@ Rules: `ARITH` qty×rate vs total (>1 % and >R1); `NO_RATE` qty>0, rate None/0; 
 
 ### Task 10: Drawing-sufficiency audit (complete vs partial BOQ)
 
-**Files:** Create `audit/sufficiency.py`; Test `tests/audit/test_sufficiency.py`.
+**Files:** Create `audit/sufficiency.py`; Test `tests/audit_layer/test_sufficiency.py`.
 
 **Interfaces:**
 ```python
@@ -311,7 +311,7 @@ def uploaded_from_manifest(manifest: ProjectManifest, building: str) -> Set[Draw
 
 ### Task 11: BOQ completer (fill what pipelines never calculate)
 
-**Files:** Create `audit/completer.py`; Test `tests/audit/test_completer.py`.
+**Files:** Create `audit/completer.py`; Test `tests/audit_layer/test_completer.py`.
 
 **Interfaces:**
 ```python
@@ -340,7 +340,7 @@ Returns a **clone**; reads primary counts via `pred_lines_from_boq`; for every r
 
 ### Task 14: CNN symbol-dataset generator (future-proofing the model)
 
-**Files:** Create `ml/__init__.py`, `ml/symbol_dataset.py`, `scripts/build_symbol_dataset.py`, `ml/DATASET_CARD.md`; Test `tests/ml/__init__.py`, `tests/ml/test_symbol_dataset.py`.
+**Files:** Create `ml/__init__.py`, `ml/symbol_dataset.py`, `scripts/build_symbol_dataset.py`, `ml/DATASET_CARD.md`; Test `tests/ml_layer/__init__.py`, `tests/ml_layer/test_symbol_dataset.py`.
 
 **Interfaces:**
 ```python

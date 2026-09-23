@@ -1,0 +1,220 @@
+{
+  "project": "wedela",
+  "description": "Wedela Recreation Centre — client handover 2026-08-25: priced BOQ Rev01 (14 Nov 2025), SLD + lighting/plug PDFs (26 May 2025), 18 electrical DWGs, 7 architectural DWGs.",
+  "buildings": [
+    "Existing Community Hall",
+    "Storage",
+    "Ablution Retail Block",
+    "Swimming Pool",
+    "Small Guard House",
+    "Large Guard House",
+    "Main Kiosk"
+  ],
+  "building_codes": {
+    "AB": "Ablution Retail Block",
+    "ECH": "Existing Community Hall",
+    "LGH": "Large Guard House",
+    "SGH": "Small Guard House",
+    "PB": "Swimming Pool",
+    "OL": "Swimming Pool",
+    "KIOSK": "Main Kiosk"
+  },
+  "files": [
+    {
+      "path": "raw/4.Autocad drawings Client/Ablution Retail Block-Sheet - 101 - Ground Floor Plan.dwg",
+      "sha256": "c79acbd37e854c98d4a28c82c574fc2748d25c418f149ec5da78c3bc376ba38c",
+      "role": "architectural",
+      "building": "Ablution Retail Block",
+      "superseded": false
+    },
+    {
+      "path": "raw/4.Autocad drawings Client/Gym Entrance -Sheet - 106 - GYM Entrance Plan-Sheet - 106 - Outdoor GYM Entrance.dwg",
+      "sha256": "c4ac839e7a6a29ff87499be70334798cbd895eb489cf17a00705303c5458e008",
+      "role": "architectural",
+      "building": "",
+      "superseded": false
+    },
+    {
+      "path": "raw/4.Autocad drawings Client/Pool Layout 20241009.dwg",
+      "sha256": "572a070433aa691b52ae4920a384f5ae355107f32e0852138bcd2576c36b6f3c",
+      "role": "architectural",
+      "building": "Swimming Pool",
+      "superseded": false
+    },
+    {
+      "path": "raw/4.Autocad drawings Client/Recreation centre - Sheet - 101 - Community Hall_Plan.dwg",
+      "sha256": "9182fcc3bab19a253d9a2a225cf7cd177c546802235bba0c6595b39dd93d6d23",
+      "role": "architectural",
+      "building": "Existing Community Hall",
+      "superseded": false
+    },
+    {
+      "path": "raw/4.Autocad drawings Client/SECURITY GUARD HOUSE & Braai Area-Sheet - 105 - Small Gaurd House.dwg",
+      "sha256": "83fac441b83b053cd4817ed20ba7ecbdc1363fa76e818cc64a283bb1bc396b41",
+      "role": "architectural",
+      "building": "Small Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/4.Autocad drawings Client/SECURITY GUARD HOUSE & Braai Area-Sheet - 106 - Large Guard House.dwg",
+      "sha256": "3b65a2ee1e9d04bb093af13ff95f9f399afc0d772d8e6c57dc72028627a234ee",
+      "role": "architectural",
+      "building": "Large Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/4.Autocad drawings Client/Wedela Recreation centre - Sheet - 001 - Site Plan.dwg",
+      "sha256": "74d3ae34f37951af6db1c847f7dfcb0c6d19f85ad867e86b4ba85b1c0bff4a9b",
+      "role": "architectural",
+      "building": "",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela BOQ Rev01 141125.xlsx",
+      "sha256": "f48753f163d26645f3b3eea3c76c3585d8fda220af1ec2aa7a1fad82e2f2af81",
+      "role": "reference_boq",
+      "building": "",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-AB-01-LIGHTING 250325.dwg",
+      "sha256": "c22d16da9965baa307f9b45c9359db5ed08129db814ceac5e810865cce7888b9",
+      "role": "lighting_layout",
+      "building": "Ablution Retail Block",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-AB-01-PLUG 250325.dwg",
+      "sha256": "806340538a86cac516a02236bad39d9314fbe3c55e7e875fd2a99e25f48ba05d",
+      "role": "plug_layout",
+      "building": "Ablution Retail Block",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-AB-01-SLD 050425.dwg",
+      "sha256": "f6e47eeb7baf40300c535a1b80d97705f014813c3a20a1f21419dadb07492c39",
+      "role": "sld",
+      "building": "Ablution Retail Block",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-ECH-01-LIGHTING 100425.dwg",
+      "sha256": "b5bdf7f549aa51839853443aa572e2f49d7192f939a29d762bd14d6b309c173e",
+      "role": "lighting_layout",
+      "building": "Existing Community Hall",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-ECH-01-PLUG  100425.dwg",
+      "sha256": "40b957b34f43269b81b8a6edad84f98138b8598ee24d871180c8055da8d63f82",
+      "role": "plug_layout",
+      "building": "Existing Community Hall",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-ECH-01-SLD 100425.dwg",
+      "sha256": "bb8af775bc7ef93ce1aacf689822a4b6099f95d1bbe6e2b962ed36efaf91f37e",
+      "role": "sld",
+      "building": "Existing Community Hall",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-KIOSK-01-SLD 100425.dwg",
+      "sha256": "12bf48b3412ca96ad3034aa4dd9a7bfb570ac95d78a5342ecc623f9b2500a8bf",
+      "role": "sld",
+      "building": "Main Kiosk",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-LGH-01-LIGHTING 280225.dwg",
+      "sha256": "8aced2bcc3bd617d673730e8a329e242b931b2ae52b9fa252ac6010cd983780c",
+      "role": "lighting_layout",
+      "building": "Large Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-LGH-01-PLUG 280225.dwg",
+      "sha256": "3687cf0452fa8bdf4b1c63aadcf8d6ebe0ee9a48647f98aa528d6e028c79730e",
+      "role": "plug_layout",
+      "building": "Large Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-LGH-01-SLD 050425.dwg",
+      "sha256": "6ba8aaae86e79412f262f1f4cd78cb6f4ba8222526c7ce257c41f83daee84e60",
+      "role": "sld",
+      "building": "Large Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-OL-001 SLD 100425.dwg",
+      "sha256": "44d7459395e927101165ddc65c3c9867e9a08cefaeb58823c10cff0b1147a9db",
+      "role": "sld",
+      "building": "Swimming Pool",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-PB-01-LIGHTING  100225.dwg",
+      "sha256": "bd1d4f671e3089b21614ee149e9b484f84b3798e81b6af7fa6cad06c83436124",
+      "role": "lighting_layout",
+      "building": "Swimming Pool",
+      "superseded": true
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-PB-01-LIGHTING  100425.dwg",
+      "sha256": "c7bbf6d39e5202464e07cddb185cfb19bb40b19d23ba2ca8e490d2b3a537e35e",
+      "role": "lighting_layout",
+      "building": "Swimming Pool",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-PB-01-PLUG  100425.dwg",
+      "sha256": "eada12d92528ff2ac537111e02c324358e6fcef333177541a478744c279a3036",
+      "role": "plug_layout",
+      "building": "Swimming Pool",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-PB-01-SLD 100425.dwg",
+      "sha256": "7e4ea70eed067f73fe214e98be12abb3d0f03d58c440a59ad5fb861e19faa0d2",
+      "role": "sld",
+      "building": "Swimming Pool",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-SGH-01- SLD 050425.dwg",
+      "sha256": "8625a812ca91fb6001b56af52250f9a3cdf951aec2fcac8990f72db9827b9989",
+      "role": "sld",
+      "building": "Small Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-SGH-01-LIGHTING 280225.dwg",
+      "sha256": "651f885104002c9f5ac40bb1553d5f1ea0cfba518ae12135babee3581b2f10ea",
+      "role": "lighting_layout",
+      "building": "Small Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Electrical/WD-SGH-01-PLUG 280225.dwg",
+      "sha256": "446246e7b543a44ee0e64f7775c05831da5e10880f9968aaf6b9916fcd7ff821",
+      "role": "plug_layout",
+      "building": "Small Guard House",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela Lighting&Plugs 260525.pdf",
+      "sha256": "dd045ac3da346024bc380ec31a5c1c9c52df0963a0f8e88edf9276d6e33af9c7",
+      "role": "pdf_layouts",
+      "building": "",
+      "superseded": false
+    },
+    {
+      "path": "raw/Wedela SLD 260525.pdf",
+      "sha256": "0866cb11bcafad3195ee68f2f9c3e99270a345383864664b48535b613dde581f",
+      "role": "pdf_sld",
+      "building": "",
+      "superseded": false
+    }
+  ]
+}

@@ -69,3 +69,7 @@ Electrical\ plan_extracted/
 Wedela_BOQ_*.xlsx
 extraction_results.json
 extract_electrical_dwg.py
+
+# Reference datasets: client files stay local (manifest.json is committed)
+data/**/raw/
+data/ml/
