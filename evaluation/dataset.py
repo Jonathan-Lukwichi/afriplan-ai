@@ -27,7 +27,7 @@ DATA_ROOT = Path(__file__).resolve().parent.parent / "data" / "projects"
 class DatasetFile(BaseModel):
     path: str                 # relative to the project dir, e.g. "raw/Wedela SLD 260525.pdf"
     sha256: str
-    role: str                 # reference_boq | sld | lighting_layout | plug_layout | architectural | pdf_sld | pdf_layouts
+    role: str                 # reference_boq | sld | lighting_layout | plug_layout | site_plan | architectural | pdf_sld | pdf_layouts
     building: str = ""        # canonical building name ("" = whole project)
     superseded: bool = False  # an older revision of another file in the set — never use
 
@@ -106,7 +106,7 @@ def mark_superseded(files: List[DatasetFile]) -> List[DatasetFile]:
 
 _ROLE_TO_DRAWINGS = {
     "sld": ["sld"], "lighting_layout": ["lighting_layout"], "plug_layout": ["plug_layout"],
-    "architectural": ["architectural"], "pdf_sld": ["sld"],
+    "architectural": ["architectural"], "site_plan": ["site_plan"], "pdf_sld": ["sld"],
     "pdf_layouts": ["lighting_layout", "plug_layout"],
 }
 

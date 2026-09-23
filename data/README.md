@@ -22,7 +22,7 @@ python scripts/verify_data.py wedela        # → OK — 28 files verified
 ```
 
 ## File roles
-`reference_boq` · `sld` · `lighting_layout` · `plug_layout` · `architectural` ·
+`reference_boq` · `sld` · `lighting_layout` · `plug_layout` · `site_plan` · `architectural` ·
 `pdf_sld` · `pdf_layouts`. A file marked `"superseded": true` is an older revision of
 another file in the set and is never used (e.g. `WD-PB-01-LIGHTING 100225` is replaced
 by `... 100425`).

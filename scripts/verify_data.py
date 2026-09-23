@@ -48,7 +48,7 @@ WEDELA_BUILDINGS = [
 _ARCH_HINTS = [
     ("ablution", "Ablution Retail Block"), ("community hall", "Existing Community Hall"),
     ("pool", "Swimming Pool"), ("small gaurd", "Small Guard House"),
-    ("large guard", "Large Guard House"), ("gym", ""), ("site plan", ""),
+    ("large guard", "Large Guard House"), ("gym", "Gym Entrance (not billed)"),
 ]
 
 
@@ -65,6 +65,8 @@ def _classify(rel: str) -> tuple[str, str]:
         role = "sld" if "SLD" in name.upper() else (
             "lighting_layout" if "LIGHTING" in name.upper() else "plug_layout")
         return role, WEDELA_CODES.get(code, "")
+    if "site plan" in low:
+        return "site_plan", ""
     for hint, bldg in _ARCH_HINTS:
         if hint in low:
             return "architectural", bldg

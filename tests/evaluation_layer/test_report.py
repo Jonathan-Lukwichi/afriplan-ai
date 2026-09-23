@@ -20,6 +20,6 @@ def test_report_has_headline_and_gap_sections():
 
 def test_uploaded_from_manifest_per_source():
     m = load_manifest("wedela")
-    assert uploaded_from_manifest(m, "Small Guard House", source="dwg") == {D.SLD, D.LIGHTING, D.PLUGS, D.ARCHITECTURAL}
-    assert uploaded_from_manifest(m, "Storage", source="dwg") == set()        # no CAD for Storage
+    assert uploaded_from_manifest(m, "Small Guard House", source="dwg") == {D.SLD, D.LIGHTING, D.PLUGS, D.ARCHITECTURAL, D.SITE}
+    assert uploaded_from_manifest(m, "Storage", source="dwg") == {D.SITE}     # only the site plan
     assert uploaded_from_manifest(m, "Storage", source="pdf") == {D.SLD, D.LIGHTING, D.PLUGS}

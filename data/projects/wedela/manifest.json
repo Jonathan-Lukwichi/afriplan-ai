@@ -31,7 +31,7 @@
       "path": "raw/4.Autocad drawings Client/Gym Entrance -Sheet - 106 - GYM Entrance Plan-Sheet - 106 - Outdoor GYM Entrance.dwg",
       "sha256": "c4ac839e7a6a29ff87499be70334798cbd895eb489cf17a00705303c5458e008",
       "role": "architectural",
-      "building": "",
+      "building": "Gym Entrance (not billed)",
       "superseded": false
     },
     {
@@ -65,7 +65,7 @@
     {
       "path": "raw/4.Autocad drawings Client/Wedela Recreation centre - Sheet - 001 - Site Plan.dwg",
       "sha256": "74d3ae34f37951af6db1c847f7dfcb0c6d19f85ad867e86b4ba85b1c0bff4a9b",
-      "role": "architectural",
+      "role": "site_plan",
       "building": "",
       "superseded": false
     },
