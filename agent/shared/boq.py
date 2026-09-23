@@ -81,9 +81,25 @@ _SECTION_SHORT_LABELS: Dict[BQSection, str] = {
 
 class ItemConfidence(str, Enum):
     EXTRACTED = "extracted"     # read directly from drawing → green
-    INFERRED = "inferred"       # derived from related data → yellow
-    ESTIMATED = "estimated"     # default/guess → red, needs review
+    INFERRED = "inferred"       # derived deterministically from extracted data → teal
+    ASSUMED = "assumed"         # qty estimated with a documented assumption → amber
+    PROVISIONAL = "provisional" # scope hedge / allowance, not measured → grey
+    ESTIMATED = "estimated"     # legacy: default/guess → red, needs review
     MANUAL = "manual"           # contractor-entered → blue
+
+
+# ─── Supply/install split (SA bill convention) ───────────────────────────────
+
+class LineKind(str, Enum):
+    """
+    SA bills split cables into separate priced 'Supply' and 'Install' lines;
+    fittings are a single combined line. This tags which a row represents so
+    exporters and the comparison layer can pair them.
+    """
+
+    COMBINED = "combined"       # single supply+install rate (fittings, DBs)
+    SUPPLY = "supply"           # material-supply line of a split pair
+    INSTALL = "install"         # install-labour line of a split pair
 
 
 # ─── Single BQ line item ──────────────────────────────────────────────
@@ -114,10 +130,32 @@ class BQLineItem(BaseModel):
     locations: List[str] = Field(default_factory=list)
     circuit_details: str = ""
 
+    # v2 estimator fields (additive; default = old behaviour)
+    line_kind: LineKind = LineKind.COMBINED
+    assumption: str = ""            # populated when source is ASSUMED/PROVISIONAL
+
     @property
     def item_number_str(self) -> str:
         """Hierarchical item number: '4.15' = section 4, item 15."""
         return f"{self.section.section_number}.{self.item_no}"
+
+
+# ─── Gap report (the "never silent" side of the gap policy) ───────────
+
+class GapItem(BaseModel):
+    """
+    One thing the estimator could not read cleanly and had to assume, or
+    that a human should verify. Every ASSUMED/PROVISIONAL quantity emits one
+    of these so no estimate is ever silent.
+    """
+
+    section: BQSection = BQSection.FINAL_CABLES
+    building_block: str = ""
+    description: str = ""            # what is uncertain
+    assumption: str = ""             # what value we used and why
+    suggested_action: str = ""       # what the human should check
+    severity: Literal["low", "medium", "high"] = "medium"
+    drawing_ref: str = ""
 
 
 # ─── Bill of Quantities (full deliverable) ────────────────────────────
@@ -155,6 +193,11 @@ class BillOfQuantities(BaseModel):
     items_inferred: int = 0
     items_estimated: int = 0
     items_rate_only: int = 0
+
+    # v2 estimator: gap report + provenance counters (additive)
+    gaps: List["GapItem"] = Field(default_factory=list)
+    items_assumed: int = 0
+    items_provisional: int = 0
 
     @computed_field
     @property

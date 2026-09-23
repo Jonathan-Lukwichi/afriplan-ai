@@ -58,6 +58,53 @@ def is_electrical_layer(layer_name: str) -> bool:
     return False
 
 
+# ─── Architectural / non-electrical layers (to isolate the electrical) ──
+
+ARCHITECTURAL_LAYER_PATTERNS: List[re.Pattern[str]] = [
+    re.compile(r"wall|column|slab|roof|stair|railing|beam|structural", re.I),
+    re.compile(r"furniture|interior|basin|cabinet|door|window|shell", re.I),
+    re.compile(r"dimension|hatch|grid|axis|border|title|annotation", re.I),
+    re.compile(r"caddie|morph|plumb|sanitary|landscap|parking|glaz|handrail", re.I),
+    # AIA / ISO 13567 CAD layer discipline prefixes. Electrical (E-), Fire (F-)
+    # and Telecom (T-) are NOT here — everything else is another trade.
+    re.compile(r"^[ACILMPQSVWX][-_]", re.I),          # A-DOOR, P-SANR-FIXT, C-PRKG, S-COLS…
+    re.compile(r"^(arch|civ|struct|plumb|mech|land|equip|survey)", re.I),
+]
+
+
+# ─── Wiring layers (where cable length is measured) ─────────────────────
+
+WIRING_LAYER_PATTERNS: List[re.Pattern[str]] = [
+    re.compile(r"wire|cable|circuit|conduit|reticulation|wiring", re.I),
+]
+
+
+def is_wiring_layer(layer_name: str) -> bool:
+    """
+    True for layers that carry actual CABLE/WIRE geometry (so we measure their
+    length). Distinct from is_electrical_layer: an electrical *symbol* layer
+    (e.g. 'MEP Electrical') holds fixture line-work we must NOT count as cable.
+    """
+    if not layer_name:
+        return False
+    return any(p.search(layer_name) for p in WIRING_LAYER_PATTERNS)
+
+
+def is_architectural_layer(layer_name: str) -> bool:
+    """
+    True for layers that carry architectural / structural / furniture geometry
+    we must NOT treat as electrical (e.g. wall polylines counted as cable).
+    Electrical-layer matches win — a layer that looks electrical is never
+    treated as architectural.
+    """
+    if not layer_name:
+        return False
+    if is_electrical_layer(layer_name):
+        return False
+    name = layer_name.strip()
+    return any(p.search(name) for p in ARCHITECTURAL_LAYER_PATTERNS)
+
+
 def normalise_layer(layer_name: str) -> str:
     """
     Reduce a layer name to a stable, comparable form.

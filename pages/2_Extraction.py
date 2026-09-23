@@ -1,288 +1,293 @@
 """
-AfriPlan v6.1 — Step 2: Extraction.
+AfriPlan v6.1 — Step 2: Extraction (single pipeline).
 
-User clicks "Run pipelines" → both pipelines run in a ThreadPoolExecutor.
-Results land in two columns. Comparison panel appears below when both
-pipelines pass. "Continue to BOQ Generation" CTA is enabled once at
-least one pipeline produced a BoQ.
+Runs ONLY the source chosen on Step 1 — never both, never in parallel.
+
+    PDF  → run_pdf_estimator over the drawing set (5-pass estimator)
+    DXF  → run_dxf_pipeline over the single DXF (deterministic)
+
+The result BOQ is stashed in session for Step 3. For the PDF path we surface
+the per-file classification and let the user re-tag any low-confidence file
+before re-running (the manual-tag fallback).
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import streamlit as st
 
-from agent.dxf_pipeline import run_dxf_pipeline
-from agent.pdf_pipeline import run_pdf_pipeline
 from agent.shared import ContractorProfile, ProjectMetadata
 from ui.components import footer, page_header, rule
-from ui.pipeline_column import render_pipeline_column
 from ui.styles import inject_styles
 
 logging.basicConfig(level=logging.INFO)
 inject_styles()
 
 
-# ─── Guard: must come from Upload ────────────────────────────────────
+SHEET_TYPE_OPTIONS = [
+    "auto", "register", "sld", "lighting_layout", "plugs_layout", "schedule", "notes",
+]
 
-pdf_bytes = st.session_state.get("pdf_bytes")
-dxf_bytes = st.session_state.get("dxf_bytes")
-project_meta: Optional[ProjectMetadata] = st.session_state.get("project_meta")
-contractor: Optional[ContractorProfile] = st.session_state.get("contractor_profile")
-baseline_choice: str = st.session_state.get("baseline_choice", "(none)")
+
+def _metric(label: str, value: str) -> str:
+    return (
+        '<div class="afp-metric">'
+        f'<span class="afp-metric-label">{label}</span>'
+        f'<span class="afp-metric-value">{value}</span>'
+        "</div>"
+    )
+
+
+def _render_legend(legend, boq) -> None:
+    """Show the drawing's own legend as its symbol dictionary, marking each
+    declared symbol as counted (in the BOQ) or still a gap to verify."""
+    if not legend or not getattr(legend, "entries", None):
+        return
+    from agent.shared.legend import billed_canonical_items
+    billed = billed_canonical_items(l.description for l in (boq.line_items if boq else []))
+    counted = sum(1 for e in legend.entries if e.canonical_item in billed)
+    with st.expander(
+        f"📖 Legend — {len(legend.entries)} symbol type(s) declared · {counted} counted",
+        expanded=False,
+    ):
+        st.caption(
+            "The drawing's own legend, read as its symbol dictionary. Each declared "
+            "symbol is either counted into the BOQ or flagged as a gap to verify."
+        )
+        for e in sorted(legend.entries, key=lambda x: x.section.section_number):
+            mark = "✅ counted" if e.canonical_item in billed else "⚠️ verify count"
+            mh = f" · @{e.mounting_mm}mm" if getattr(e, "mounting_mm", None) else ""
+            st.markdown(
+                f"- **{e.canonical_item}** _[{e.section.short_label}]_{mh} — {mark}"
+            )
+
+
+source: Optional[str] = st.session_state.get("source")
+project: ProjectMetadata = st.session_state.get("project_meta") or ProjectMetadata()
+contractor: ContractorProfile = st.session_state.get("contractor_profile") or ContractorProfile()
 
 
 page_header(
     step="STEP 2 OF 3",
-    title="Extraction & evaluation",
-    subtitle=(
-        "Both pipelines run in parallel. Watch the live confidence and coverage "
-        "scores. Each pipeline produces its own BOQ — choose between them on the "
-        "next step."
-    ),
+    title="Extraction",
+    subtitle="Run the pipeline for your chosen source. The result feeds the BOQ on the next step.",
 )
 
 
-if pdf_bytes is None and dxf_bytes is None:
-    st.warning(
-        "No drawings uploaded yet. Go back to **Step 1 — Upload** to provide a PDF and / or DXF."
-    )
+# ─── Guard: must arrive from Upload with inputs ──────────────────────
+
+pdf_file_set = st.session_state.get("pdf_file_set")
+dxf_bytes = st.session_state.get("dxf_bytes")
+
+if source == "pdf" and not pdf_file_set:
+    _no_input = True
+elif source == "dxf" and not dxf_bytes:
+    _no_input = True
+elif source not in ("pdf", "dxf"):
+    _no_input = True
+else:
+    _no_input = False
+
+if _no_input:
+    st.warning("No inputs found. Go back to **Step 1** and choose a source.")
     if st.button("← Back to Upload", type="primary"):
         st.switch_page("pages/1_Upload.py")
     footer()
     st.stop()
 
 
-# ─── Job summary (read-only chips) ───────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
+#  PDF PATH
+# ═══════════════════════════════════════════════════════════════════════
 
-chip_html_parts = []
-if pdf_bytes:
-    chip_html_parts.append(
-        f'<span class="afp-chip">PDF · {st.session_state.get("pdf_name") or "input.pdf"}</span>'
-    )
-if dxf_bytes:
-    chip_html_parts.append(
-        f'<span class="afp-chip">DXF · {st.session_state.get("dxf_name") or "input.dxf"}</span>'
-    )
-if project_meta and project_meta.project_name:
-    chip_html_parts.append(f'<span class="afp-chip">Project · {project_meta.project_name}</span>')
-if contractor and contractor.company_name:
-    chip_html_parts.append(f'<span class="afp-chip">Contractor · {contractor.company_name}</span>')
-if baseline_choice and baseline_choice != "(none)":
-    chip_html_parts.append(f'<span class="afp-chip">Baseline · {baseline_choice}</span>')
+if source == "pdf":
+    from agent.pdf_pipeline.passes.run import run_pdf_estimator
 
-if chip_html_parts:
-    st.markdown(
-        '<div style="margin: -8px 0 18px 0;">' + "".join(chip_html_parts) + "</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="afp-eyebrow">DRAWING SET</div>', unsafe_allow_html=True)
+    names = [name for _, name in pdf_file_set]
+    for n in names:
+        st.markdown(f'<span class="afp-chip">📄 {n}</span>', unsafe_allow_html=True)
 
-
-# ─── API key check (for the PDF pipeline) ────────────────────────────
-
-api_key = os.environ.get("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_API_KEY", "")
-if pdf_bytes and not api_key:
-    st.warning(
-        "No `ANTHROPIC_API_KEY` is configured. The DXF pipeline will run "
-        "regardless; the PDF pipeline will be skipped. Add the key in "
-        "Streamlit Cloud secrets, or in `.streamlit/secrets.toml` locally."
-    )
-
-
-# ─── Pipeline runners ────────────────────────────────────────────────
-
-def _baseline_or_none() -> Optional[str]:
-    return None if baseline_choice == "(none)" else baseline_choice
-
-
-def _run_pdf() -> Dict[str, Any]:
-    try:
-        if not api_key:
-            return {"state": "failed", "failure_reasons": ["No ANTHROPIC_API_KEY available"]}
-        run = run_pdf_pipeline(
-            file_bytes=pdf_bytes,
-            file_name=st.session_state.get("pdf_name") or "input.pdf",
-            api_key=api_key,
-            project=project_meta or ProjectMetadata(),
-            contractor=contractor or ContractorProfile(),
-            baseline_project=_baseline_or_none(),
-            persist=True,
-        )
-        return _pdf_run_to_view(run)
-    except Exception as e:                # noqa: BLE001
-        logging.exception("PDF pipeline crashed")
-        return {"state": "failed", "failure_reasons": [f"Pipeline crashed: {e}"]}
-
-
-def _run_dxf() -> Dict[str, Any]:
-    try:
-        run = run_dxf_pipeline(
-            file_bytes=dxf_bytes,
-            file_name=st.session_state.get("dxf_name") or "input.dxf",
-            project=project_meta or ProjectMetadata(),
-            contractor=contractor or ContractorProfile(),
-            baseline_project=_baseline_or_none(),
-            persist=True,
-        )
-        return _dxf_run_to_view(run)
-    except Exception as e:                # noqa: BLE001
-        logging.exception("DXF pipeline crashed")
-        return {"state": "failed", "failure_reasons": [f"Pipeline crashed: {e}"]}
-
-
-def _pdf_run_to_view(run) -> Dict[str, Any]:
-    boq = run.boq
-    return {
-        "state": "passed" if run.success else "failed",
-        "score": run.evaluation.overall_score,
-        "score_components": {
-            "Confidence":  run.evaluation.mean_confidence,
-            "Consistency": run.evaluation.consistency_score,
-            "Regression":  (1 - run.evaluation.baseline_mape) if run.evaluation.baseline_mape is not None else 1.0,
-        },
-        "total_excl_vat": boq.total_excl_vat_zar if boq else None,
-        "duration_s":     run.duration_s,
-        "cost_zar":       run.cost_zar,
-        "failure_reasons": run.evaluation.failure_reasons,
-        "downloads":       {},   # downloads happen on the BOQ page
-        "eval_json":       run.evaluation.model_dump(),
-        "boq":             boq,
-        "raw_run":         run,
-    }
-
-
-def _dxf_run_to_view(run) -> Dict[str, Any]:
-    boq = run.boq
-    return {
-        "state": "passed" if run.success else "failed",
-        "score": run.evaluation.overall_score,
-        "score_components": {
-            "Coverage":   run.evaluation.coverage_score,
-            "Regression": (1 - run.evaluation.baseline_mape) if run.evaluation.baseline_mape is not None else 1.0,
-        },
-        "total_excl_vat": boq.total_excl_vat_zar if boq else None,
-        "duration_s":     run.duration_s,
-        "cost_zar":       run.cost_zar,
-        "failure_reasons": run.evaluation.failure_reasons,
-        "downloads":       {},
-        "eval_json":       run.evaluation.model_dump(),
-        "boq":             boq,
-        "raw_run":         run,
-    }
-
-
-# ─── Run button ──────────────────────────────────────────────────────
-
-run_cols = st.columns([1, 2, 1])
-with run_cols[1]:
-    if st.button(
-        "▶  Run pipelines",
-        type="primary",
-        use_container_width=True,
-        key="run_pipelines",
-    ):
-        with ThreadPoolExecutor(max_workers=2) as ex:
-            future_pdf = ex.submit(_run_pdf) if pdf_bytes else None
-            future_dxf = ex.submit(_run_dxf) if dxf_bytes else None
-
-            with st.spinner("Running pipelines in parallel — DXF finishes first…"):
-                st.session_state.pdf_view = future_pdf.result() if future_pdf else None
-                st.session_state.dxf_view = future_dxf.result() if future_dxf else None
-
-
-rule()
-
-
-# ─── Results section ─────────────────────────────────────────────────
-
-st.markdown('<div class="afp-eyebrow">RESULTS</div>', unsafe_allow_html=True)
-st.markdown(
-    '<h2 class="afp-h2" style="margin-top:6px;margin-bottom:14px;">'
-    "Pipeline outputs"
-    "</h2>",
-    unsafe_allow_html=True,
-)
-
-result_cols = st.columns(2)
-
-pdf_view = st.session_state.get("pdf_view")
-dxf_view = st.session_state.get("dxf_view")
-
-with result_cols[0]:
-    if pdf_view is None:
-        render_pipeline_column(
-            pipeline_label="PDF Pipeline" if pdf_bytes else "PDF Pipeline (no input)",
-            state="idle",
-        )
-    else:
-        render_pipeline_column(
-            pipeline_label="PDF Pipeline",
-            **{k: v for k, v in pdf_view.items() if k not in ("boq", "raw_run")},
+    # API key check
+    api_key = os.environ.get("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        st.error(
+            "No `ANTHROPIC_API_KEY` configured — the PDF estimator needs it. "
+            "Add it to `.streamlit/secrets.toml` and reload."
         )
 
-with result_cols[1]:
-    if dxf_view is None:
-        render_pipeline_column(
-            pipeline_label="DXF Pipeline" if dxf_bytes else "DXF Pipeline (no input)",
-            state="idle",
+    # Manual file-type tags (the low-confidence fallback)
+    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+    with st.expander("Advanced · tag file types manually", expanded=False):
+        st.caption(
+            "Leave on **auto** to let the estimator classify each file. Override "
+            "any file the estimator got wrong (or flagged as low-confidence)."
         )
-    else:
-        render_pipeline_column(
-            pipeline_label="DXF Pipeline",
-            **{k: v for k, v in dxf_view.items() if k not in ("boq", "raw_run")},
-        )
+        manual_types = {}
+        for n in names:
+            prev = st.session_state.get(f"tag::{n}", "auto")
+            choice = st.selectbox(
+                n, options=SHEET_TYPE_OPTIONS,
+                index=SHEET_TYPE_OPTIONS.index(prev) if prev in SHEET_TYPE_OPTIONS else 0,
+                key=f"tag::{n}",
+            )
+            if choice != "auto":
+                manual_types[n] = choice
 
-
-# ─── Comparison ──────────────────────────────────────────────────────
-
-if (
-    pdf_view and dxf_view
-    and pdf_view.get("state") == "passed"
-    and dxf_view.get("state") == "passed"
-):
     rule()
-    try:
-        from agent.comparison import compare_runs, render_comparison_panel
-        comparison = compare_runs(pdf_run=pdf_view["raw_run"], dxf_run=dxf_view["raw_run"])
-        st.session_state.comparison = comparison
-        render_comparison_panel(comparison)
-    except Exception as e:                  # noqa: BLE001
-        st.info(f"Comparison layer unavailable: {e}")
+
+    run_cols = st.columns([1, 2, 1])
+    with run_cols[1]:
+        run_clicked = st.button(
+            "▶  Run PDF estimator", type="primary", use_container_width=True,
+            disabled=not api_key, key="run_pdf",
+        )
+
+    if run_clicked:
+        with st.spinner("Running the 5-pass estimator over your drawing set…"):
+            try:
+                run = run_pdf_estimator(
+                    pdf_file_set, api_key=api_key, project=project,
+                    contractor=contractor, manual_types=manual_types or None,
+                    persist=True,
+                )
+                st.session_state.pdf_run = run
+                st.session_state.pdf_view = {
+                    "state": "passed" if run.success else "failed",
+                    "boq": run.boq,
+                    "raw_run": run,
+                }
+            except Exception as e:                       # noqa: BLE001
+                logging.exception("PDF estimator crashed")
+                st.session_state.pdf_run = None
+                st.error(f"Estimator failed: {e}")
+
+    run = st.session_state.get("pdf_run")
+    if run is not None:
+        rule()
+        st.markdown('<div class="afp-eyebrow">RESULT</div>', unsafe_allow_html=True)
+
+        m = st.columns(4)
+        m[0].markdown(_metric("Pages", str(run.page_count)), unsafe_allow_html=True)
+        m[1].markdown(_metric("Line items", str(len(run.boq.line_items) if run.boq else 0)), unsafe_allow_html=True)
+        m[2].markdown(_metric("Gaps", str(run.gap_count)), unsafe_allow_html=True)
+        m[3].markdown(_metric("Cost", f"R {run.cost_zar:,.2f}"), unsafe_allow_html=True)
+
+        # Per-file classification
+        st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
+        st.markdown("**How each file was read**")
+        for fc in run.files:
+            flag = " ⚠️ low confidence — consider tagging it above" if fc.needs_manual else ""
+            tag = "manual" if fc.manual else f"{fc.confidence:.0%}"
+            st.markdown(
+                f"- `{fc.file_name}` → **{fc.sheet_type.value}** ({tag}){flag}"
+            )
+
+        # Legend dictionary (LDSE)
+        _render_legend(getattr(run, "legend", None), run.boq)
+
+        # Gap report
+        if run.boq and run.boq.gaps:
+            with st.expander(f"Gap report — {len(run.boq.gaps)} item(s) to verify", expanded=False):
+                for g in run.boq.gaps:
+                    st.markdown(
+                        f"- **[{g.severity}]** {g.description} — _{g.assumption}_  "
+                        f"→ {g.suggested_action}"
+                    )
+
+        if run.success:
+            st.success("Estimator produced a Bill of Quantities. Continue to build the tender BOQ.")
+        else:
+            st.warning(run.error or "No billable items were extracted.")
 
 
-# ─── Continue button ────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
+#  DXF PATH
+# ═══════════════════════════════════════════════════════════════════════
 
-at_least_one_passed = (
-    (pdf_view and pdf_view.get("state") == "passed") or
-    (dxf_view and dxf_view.get("state") == "passed")
-)
+elif source == "dxf":
+    from agent.dxf_pipeline.passes.run import run_dxf_estimator
+
+    dxf_name = st.session_state.get("dxf_name") or "input.dxf"
+    st.markdown('<div class="afp-eyebrow">DXF / DWG FILE</div>', unsafe_allow_html=True)
+    st.markdown(f'<span class="afp-chip">📐 {dxf_name}</span>', unsafe_allow_html=True)
+
+    rule()
+    run_cols = st.columns([1, 2, 1])
+    with run_cols[1]:
+        if st.button("▶  Run DXF estimator", type="primary", use_container_width=True, key="run_dxf"):
+            with st.spinner("Parsing CAD geometry (deterministic, R 0.00)…"):
+                try:
+                    dxf_run = run_dxf_estimator(
+                        file_bytes=dxf_bytes, file_name=dxf_name,
+                        project=project, contractor=contractor, persist=True,
+                    )
+                    st.session_state.dxf_run = dxf_run
+                    st.session_state.dxf_view = {
+                        "state": "passed" if dxf_run.success else "failed",
+                        "boq": dxf_run.boq,
+                        "raw_run": dxf_run,
+                    }
+                except Exception as e:                   # noqa: BLE001
+                    logging.exception("DXF estimator crashed")
+                    st.error(f"DXF estimator failed: {e}")
+
+    dxf_run = st.session_state.get("dxf_run")
+    if dxf_run is not None:
+        rule()
+        st.markdown('<div class="afp-eyebrow">RESULT</div>', unsafe_allow_html=True)
+        boq = dxf_run.boq
+        m = st.columns(4)
+        m[0].markdown(_metric("Symbols", str(dxf_run.symbol_count)), unsafe_allow_html=True)
+        m[1].markdown(_metric("Cable (m)", f"{dxf_run.electrical_cable_length_m:,.0f}"), unsafe_allow_html=True)
+        m[2].markdown(_metric("Total ex VAT", f"R {boq.total_excl_vat_zar:,.0f}" if boq else "—"), unsafe_allow_html=True)
+        m[3].markdown(_metric("Cost", "R 0.00"), unsafe_allow_html=True)
+
+        if dxf_run.converted_from_dwg:
+            st.caption("Converted from DWG automatically (LibreDWG / ODA).")
+        if dxf_run.circuit_ids or dxf_run.db_refs:
+            st.markdown(
+                f"**Recognised:** circuits {', '.join(dxf_run.circuit_ids) or '—'} · "
+                f"DBs {', '.join(dxf_run.db_refs) or '—'}"
+            )
+
+        # Legend dictionary (LDSE) + template-matched counts
+        _render_legend(getattr(dxf_run, "legend", None), boq)
+        tm = [l for l in (boq.line_items if boq else []) if "template-matched" in l.description]
+        if tm:
+            st.markdown(
+                "**Template-matched symbols:** "
+                + " · ".join(f"{l.description.replace(' (template-matched)', '')} ×{int(l.qty)}" for l in tm)
+            )
+
+        if boq and boq.gaps:
+            with st.expander(f"Gap report — {len(boq.gaps)} item(s) to verify", expanded=False):
+                for g in boq.gaps:
+                    st.markdown(f"- **[{g.severity}]** {g.description} — _{g.assumption}_ → {g.suggested_action}")
+
+        if dxf_run.success:
+            st.success("DXF estimator produced a Bill of Quantities (exact counts, measured cable).")
+        else:
+            st.warning(getattr(dxf_run, "error", None) or "No electrical content recognised.")
+
+
+# ─── Navigation ──────────────────────────────────────────────────────
 
 rule()
-nav_cols = st.columns([1, 1, 1])
-with nav_cols[0]:
-    if st.button("←  Back to Upload", use_container_width=True, key="back_to_upload"):
+nav = st.columns([1, 1, 1])
+with nav[0]:
+    if st.button("←  Back to Upload", use_container_width=True, key="back_upload"):
         st.switch_page("pages/1_Upload.py")
 
-with nav_cols[2]:
-    if st.button(
-        "Continue to BOQ  →",
-        type="primary",
-        use_container_width=True,
-        disabled=not at_least_one_passed,
-        key="continue_to_boq",
-    ):
+_view = st.session_state.get("pdf_view") if source == "pdf" else st.session_state.get("dxf_view")
+_can_continue = bool(_view and _view.get("state") == "passed" and _view.get("boq"))
+with nav[2]:
+    if st.button("Continue to BOQ  →", type="primary", use_container_width=True,
+                 disabled=not _can_continue, key="to_boq"):
         st.switch_page("pages/3_BOQ_Generation.py")
-
-if (pdf_view or dxf_view) and not at_least_one_passed:
-    st.info(
-        "Neither pipeline passed its evaluation gate. Review the failure reasons "
-        "above, adjust your inputs, and re-run."
-    )
 
 
 footer()

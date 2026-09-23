@@ -217,6 +217,19 @@ if section_subtotals:
 with st.expander("Show all line items", expanded=False):
     st.dataframe(_section_table(priced_boq), use_container_width=True, hide_index=True)
 
+# Gap report (assumptions the estimator flagged — the "never silent" policy)
+if getattr(priced_boq, "gaps", None):
+    with st.expander(f"⚠️  Gap report — {len(priced_boq.gaps)} assumption(s) to verify", expanded=False):
+        st.caption(
+            "Every estimated quantity carries a visible assumption. Verify these "
+            "against the drawings before submitting the tender."
+        )
+        for g in priced_boq.gaps:
+            st.markdown(
+                f"- **[{g.severity}]** {g.description} — _{g.assumption}_  "
+                f"→ {g.suggested_action}"
+            )
+
 
 # ─── Generate downloads ──────────────────────────────────────────────
 
@@ -296,6 +309,7 @@ with nav[2]:
         for k in (
             "pdf_bytes", "dxf_bytes", "pdf_name", "dxf_name",
             "pdf_view", "dxf_view", "comparison",
+            "source", "pdf_file_set", "pdf_run", "dxf_run", "priced_boq",
             "project_name", "client_name", "consultant", "site_address",
             "project_meta",
         ):

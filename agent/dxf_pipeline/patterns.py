@@ -123,10 +123,18 @@ REGEX_BLOCK_PATTERNS: List[Tuple[re.Pattern[str], FixtureSpec]] = [
         FixtureSpec("Distribution Board", FixtureCategory.DISTRIBUTION, 4500.0)),
     (re.compile(r"air\s*condition", re.I),
         FixtureSpec("Air Conditioning Unit", FixtureCategory.HVAC, 8500.0)),
-    (re.compile(r"\b(led|light|lamp|luminaire)\b", re.I),
+    (re.compile(r"\b(led|light|lamp|luminaire|downlight|bulkhead|batten)\b", re.I),
         FixtureSpec("Light Fitting (generic)", FixtureCategory.LIGHTING, 280.0)),
     (re.compile(r"\bextinguisher\b", re.I),
         FixtureSpec("Fire Extinguisher", FixtureCategory.SAFETY, 950.0)),
+    (re.compile(r"solar\s*photovoltaic|photovoltaic|\bpv\s*panel\b|\bpv\s*module\b", re.I),
+        FixtureSpec("Solar PV Panel", FixtureCategory.OTHER, 2800.0)),
+    (re.compile(r"isolator|\bcos\b|change\s*over", re.I),
+        FixtureSpec("Isolator Switch", FixtureCategory.SWITCH, 220.0)),
+    (re.compile(r"\bgeyser\b|water\s*heater|hot\s*water\s*cylinder", re.I),
+        FixtureSpec("Geyser", FixtureCategory.WATER, 4500.0)),
+    (re.compile(r"distribution\s*box|\bdb[-_ ]?board\b|kiosk", re.I),
+        FixtureSpec("Distribution Board", FixtureCategory.DISTRIBUTION, 4500.0)),
 ]
 
 
@@ -156,6 +164,74 @@ def is_skip_block_name(name: str) -> bool:
         return False
     norm = _normalise(name)
     return any(p.search(norm) for p in SKIP_BLOCK_PATTERNS)
+
+
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║ GEOMETRY SYMBOLS — fixtures drawn as circles/arcs, not blocks     ║
+# ║ On a lighting/electrical layer a small circle is a light point.   ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# Layer keyword → the fixture a bare circle/arc on that layer represents.
+_GEOMETRY_LAYER_HINTS: List[Tuple[re.Pattern[str], FixtureSpec]] = [
+    (re.compile(r"light|lamp|luminaire|lum\b", re.I),
+        FixtureSpec("Light Fitting (geometry)", FixtureCategory.LIGHTING, 280.0)),
+    (re.compile(r"downlight|\bdl\b", re.I),
+        FixtureSpec("LED Downlight", FixtureCategory.LIGHTING, 220.0)),
+    (re.compile(r"power|socket|outlet|plug", re.I),
+        FixtureSpec("Socket Outlet (geometry)", FixtureCategory.POWER, 160.0)),
+]
+
+
+def classify_geometry_symbol(entity_kind: str, layer: str) -> Optional[FixtureSpec]:
+    """
+    Recognise a CIRCLE/ARC as an electrical symbol *by its layer*.
+
+    A downlight is very often drawn as a circle on the lighting layer rather
+    than as a named block. We only treat geometry as a fixture when its layer
+    clearly says lighting/power — never on architectural layers.
+    """
+    if entity_kind not in ("CIRCLE", "ARC"):
+        return None
+    if not layer:
+        return None
+    for pat, spec in _GEOMETRY_LAYER_HINTS:
+        if pat.search(layer):
+            return spec
+    return None
+
+
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║ CIRCUIT TAGS — text like "L1", "P3", "DB-S3" on the wiring layer  ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+_DB_TAG = re.compile(r"\bDB[-_ ]?[A-Z0-9]+\b", re.I)
+# Circuit refs are 1–2 digit: L1, P3, L-12. This deliberately excludes 4-digit
+# trunking codes like P8000 / P9000 / P2000 (they are containment, not circuits).
+_CIRCUIT_TAG = re.compile(r"\b([LP])\s?-?(\d{1,2})\b")
+
+
+def parse_circuit_tag(text: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    From a text label, extract (circuit_id, db_ref).
+
+        "DB-S3"  -> (None, "DB-S3")
+        "L1"     -> ("L1", None)
+        "L2 DB-S4" -> ("L2", "DB-S4")
+
+    Returns (None, None) if neither pattern matches. Deterministic.
+    """
+    if not text:
+        return (None, None)
+    t = str(text).strip()
+    db = None
+    m_db = _DB_TAG.search(t)
+    if m_db:
+        db = m_db.group(0).upper().replace(" ", "-").replace("_", "-")
+    circuit = None
+    m_c = _CIRCUIT_TAG.search(t)
+    if m_c:
+        circuit = f"{m_c.group(1).upper()}{m_c.group(2)}"
+    return (circuit, db)
 
 
 def classify_block_name(name: str) -> Optional[FixtureSpec]:

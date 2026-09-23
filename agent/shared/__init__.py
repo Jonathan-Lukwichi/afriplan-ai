@@ -14,7 +14,9 @@ Importing rule (CI-enforced):
 from agent.shared.boq import (
     BQSection,
     ItemConfidence,
+    LineKind,
     BQLineItem,
+    GapItem,
     BillOfQuantities,
 )
 from agent.shared.project import (
@@ -37,7 +39,9 @@ from agent.shared.compliance import (
 __all__ = [
     "BQSection",
     "ItemConfidence",
+    "LineKind",
     "BQLineItem",
+    "GapItem",
     "BillOfQuantities",
     "ProjectMetadata",
     "ContractorProfile",

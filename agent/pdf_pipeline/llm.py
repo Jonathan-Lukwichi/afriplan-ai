@@ -46,6 +46,34 @@ def _get_anthropic():
     return _anthropic_module
 
 
+def _build_tls_tolerant_http_client():
+    """Return an httpx.Client that tolerates local TLS-inspection proxies.
+
+    Some endpoint-security products (e.g. Avast / AVG "Web Shield", corporate
+    MITM proxies) re-sign HTTPS traffic with a locally-installed root CA whose
+    Basic Constraints extension is not marked *critical*. OpenSSL 3.x (used by
+    Python 3.12+) rejects such CAs under its default STRICT verification flag,
+    raising `CERTIFICATE_VERIFY_FAILED: Basic Constraints ... not marked
+    critical` — which surfaces as an `APIConnectionError` from the SDK.
+
+    We keep full chain verification against the system trust store (the AV root
+    is already installed there) and only clear the single STRICT flag that
+    rejects the technically-malformed-but-locally-trusted CA. Returns None on
+    any failure so the caller falls back to the SDK's default client.
+    """
+    try:
+        import ssl
+
+        import httpx
+
+        ctx = ssl.create_default_context()
+        ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+        return httpx.Client(verify=ctx)
+    except Exception:  # noqa: BLE001 — never let TLS setup break the pipeline
+        log.warning("Could not build TLS-tolerant HTTP client; using SDK default.")
+        return None
+
+
 # ─── Response container ───────────────────────────────────────────────
 
 @dataclass
@@ -94,7 +122,13 @@ class PdfLLM:
             self._client = client
         else:
             anthropic = _get_anthropic()
-            self._client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+            http_client = _build_tls_tolerant_http_client()
+            kwargs: Dict[str, Any] = {}
+            if api_key:
+                kwargs["api_key"] = api_key
+            if http_client is not None:
+                kwargs["http_client"] = http_client
+            self._client = anthropic.Anthropic(**kwargs)
         self._system_prompt = system_prompt
 
     # ── public API ────────────────────────────────────────────────────
