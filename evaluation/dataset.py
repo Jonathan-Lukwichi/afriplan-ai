@@ -104,6 +104,33 @@ def mark_superseded(files: List[DatasetFile]) -> List[DatasetFile]:
     return out
 
 
+_ROLE_TO_DRAWINGS = {
+    "sld": ["sld"], "lighting_layout": ["lighting_layout"], "plug_layout": ["plug_layout"],
+    "architectural": ["architectural"], "pdf_sld": ["sld"],
+    "pdf_layouts": ["lighting_layout", "plug_layout"],
+}
+
+
+def uploaded_from_manifest(manifest: ProjectManifest, building: str, *, source: str = "all"):
+    """
+    Drawing types available for one building. `source`: 'dwg' (CAD only),
+    'pdf' (PDF set only — project-wide files count for every building), 'all'.
+    """
+    from evaluation.network import DrawingType
+    out = set()
+    for f in manifest.files:
+        if f.superseded:
+            continue
+        is_pdf = f.role.startswith("pdf_")
+        if (source == "dwg" and is_pdf) or (source == "pdf" and not is_pdf):
+            continue
+        if f.building and f.building != building:
+            continue
+        for d in _ROLE_TO_DRAWINGS.get(f.role, []):
+            out.add(DrawingType(d))
+    return out
+
+
 def raw_available(project: str) -> bool:
     """True when the gitignored raw inputs are present locally."""
     return (project_dir(project) / "raw").is_dir()

@@ -75,6 +75,7 @@ class Scorecard(BaseModel):
     uploaded: Dict[str, List[str]] = Field(default_factory=dict)
     items: List[ItemScore] = Field(default_factory=list)
     coverage: float = 0.0
+    coverage_items: float = 0.0          # unweighted: share of reference items predicted
     precision: float = 0.0
     qty_accuracy: float = 0.0
     rate_accuracy: float = 0.0
