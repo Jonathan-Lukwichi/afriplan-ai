@@ -23,6 +23,13 @@ SWA95 = "95mm2 x 4C PVC SWA PVC 600-1000V Cable"
     ("Manhole complete with cover (Electrical)", "", "Ea", ("manhole", "electrical")),
     ("Main DB 1:  3 phase+N+E, 15 kA ,400 VAC ,1.6 mm thick , mild steel", "", "Sum", ("db", "")),
     ("DB CR:  3 phase+N+E, 6 kA ,400 VAC", "", "Sum", ("db", "")),
+    # a DB description naming its incomer is still a DB, not a breaker
+    ("DB PFA:  3 phase+N+E, 6 kA ,400 VAC , mild steel, Incomer to be MCCB 160A", "", "Sum", ("db", "")),
+    ("Main DB 1:  3 phase+N+E, 15 kA, Incomer to be MCCB 150A, Type 2 Surge Arrestors", "", "Sum", ("db", "")),
+    ("DB-ST:  1 phase+N+E, 6 kA ,230 VAC", "", "Sum", ("db", "")),
+    # a trench that mentions the kiosk is still a trench
+    ("Trenching and re-instatement for 450 mm x 600mm measured in linear length on each end "
+     "of the line from pole to Mini-sub and Pole to Kiosk", "", "m", ("trench", "")),
     ("150mm medium duty cable tray ", "", "m", ("cable_tray", "150mm")),
     ("P8000 Trunking Covers", "", "m", ("trunking_cover", "p8000")),
     ("P8000 Trunking including mounting accessories (treaded rods)", "", "m", ("trunking", "p8000")),

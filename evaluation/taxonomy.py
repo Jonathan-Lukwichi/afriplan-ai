@@ -86,6 +86,10 @@ def _conduit_spec(t: str) -> str:
 
 
 _RULES: List[Tuple[re.Pattern, str, Spec]] = [
+    # ── a line that STARTS as a DB is a DB, whatever incomer it names ──
+    (re.compile(r"^(main\s+)?db\b|^distribution board"), "db", None),
+    # ── underground (before kiosk: 'trench … to the kiosk' is a trench) ──
+    (re.compile(r"trench"), "trench", None),
     # ── bulk supply / kiosk ──
     (re.compile(r"\bkiosk\b"), "kiosk", None),
     (re.compile(r"plinth"), "plinth", None),
@@ -93,7 +97,6 @@ _RULES: List[Tuple[re.Pattern, str, Spec]] = [
     (re.compile(r"certificate of complia"), "coc", None),
     (re.compile(r"mccb|mcb/"), "breaker", lambda t: (re.search(r"(\d+)\s*a\b", t).group(1) + "a") if re.search(r"(\d+)\s*a\b", t) else ""),
     # ── underground ──
-    (re.compile(r"trench"), "trench", None),
     (re.compile(r"warning tape|danger tape"), "warning_tape", None),
     (re.compile(r"sleeve"), "sleeve", lambda t: (_DIAM.search(t).group(1) + "mm") if _DIAM.search(t) else ""),
     (re.compile(r"manhole"), "manhole", lambda t: "fibre" if "fibre" in t else "electrical"),
