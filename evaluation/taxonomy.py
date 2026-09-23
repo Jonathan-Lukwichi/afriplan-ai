@@ -90,7 +90,8 @@ _RULES: List[Tuple[re.Pattern, str, Spec]] = [
     (re.compile(r"^(main\s+)?db\b|^distribution board"), "db", None),
     # ── underground (before kiosk: 'trench … to the kiosk' is a trench) ──
     (re.compile(r"trench"), "trench", None),
-    # ── bulk supply / kiosk ──
+    # ── bulk supply / kiosk (a meter 'installed in kiosk' is a meter) ──
+    (re.compile(r"energy meter|kwh meter|(?<!\d )\bmeter\b"), "meter", None),   # not '6 meter' (a length)
     (re.compile(r"\bkiosk\b"), "kiosk", None),
     (re.compile(r"plinth"), "plinth", None),
     (re.compile(r"connection fee"), "connection_fee", None),
@@ -146,7 +147,6 @@ _RULES: List[Tuple[re.Pattern, str, Spec]] = [
     (re.compile(r"\blight\b|luminaire|fluorescent|pendant|spotlight"), "light_other", None),
     # ── distribution ──
     (re.compile(r"\bdb\b|db[- ]?\w+:|distribution board"), "db", None),
-    (re.compile(r"energy meter|\bmeter\b"), "meter", None),
 ]
 
 _ROLE_ONLY = re.compile(r"^\s*(supply|install)\s*$", re.I)

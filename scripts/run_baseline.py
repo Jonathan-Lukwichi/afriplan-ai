@@ -3,6 +3,7 @@ Run a pipeline over a reference project and score it — the reproducible baseli
 
     python scripts/run_baseline.py --project wedela --pipeline dxf
     python scripts/run_baseline.py --project wedela --pipeline pdf          # paid: uses ANTHROPIC_API_KEY
+    python scripts/run_baseline.py --project wedela --pipeline pdf --from-runs <run_id>   # re-score, R 0
     ... --out reports/baselines/2026-09-23-wedela-dxf.md
 
 Scores every run twice with the frozen scorer:
@@ -76,6 +77,46 @@ def _db_tokens(ref: ReferenceBoq) -> Dict[str, str]:
     return out
 
 
+def load_dxf_runs(run_ids: List[str], ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
+    """Re-score saved DXF runs (free, reproducible). Each run's project_name is its building."""
+    import json
+    per_building: Dict[str, BillOfQuantities] = {}
+    log: List[str] = []
+    for rid in run_ids:
+        raw = json.loads((Path("runs/dxf") / f"{rid}.json").read_text(encoding="utf-8"))
+        bld = raw.get("project_name", "")
+        boq = BillOfQuantities.model_validate(raw["boq"]) if raw.get("boq") else None
+        log.append(f"{bld} | {raw.get('input_file')} | saved run {rid} | {len(boq.line_items) if boq else 0} lines")
+        if boq and ref.building(bld) is not None:
+            merged = per_building.setdefault(bld, BillOfQuantities(pipeline="dxf", project_name=bld))
+            merged.line_items.extend(boq.line_items)
+            merged.gaps.extend(boq.gaps)
+    return per_building, log
+
+
+def _attribute_pdf(boq: BillOfQuantities, ref: ReferenceBoq) -> Dict[str, BillOfQuantities]:
+    tokens = _db_tokens(ref)
+    per_building: Dict[str, BillOfQuantities] = {}
+    for ln in boq.line_items:
+        blk = re.sub(r"[\s\-]+", "", (ln.building_block or "").lower())
+        bld = next((b for t, b in tokens.items() if t and (t in blk or blk in t) and blk), None)
+        bld = bld or "(unattributed)"
+        per_building.setdefault(bld, BillOfQuantities(pipeline="pdf", project_name=bld)).line_items.append(ln)
+    return per_building
+
+
+def load_pdf_run(run_id: str, ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
+    """Re-score a saved PDF run without paying for the LLM again."""
+    import json
+    raw = json.loads((Path("runs/pdf") / f"{run_id}.json").read_text(encoding="utf-8"))
+    boq = BillOfQuantities.model_validate(raw["boq"])
+    log = [f"saved PDF run {run_id} | pages {raw.get('page_count')} | {len(boq.line_items)} lines | "
+           f"original cost R {raw.get('cost_zar', 0):.2f} (re-scored at R 0)"]
+    for fc in raw.get("files", []):
+        log.append(f"  classified {fc['file_name']} → {fc['sheet_type']} ({fc['confidence']:.0%})")
+    return _attribute_pdf(boq, ref), log
+
+
 def run_pdf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
     """One PDF run over the whole set; lines attributed to buildings via DB names."""
     from agent.pdf_pipeline.passes.run import run_pdf_estimator
@@ -100,16 +141,7 @@ def run_pdf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOf
         log.append(f"  classified {fc.file_name} → {fc.sheet_type.value} ({fc.confidence:.0%})")
     if not run.boq:
         return {}, log
-
-    tokens = _db_tokens(ref)
-    per_building: Dict[str, BillOfQuantities] = {}
-    for ln in run.boq.line_items:
-        blk = re.sub(r"[\s\-]+", "", (ln.building_block or "").lower())
-        bld = next((b for t, b in tokens.items() if t and (t in blk or blk in t) and blk), None)
-        bld = bld or "(unattributed)"
-        per_building.setdefault(bld, BillOfQuantities(pipeline="pdf", project_name=bld)).line_items.append(ln)
-    per_building.setdefault(PROJECT, BillOfQuantities(pipeline="pdf")).line_items.extend(run.boq.line_items)
-    return per_building, log
+    return _attribute_pdf(run.boq, ref), log
 
 
 # ─── scoring ─────────────────────────────────────────────────────────
@@ -152,6 +184,8 @@ def main() -> int:
     ap.add_argument("--project", required=True)
     ap.add_argument("--pipeline", choices=["dxf", "pdf"], required=True)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--from-runs", nargs="+", metavar="RUN_ID",
+                    help="re-score saved runs under runs/<pipeline>/ instead of running the pipeline")
     args = ap.parse_args()
 
     manifest = load_manifest(args.project)
@@ -162,10 +196,12 @@ def main() -> int:
     model = load_ratio_model(args.project)
 
     if args.pipeline == "dxf":
-        per_building, log = run_dxf(args.project, manifest, ref)
+        per_building, log = (load_dxf_runs(args.from_runs, ref) if args.from_runs
+                             else run_dxf(args.project, manifest, ref))
         source = "dwg"
     else:
-        per_building, log = run_pdf(args.project, manifest, ref)
+        per_building, log = (load_pdf_run(args.from_runs[0], ref) if args.from_runs
+                             else run_pdf(args.project, manifest, ref))
         source = "pdf"
 
     from evaluation.report import render_markdown
