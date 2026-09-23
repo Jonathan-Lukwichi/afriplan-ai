@@ -7,5 +7,4 @@ authors = [{ name = "Jonathan Lukwichi / JLWanalytics" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
 # utcnow() deprecation warnings are tracked in issues/008 — not silenced on purpose.
