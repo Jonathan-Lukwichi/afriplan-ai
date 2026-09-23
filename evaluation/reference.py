@@ -183,10 +183,11 @@ def _parse_building(ws, name: str) -> RefBuilding:
     for i, row in enumerate(ws.iter_rows(values_only=True), 1):
         a, b, c, d, e, f = _cells(row)
 
-        for cell in (a, b, c, d, e, f):
-            if isinstance(cell, str) and _ERROR_CELL.match(cell.strip()):
-                label = a.strip() if isinstance(a, str) else f"row {i}"
-                bld.errors.append(f"{cell.strip()} in '{label}' (row {i})")
+        bad = [cell.strip() for cell in (a, b, c, d, e, f)
+               if isinstance(cell, str) and _ERROR_CELL.match(cell.strip())]
+        if bad:                              # one entry per row, however many cells broke
+            label = a.strip() if isinstance(a, str) else f"row {i}"
+            bld.errors.append(f"{bad[0]} in '{label}' (row {i})")
 
         if isinstance(b, str) and b.strip().lower() == "summary":
             rollup = True
