@@ -13,8 +13,9 @@ anthropic>=0.40.0
 PyMuPDF>=1.23.0
 Pillow>=10.0.0
 
-# DXF pipeline
+# DXF pipeline (opencv: LDSE mode-3 template matching in passes/template_count.py)
 ezdxf>=1.4.0
+opencv-python-headless>=4.8
 
 # Exporters
 openpyxl>=3.1.0

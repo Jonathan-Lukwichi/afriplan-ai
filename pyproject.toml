@@ -1,0 +1,11 @@
+[project]
+name = "afriplan-electrical"
+version = "6.2.0"
+description = "South African electrical Bill-of-Quantities extractor (PDF + DXF pipelines) with a ground-truth evaluation and audit layer"
+requires-python = ">=3.11"
+authors = [{ name = "Jonathan Lukwichi / JLWanalytics" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# utcnow() deprecation warnings are tracked in issues/008 — not silenced on purpose.
