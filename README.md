@@ -34,12 +34,12 @@ python scripts/audit_boq.py --project wedela --out reports/audits/wedela-referen
 python scripts/audit_boq.py --project wedela --sufficiency --out reports/audits/wedela-drawing-sufficiency.md
 ```
 
-## Where things stand (2026-09-23, Wedela reference)
+## Where things stand (2026-09-26, Wedela reference)
 
 | Pipeline | Reproduction Score (project-level) | Coverage | Cost |
 |---|---:|---:|---:|
-| DXF / DWG | 2.4 % | 20 % | R 0 |
-| PDF | 16.9 % | 51 % | R 18.46 / 18 pages |
+| DXF / DWG | 12.8 % | 59 % | R 0 |
+| PDF | 17.8 % | 53 % | R 19.31 / 18 pages |
 
 Most of an electrical bill's value is in the single-line diagram and cable routes (≈ 57 %)
 and site lighting (≈ 17 %), not in the symbols pipelines count well (≈ 6 %). The ranked

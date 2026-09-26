@@ -86,8 +86,9 @@ go green · edit the scorer inside an optimisation loop · push/deploy without a
 
 ## Current state (update when it changes)
 - Reference projects: **wedela** (7 billed buildings).
-- Baselines (`reports/baselines/README.md`), project-level RS: **DXF 2.4 %**, **PDF 16.9 %**.
-  ~57 % of bill value is SLD/route-derived (feeders, DBs, trench, earth) and ~17 % is site
-  lighting; DXF reads no SLD drawing, PDF assumes 30 m feeders. Top fixes: `issues/001-004`.
+- Baselines (`reports/baselines/README.md`), project-level RS (2026-09-26): **DXF 12.8 %**
+  (13.5 % with completer), **PDF 17.8 %**. Next biggest levers: feeder route lengths
+  from the site plan (002), cross-page de-dup (011), building attribution (008).
+  ~57 % of bill value is SLD/route-derived (feeders, DBs, trench, earth), ~17 % site lighting.
 - Historical design docs (pre-v6.2): `docs/blueprints/`.
 - Date of last restructure: 2026-09-23.

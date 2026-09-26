@@ -12,8 +12,26 @@ The per-run reports linked below quote client figures and are kept locally (giti
 | 2026-09-23 | DXF | per building | **1.8 %** | 19.9 % | 99.7 % | 9.2 % | [dxf](2026-09-23-wedela-dxf.md) |
 | 2026-09-23 | PDF | project-level | **16.9 %** | 50.9 % | 70.5 % | 33.2 % | [pdf](2026-09-23-wedela-pdf.md) |
 | 2026-09-23 | PDF | per building | **10.3 %** | 30.4 % | 65.4 % | 34.0 % | [pdf](2026-09-23-wedela-pdf.md) |
+| 2026-09-26 | DXF (+SLD reader, legend fix) | project-level | **12.8 %** | 59.3 % | 82.3 % | 21.6 % | [dxf](2026-09-26-wedela-dxf.md) |
+| 2026-09-26 | DXF + completer | project-level | **13.5 %** | 62.4 % | 82.8 % | 21.6 % | [dxf](2026-09-26-wedela-dxf.md) |
+| 2026-09-26 | DXF | per building | **11.1 %** | 44.9 % | 80.7 % | 24.6 % | [dxf](2026-09-26-wedela-dxf.md) |
+| 2026-09-26 | PDF (+site lighting, DB build-up) | project-level | **17.8 %** | 53.0 % | 41.5 % | 33.6 % | [pdf](2026-09-26-wedela-pdf.md) |
+| 2026-09-26 | PDF | per building | **5.6 %** | 17.9 % | 67.7 % | 31.5 % | [pdf](2026-09-26-wedela-pdf.md) |
 
-PDF run: 18 pages, R 18.46, 687 s (run `b0a84e5563bf`). DXF: 17 drawings, R 0.
+PDF runs: 18 pages — `b0a84e5563bf` R 18.46 (09-23), `6d7094fe359b` R 19.31 (09-26). DXF: 17 drawings, R 0.
+
+### 2026-09-26 — what changed and what it showed
+- **DXF 2.4 % → 12.8 %** (coverage 20 % → 59 %): SLD drawings now yield boards, breakers
+  and feeders (issue 001); legend glyphs no longer counted (006). Quantity accuracy is
+  now limited by feeder lengths assumed at 30 m vs 200–250 m real routes (issue 002).
+- **PDF 16.9 % → 17.8 %**: DB rate ~12× higher (still below the reference average; rate
+  accuracy 47 % → 55 %). Precision fell 70 % → 42 % because the model reported **89 pole
+  lights** (R 612 k): the drawing legend says *"Outdoor pole light 2300mm, 60W"* while the
+  priced bill has solar post lanterns and high-mast posts — a genuine drawing-vs-bill
+  difference — and 89 is several times the bill's site-light count, so site lights are
+  double-counted across sheets (issue 011).
+- **PDF per-building 10.3 % → 5.6 %**: building attribution varies between LLM runs
+  (issue 008); treat per-building PDF numbers as unreliable until 008 is fixed.
 
 ## What the numbers say
 1. **The value of an electrical bill sits in the SLD and the routes, not the symbols.**
