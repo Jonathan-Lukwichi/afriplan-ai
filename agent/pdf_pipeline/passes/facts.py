@@ -91,6 +91,8 @@ class TakeoffRoom(BaseModel):
     floodlights: int = 0
     emergency_lights: int = 0
     pole_lights: int = 0
+    solar_post_lights: int = 0      # self-powered: billed per post, no reticulation wire
+    high_mast_poles: int = 0        # fed by their own feeder: billed per post, no reticulation
     # power
     double_sockets: int = 0
     single_sockets: int = 0
@@ -277,7 +279,8 @@ def parse_power_spine(tool_input: Dict[str, Any]) -> PowerSpine:
 
 _ROOM_INT_FIELDS = (
     "downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights",
-    "emergency_lights", "pole_lights", "double_sockets", "single_sockets",
+    "emergency_lights", "pole_lights", "solar_post_lights", "high_mast_poles",
+    "double_sockets", "single_sockets",
     "waterproof_sockets", "floor_sockets", "data_outlets", "switches_1lever",
     "switches_2lever", "switches_3lever", "isolators", "day_night_switches",
 )

@@ -51,6 +51,10 @@ LIGHT_PRICES: Dict[str, float] = {
     "pole_light_60w": 4500.0,            # Outdoor Pole Light 2300mm 60W
     "pole_light_100w": 5800.0,           # Outdoor Pole Light 3000mm 100W
 
+    # Site lighting — market estimates (2026), verify with supplier quotes
+    "solar_post_light_100w": 18000.0,    # 100W LED solar lantern, pole, battery & base
+    "high_mast_2x600w_10m": 35000.0,     # 10 m high-mast post, 2x600W LED floods, base
+
     # Emergency Lights
     "emergency_light_led": 850.0,        # LED Emergency Light
     "exit_sign_led": 650.0,              # LED Exit Sign

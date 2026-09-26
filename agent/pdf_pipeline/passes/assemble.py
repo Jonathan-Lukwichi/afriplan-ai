@@ -99,6 +99,8 @@ _FITTING_SPECS: Dict[str, Tuple[str, str, Optional[str], BQSection, str, str]] =
     "floodlights":       ("light", "flood_light_30w",      "flood_30w",          BQSection.LIGHTING, "30W LED floodlight", "No"),
     "emergency_lights":  ("light", "emergency_light_led",  None,                 BQSection.LIGHTING, "LED emergency light", "No"),
     "pole_lights":       ("light", "pole_light_60w",       None,                 BQSection.LIGHTING, "60W outdoor pole light", "No"),
+    "solar_post_lights": ("light", "solar_post_light_100w", None,                BQSection.LIGHTING, "100W LED solar post lantern (complete with pole)", "No"),
+    "high_mast_poles":   ("light", "high_mast_2x600w_10m", None,                 BQSection.LIGHTING, "2x600W LED flood light on 10m high-mast post", "No"),
     "double_sockets":    ("socket","double_socket_300",    None,                 BQSection.POWER_OUTLETS, "16A double switched socket", "No"),
     "single_sockets":    ("socket","single_socket_300",    None,                 BQSection.POWER_OUTLETS, "16A single switched socket", "No"),
     "waterproof_sockets":("socket","double_socket_waterproof", None,            BQSection.POWER_OUTLETS, "16A double waterproof socket", "No"),

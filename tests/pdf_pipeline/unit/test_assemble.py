@@ -181,3 +181,22 @@ def test_markup_is_declared_as_baked_into_rates():
     """Built-up rates already carry the x1.3 material markup: no second markup (issue 009)."""
     boq = build_boq_from_facts(_wedela_like_facts())
     assert boq.contractor_markup_pct == 0.0 and boq.markup_zar == 0.0
+
+
+def test_site_lighting_is_billed_without_reticulation_wire():
+    """Issue 003: solar post lanterns and high-mast flood posts are billed per unit; they add
+    no 1.5 mm2 reticulation (solar = self-powered, high-mast = own feeder)."""
+    from agent.pdf_pipeline.passes.facts import parse_layout_takeoff
+    from evaluation.taxonomy import classify_item  # scripts/tests may read the ruler
+
+    takeoff = parse_layout_takeoff({"rooms": [{"room_name": "Site", "confidence": 0.9,
+                                               "solar_post_lights": 18, "high_mast_poles": 7}]})
+    room = takeoff.rooms[0]
+    assert (room.solar_post_lights, room.high_mast_poles) == (18, 7)
+    assert room.light_points() == 0
+
+    boq = build_boq_from_facts(PdfFacts(takeoff=takeoff))
+    fams = {classify_item(l.description, unit=l.unit).family: l for l in boq.line_items}
+    assert fams["light_solar_post"].qty == 18 and fams["light_solar_post"].unit_price_zar > 0
+    assert fams["light_highmast"].qty == 7 and fams["light_highmast"].unit_price_zar > 0
+    assert not any("reticulation" in l.description for l in boq.line_items)
