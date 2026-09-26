@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import PipelineStatusCard from '../components/ui/PipelineStatusCard';
 import LegendPanel from '../components/ui/LegendPanel';
+import CoveragePanel from '../components/ui/CoveragePanel';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 
@@ -67,6 +68,8 @@ export default function Extraction({ runId, onNavigate }) {
       )}
 
       {run?.status === 'passed' && <LegendPanel legend={run.result?.legend} />}
+
+      {run?.status === 'passed' && <CoveragePanel runId={runId} />}
 
       {run?.status === 'passed' && (
         <button onClick={() => onNavigate('boq')} className="btn-gradient" style={{ marginTop: 'var(--space-lg)', fontSize: 15 }}>

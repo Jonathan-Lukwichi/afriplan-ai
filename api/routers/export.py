@@ -77,7 +77,7 @@ def export_excel(
     priced = _priced_boq_for(run_id, markup, contingency, vat, complete=complete)
     xlsx_bytes = export_boq_to_excel(
         priced, project=ProjectMetadata(project_name=priced.project_name),
-        contractor=ContractorProfile(markup_pct=markup, contingency_pct=contingency, vat_pct=vat),
+        contractor=ContractorProfile(markup_pct=priced.contractor_markup_pct, contingency_pct=contingency, vat_pct=vat),
         quote_ref=quote_ref, validity_days=validity_days,
     )
     ref = quote_ref or f"AFP-{datetime.utcnow():%Y%m%d}-{priced.run_id[:6].upper()}"
@@ -98,7 +98,7 @@ def export_pdf(
     priced = _priced_boq_for(run_id, markup, contingency, vat, complete=complete)
     pdf_bytes = export_boq_to_pdf(
         priced, project=ProjectMetadata(project_name=priced.project_name),
-        contractor=ContractorProfile(markup_pct=markup, contingency_pct=contingency, vat_pct=vat),
+        contractor=ContractorProfile(markup_pct=priced.contractor_markup_pct, contingency_pct=contingency, vat_pct=vat),
         quote_ref=quote_ref, validity_days=validity_days,
     )
     ref = quote_ref or f"AFP-{datetime.utcnow():%Y%m%d}-{priced.run_id[:6].upper()}"

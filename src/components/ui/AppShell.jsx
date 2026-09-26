@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ChevronLeft, FileText, GitCompare, Home, Layers, LogOut, Menu, Upload as UploadIcon, Wallet, X, Zap,
+  ChevronLeft, FileText, GitCompare, Home, Layers, LogOut, Menu, ShieldCheck, Upload as UploadIcon, Wallet, X, Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { page: 'compare', label: 'Compare', step: '04', icon: GitCompare },
   { page: 'boq', label: 'BoQ', step: '05', icon: FileText },
   { page: 'pricing', label: 'Pricing', step: '06', icon: Wallet },
+  { page: 'audit', label: 'Audit a BoQ', step: '07', icon: ShieldCheck },
 ];
 
 const STORAGE_KEY = 'afriplan.sidebarOpen';

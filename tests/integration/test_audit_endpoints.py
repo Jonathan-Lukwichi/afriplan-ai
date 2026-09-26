@@ -93,3 +93,26 @@ def test_audit_rejects_non_workbook():
 
 def test_ratio_model_status():
     assert "available" in client.get("/api/audit/ratio-model").json()
+
+
+def test_excel_and_pdf_export_without_explicit_markup():
+    """Regression: markup omitted -> bill default; the contractor profile must get a number."""
+    _seed("audit-t6")
+    xl = client.get("/api/export/excel/audit-t6?complete=true")
+    pdf = client.get("/api/export/pdf/audit-t6")
+    assert xl.status_code == 200 and xl.content.startswith(b"PK")
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+
+def test_pdf_export_with_gap_report():
+    """Regression (pre-existing on main): the gap-report page crashed fpdf2 ('Not enough
+    horizontal space') whenever a bill had gaps — e.g. every SLD with assumed feeder lengths."""
+    from agent.shared import GapItem
+    _seed("audit-t7")
+    rec = run_store.get("audit-t7")
+    rec.result.boq.gaps = [GapItem(section=BQSection.SUBMAIN_CABLES, description="Feeder A→B length not on the SLD",
+                                   assumption="Assumed 30 m.", suggested_action="Measure on the site plan.",
+                                   severity="high")] * 2
+    run_store.put(rec)
+    pdf = client.get("/api/export/pdf/audit-t7")
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")

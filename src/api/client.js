@@ -58,6 +58,18 @@ export const api = {
     email: (payload) => request('/api/export/email', { method: 'POST', body: payload }),
   },
 
+  audit: {
+    // Audit any priced BOQ workbook (.xlsx) — no run needed.
+    boq: (file) => {
+      const form = new FormData();
+      form.append('file', file);
+      return request('/api/audit/boq', { method: 'POST', body: form });
+    },
+    run: (runId, params = {}, signal) => request(`/api/audit/run/${runId}?${new URLSearchParams(params)}`, { signal }),
+    coverage: (runId, signal) => request(`/api/audit/coverage/${runId}`, { signal }),
+    ratioModel: (signal) => request('/api/audit/ratio-model', { signal }),
+  },
+
   pricing: {
     getRequests: (runId, signal) => request(`/api/pricing/requests/${runId}`, { signal }),
     requestQuotes: (runId, itemRefs) => request(`/api/pricing/quotes/${runId}`, { method: 'POST', body: { item_refs: itemRefs } }),

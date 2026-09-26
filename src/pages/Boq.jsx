@@ -7,6 +7,7 @@ import GapReport from '../components/ui/GapReport';
 import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
 import EmptyState from '../components/ui/EmptyState';
 import Tabs from '../components/ui/Tabs';
+import FindingsTable from '../components/ui/FindingsTable';
 
 const inputStyle = {
   width: '100%', padding: 10, background: 'rgba(255,255,255,0.03)',
@@ -17,7 +18,14 @@ const inputStyle = {
    pricing, preview the priced bill, download Excel/PDF/JSON, or email it
    to a client (new — the original had download buttons only). */
 export default function Boq({ runId, onNavigate }) {
-  const [markup, setMarkup] = useState(20);
+  // Estimator rates already include the x1.3 material markup, so the default
+  // EXTRA markup is 0 — the profile's markup is not applied a second time.
+  const [markup, setMarkup] = useState(0);
+  // Derived items (wall boxes, chasing, conduit, wire, terminations) from fitted
+  // ratios — offered only when a ratio model exists on this server.
+  const [ratioModel, setRatioModel] = useState(null);
+  const [complete, setComplete] = useState(false);
+  const [audit, setAudit] = useState(null);
   const [contingency, setContingency] = useState(5);
   const [vat, setVat] = useState(15);
   const [quoteRef, setQuoteRef] = useState('');
@@ -33,27 +41,38 @@ export default function Boq({ runId, onNavigate }) {
 
   useEffect(() => {
     api.boq.getProfile().then((p) => {
-      setMarkup(p.markup_pct);
       setContingency(p.contingency_pct);
       setVat(p.vat_pct);
     }).catch(() => {});
+    api.audit.ratioModel().then((m) => {
+      setRatioModel(m);
+      if (m.available) setComplete(true);
+    }).catch(() => setRatioModel({ available: false }));
   }, []);
 
   const refreshPreview = () => {
     if (!runId) return;
     setError(null);
-    api.boq.json(runId, { markup, contingency, vat })
+    setAudit(null);
+    api.boq.json(runId, { markup, contingency, vat, complete })
       .then(setPriced)
       .catch((e) => setError(e.message || 'Could not load the priced BoQ'));
   };
 
-  useEffect(() => { refreshPreview(); }, [runId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { refreshPreview(); }, [runId, complete]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeTab !== 'audit' || !runId || audit) return;
+    api.audit.run(runId, { complete })
+      .then(setAudit)
+      .catch((e) => setAudit({ error: e.message }));
+  }, [activeTab, runId, complete, audit]);
 
   if (!runId) {
     return <EmptyState message="No run selected." actionLabel="Upload a drawing" onAction={() => onNavigate('upload')} />;
   }
 
-  const exportParams = { markup, contingency, vat, quote_ref: quoteRef, validity_days: validityDays };
+  const exportParams = { markup, contingency, vat, complete, quote_ref: quoteRef, validity_days: validityDays };
 
   const sendEmail = async () => {
     if (!emailTo) return;
@@ -62,7 +81,7 @@ export default function Boq({ runId, onNavigate }) {
     try {
       const result = await api.boq.email({
         run_id: runId, to: emailTo, recipient_name: emailName || null,
-        markup, contingency, vat, quote_ref: quoteRef || null, validity_days: validityDays,
+        markup, contingency, vat, complete, quote_ref: quoteRef || null, validity_days: validityDays,
       });
       setEmailResult(result);
     } catch (e) {
@@ -80,7 +99,8 @@ export default function Boq({ runId, onNavigate }) {
 
       <h3 style={{ fontSize: 16, marginBottom: 10 }}>Pricing</h3>
       <div className="glass-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-        <Field label="Markup %" value={markup} onChange={setMarkup} onBlur={refreshPreview} />
+        <Field label="Extra markup %" value={markup} onChange={setMarkup} onBlur={refreshPreview}
+               title="Rates already include material markup (x1.3) and labour. Add extra margin only if intended." />
         <Field label="Contingency %" value={contingency} onChange={setContingency} onBlur={refreshPreview} />
         <Field label="VAT %" value={vat} onChange={setVat} onBlur={refreshPreview} />
         <div>
@@ -93,6 +113,20 @@ export default function Boq({ runId, onNavigate }) {
         </div>
       </div>
 
+      {ratioModel?.available && (
+        <label className="glass-card" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 'var(--space-md)', marginBottom: 'var(--space-md)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={complete} onChange={(e) => setComplete(e.target.checked)} style={{ marginTop: 3 }} data-testid="complete-toggle" />
+          <span style={{ fontSize: 14 }}>
+            <strong>Complete with derived items</strong> — wall boxes, chasing, conduit, wire, terminations.
+            <span style={{ display: 'block', color: 'var(--ink-muted)', fontSize: 13, marginTop: 2 }}>
+              Items never drawn as symbols, added from ratios fitted on a real priced project
+              ({ratioModel.project_sources?.join(', ')}). Each added line is tagged <em>inferred</em> and
+              listed in the gap report — verify before tendering.
+            </span>
+          </span>
+        </label>
+      )}
+
       {priced && (
         <>
           <Tabs
@@ -100,6 +134,7 @@ export default function Boq({ runId, onNavigate }) {
               { id: 'overview', label: 'Overview' },
               { id: 'items', label: 'Line items', count: priced.total_items },
               { id: 'gaps', label: 'Gap report', count: priced.gaps?.length ?? 0 },
+              { id: 'audit', label: 'Audit', count: audit?.summary?.count },
               { id: 'export', label: 'Export & email' },
             ]}
             active={activeTab}
@@ -117,6 +152,18 @@ export default function Boq({ runId, onNavigate }) {
 
               <h3 style={{ fontSize: 16, marginBottom: 10 }}>Section subtotals</h3>
               <SectionSubtotalsChart subtotals={priced.section_subtotals_short} />
+            </div>
+          )}
+
+          {activeTab === 'audit' && (
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--ink-muted)', marginBottom: 10 }}>
+                Checks this bill for arithmetic errors, unpriced lines, duplicates and feeders
+                missing their earth, terminations or install line.
+              </p>
+              {!audit && <p style={{ fontSize: 14 }}>Auditing…</p>}
+              {audit?.error && <p style={{ color: 'var(--rose)' }}>{audit.error}</p>}
+              {audit?.findings && <FindingsTable findings={audit.findings} />}
             </div>
           )}
 
@@ -172,9 +219,9 @@ export default function Boq({ runId, onNavigate }) {
   );
 }
 
-function Field({ label, value, onChange, onBlur }) {
+function Field({ label, value, onChange, onBlur, title }) {
   return (
-    <div>
+    <div title={title}>
       <label style={{ fontSize: 13, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>{label}</label>
       <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={inputStyle} />
     </div>

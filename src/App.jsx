@@ -7,6 +7,7 @@ import Extraction from './pages/Extraction';
 import Compare from './pages/Compare';
 import Boq from './pages/Boq';
 import Pricing from './pages/Pricing';
+import Audit from './pages/Audit';
 import AppShell from './components/ui/AppShell';
 
 // Demo login only (per project decision) — no backend call, no real session,
@@ -21,6 +22,7 @@ const PAGES = {
   compare: Compare,
   boq: Boq,
   pricing: Pricing,
+  audit: Audit,
 };
 
 function readHash() {

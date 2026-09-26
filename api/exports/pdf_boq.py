@@ -43,6 +43,9 @@ def _safe(s: str) -> str:
         .replace("…", "...")
         .replace("²", "2").replace("³", "3").replace("·", "-")
         .replace(" ", " ")
+        .replace("→", "->").replace("←", "<-").replace("×", "x").replace("≤", "<=").replace("≥", ">=")
+        # last resort: never let one unexpected glyph crash the tender PDF
+        .encode("latin-1", errors="replace").decode("latin-1")
     )
 
 
@@ -400,6 +403,7 @@ def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
             "uncertain during extraction — not measured directly off the drawing. "
             "Verify these before the bill is used for tender."
         ),
+        new_x="LMARGIN", new_y="NEXT",
     )
     pdf.ln(4)
 
@@ -412,15 +416,15 @@ def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
                   new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("helvetica", "B", 9)
         pdf.set_text_color(*_INK)
-        pdf.multi_cell(0, 5, _safe(gap.description))
+        pdf.multi_cell(0, 5, _safe(gap.description), new_x="LMARGIN", new_y="NEXT")
         if gap.assumption:
             pdf.set_font("helvetica", "", 9)
             pdf.set_text_color(*_INK_MUTED)
-            pdf.multi_cell(0, 5, _safe(f"Assumption: {gap.assumption}"))
+            pdf.multi_cell(0, 5, _safe(f"Assumption: {gap.assumption}"), new_x="LMARGIN", new_y="NEXT")
         if gap.suggested_action:
             pdf.set_font("helvetica", "I", 9)
             pdf.set_text_color(*_INK_MUTED)
-            pdf.multi_cell(0, 5, _safe(f"Action: {gap.suggested_action}"))
+            pdf.multi_cell(0, 5, _safe(f"Action: {gap.suggested_action}"), new_x="LMARGIN", new_y="NEXT")
         pdf.ln(3)
 
 

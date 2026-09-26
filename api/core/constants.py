@@ -153,6 +153,13 @@ CABLE_PRICES: Dict[str, float] = {
     "earth_wire_6mm2": 22.0,             # 6mm² Earth Wire
     "earth_wire_10mm2": 35.0,            # 10mm² Earth Wire
     "earth_wire_16mm2": 55.0,            # 16mm² Earth Wire
+    # Larger BCEW sizes chosen by core.rate_model.earth_size_for for big feeders —
+    # market estimates (2026, ~R3.4 per mm² per m, scaled from 16mm²); verify with a supplier.
+    "earth_wire_25mm2": 85.0,
+    "earth_wire_35mm2": 120.0,
+    "earth_wire_50mm2": 170.0,
+    "earth_wire_70mm2": 240.0,
+    "earth_wire_95mm2": 325.0,
 }
 
 

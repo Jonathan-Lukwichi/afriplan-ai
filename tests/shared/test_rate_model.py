@@ -214,3 +214,13 @@ def test_db_build_up_is_monotonic_and_deterministic():
     assert db_build_up(**base, elcb=True).combined_rate > a
     assert db_build_up(**base, floor_standing=True).combined_rate > a
     assert db_build_up(**base).combined_rate == a
+
+
+def test_every_earth_size_the_rule_can_choose_has_a_price():
+    """Audit finding on a real SLD: 35/70 mm² BCEW supply lines were priced at R0."""
+    from core import constants
+    from core.rate_model import earth_size_for
+    for cable in (4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150):
+        e = earth_size_for(cable)
+        key = f"earth_wire_{int(e)}mm2" if float(e).is_integer() else f"earth_wire_{e}mm2"
+        assert constants.CABLE_PRICES.get(key, 0) > 0, key
