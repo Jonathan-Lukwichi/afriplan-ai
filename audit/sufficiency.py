@@ -89,6 +89,33 @@ def sufficiency(
     return rep
 
 
+_PAGE_TYPE_TO_DRAWING = {
+    "sld": DrawingType.SLD, "lighting_layout": DrawingType.LIGHTING,
+    "plugs_layout": DrawingType.PLUGS, "plug_layout": DrawingType.PLUGS,
+    "schedule": DrawingType.SCHEDULE, "register": DrawingType.REGISTER,
+    "site_plan": DrawingType.SITE, "legend": DrawingType.LEGEND,
+}
+
+
+def drawing_types_from_page_types(page_types) -> Set[DrawingType]:
+    """PDF classifier page types (PageType values) → drawing types for sufficiency."""
+    return {_PAGE_TYPE_TO_DRAWING[t] for t in page_types if t in _PAGE_TYPE_TO_DRAWING}
+
+
+def drawing_type_from_filename(name: str) -> Optional[DrawingType]:
+    """Best-effort drawing type from a CAD/PDF file name (WD-AB-01-SLD, … LIGHTING, PLUGS, Site Plan)."""
+    up = (name or "").upper()
+    if "SITE PLAN" in up or "SITE-PLAN" in up:
+        return DrawingType.SITE
+    if "SLD" in up or "SINGLE LINE" in up:
+        return DrawingType.SLD
+    if "LIGHT" in up:
+        return DrawingType.LIGHTING
+    if "PLUG" in up or "POWER" in up or "SOCKET" in up:
+        return DrawingType.PLUGS
+    return None
+
+
 def sufficiency_for_project(project: str, ref: ReferenceBoq, *, sources=("dwg", "pdf")) -> List[SufficiencyReport]:
     """One report per billed building and input source (CAD set vs PDF set)."""
     manifest = load_manifest(project)

@@ -65,6 +65,30 @@ def _render_legend(legend, boq) -> None:
             )
 
 
+def _render_sufficiency(uploaded) -> None:
+    """Which BOQ items these drawings can support, and which drawing to send next."""
+    from audit.sufficiency import sufficiency
+    rep = sufficiency(set(uploaded))
+    names = {"sld": "Single-line diagram (SLD)", "lighting_layout": "Lighting layout",
+             "plug_layout": "Plug / power layout", "site_plan": "Site plan (cable routes)",
+             "schedule": "DB / circuit schedule"}
+    with st.expander(
+        f"🧩 Drawing coverage — {len(rep.reproducible_families)} item types supported · "
+        f"{len(rep.requests)} drawing type(s) missing",
+        expanded=bool(rep.requests),
+    ):
+        st.caption("What this upload can quantify, and what to request for a complete BOQ. "
+                   "Items without supporting drawings become PROVISIONAL, never silent.")
+        st.markdown("**Recognised drawing types:** "
+                    + (", ".join(names.get(u, u) for u in rep.uploaded) or "none"))
+        for d, fams in rep.requests.items():
+            st.markdown(f"- ➕ **{names.get(d, d)}** would unlock: "
+                        + ", ".join(f.replace('_', ' ') for f in fams[:10])
+                        + ("…" if len(fams) > 10 else ""))
+        if not rep.requests:
+            st.success("All drawing-derived items are supported by this upload.")
+
+
 source: Optional[str] = st.session_state.get("source")
 project: ProjectMetadata = st.session_state.get("project_meta") or ProjectMetadata()
 contractor: ContractorProfile = st.session_state.get("contractor_profile") or ContractorProfile()
@@ -186,6 +210,18 @@ if source == "pdf":
                 f"- `{fc.file_name}` → **{fc.sheet_type.value}** ({tag}){flag}"
             )
 
+        # Drawing coverage: file types + evidence actually extracted
+        from audit.sufficiency import drawing_types_from_page_types
+        from evaluation.network import DrawingType
+        _up = drawing_types_from_page_types(fc.sheet_type.value for fc in run.files)
+        if run.facts.spine.distribution_boards or run.facts.spine.feeders:
+            _up.add(DrawingType.SLD)
+        if any(r.light_points() for r in run.facts.takeoff.rooms):
+            _up.add(DrawingType.LIGHTING)
+        if any(r.power_points() or r.isolators for r in run.facts.takeoff.rooms):
+            _up.add(DrawingType.PLUGS)
+        _render_sufficiency(_up)
+
         # Legend dictionary (LDSE)
         _render_legend(getattr(run, "legend", None), run.boq)
 
@@ -253,6 +289,11 @@ elif source == "dxf":
                 f"**Recognised:** circuits {', '.join(dxf_run.circuit_ids) or '—'} · "
                 f"DBs {', '.join(dxf_run.db_refs) or '—'}"
             )
+
+        # Drawing coverage for this single CAD file
+        from audit.sufficiency import drawing_type_from_filename
+        _dt = drawing_type_from_filename(dxf_name)
+        _render_sufficiency({_dt} if _dt else set())
 
         # Legend dictionary (LDSE) + template-matched counts
         _render_legend(getattr(dxf_run, "legend", None), boq)

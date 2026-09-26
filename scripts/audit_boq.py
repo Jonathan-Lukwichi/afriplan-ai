@@ -13,33 +13,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
 from agent.shared import BillOfQuantities  # noqa: E402
-from audit.boq_rules import AuditFinding, audit_boq, audit_reference  # noqa: E402
+from audit.boq_rules import audit_boq, audit_reference  # noqa: E402
+from audit.report import render_findings  # noqa: E402
 from evaluation.reference import load_reference  # noqa: E402
-
-
-def render_findings(findings: List[AuditFinding], title: str) -> str:
-    total = sum(f.value_at_risk_zar for f in findings)
-    by_rule = {}
-    for f in findings:
-        by_rule.setdefault(f.rule, []).append(f)
-    out = [f"# {title}", "",
-           f"**{len(findings)} findings · R {total:,.0f} value at risk**", "",
-           "| Rule | Findings | Value at risk |", "|---|---:|---:|"]
-    for rule, fs in sorted(by_rule.items(), key=lambda kv: -sum(f.value_at_risk_zar for f in kv[1])):
-        out.append(f"| {rule} | {len(fs)} | R {sum(f.value_at_risk_zar for f in fs):,.0f} |")
-    out += ["", "## Findings (by severity, then value)", "",
-            "| Sev | Rule | Building | Location | Finding | Value at risk | Action |",
-            "|---|---|---|---|---|---:|---|"]
-    for f in findings:
-        out.append(f"| {f.severity} | {f.rule} | {f.building} | {f.location} | {f.message} | "
-                   f"R {f.value_at_risk_zar:,.0f} | {f.suggested_action} |")
-    return "\n".join(out) + "\n"
 
 
 def main() -> int:

@@ -128,6 +128,39 @@ source_view = pdf_view if chosen == "PDF" else dxf_view
 base_boq: BillOfQuantities = source_view["boq"]
 
 
+# ─── Complete with derived items (issue 007) ─────────────────────────
+# Pipelines count what is drawn; a real bill also carries what an estimator
+# derives (flush boxes, chasing, conduit, GP wire, terminations…). The completer
+# adds them from ratios fitted on a reference project — tagged INFERRED, gapped.
+
+def _ratio_model():
+    from evaluation.dataset import DATA_ROOT
+    from evaluation.ratios import RatioModel
+    for p in sorted(DATA_ROOT.glob("*/ratio_model.json")):
+        try:
+            return RatioModel.model_validate_json(p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+    return None
+
+
+_model = _ratio_model()
+if _model is not None:
+    if st.toggle("Complete with derived items (wall boxes, chasing, conduit, wire, terminations)",
+                 value=True, key="boq_complete",
+                 help="Adds items never drawn as symbols, from ratios fitted on a real priced project "
+                      "(only ratios with ≤ 35 % held-out error). Every added line is tagged INFERRED "
+                      "and listed in the gap report — verify before tendering."):
+        from audit.completer import complete_boq
+        _before = len(base_boq.line_items)
+        base_boq = complete_boq(base_boq, _model, building=base_boq.project_name)
+        st.caption(f"Added {len(base_boq.line_items) - _before} derived line(s) "
+                   f"(ratios from: {', '.join(_model.project_sources)}).")
+else:
+    st.caption("Derived-item completion unavailable: no fitted ratio model on this machine "
+               "(run `python scripts/build_reference.py <project>`).")
+
+
 # ─── Pricing controls (inline contractor edit) ───────────────────────
 
 st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
@@ -215,11 +248,29 @@ st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 section_subtotals = priced_boq.section_subtotals_short
 if section_subtotals:
     st.markdown("**Section subtotals**")
-    st.bar_chart(section_subtotals, height=180)
+    try:
+        st.bar_chart(section_subtotals, height=180)
+    except Exception:  # noqa: BLE001 — Altair can fail to import on some Python builds (3.14)
+        st.dataframe(pd.DataFrame({"Section": list(section_subtotals),
+                                   "Subtotal (R)": [round(v, 2) for v in section_subtotals.values()]}),
+                     hide_index=True, use_container_width=True)
 
 # Line items table
 with st.expander("Show all line items", expanded=False):
     st.dataframe(_section_table(priced_boq), use_container_width=True, hide_index=True)
+
+# Audit this BOQ (arithmetic, unpriced lines, duplicates, missing companions)
+from audit.boq_rules import audit_boq as _audit_boq  # noqa: E402
+
+_findings = _audit_boq(priced_boq, building=priced_boq.project_name or "This bill")
+with st.expander(f"🔎  BOQ audit — {len(_findings)} finding(s)", expanded=bool(_findings)):
+    if not _findings:
+        st.success("No arithmetic, pricing, duplicate or missing-companion problems found.")
+    else:
+        st.dataframe(pd.DataFrame([{
+            "Severity": f.severity, "Rule": f.rule, "Location": f.location,
+            "Finding": f.message, "Action": f.suggested_action,
+        } for f in _findings]), use_container_width=True, hide_index=True)
 
 # Gap report (assumptions the estimator flagged — the "never silent" policy)
 if getattr(priced_boq, "gaps", None):
