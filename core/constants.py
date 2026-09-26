@@ -197,6 +197,12 @@ DB_PRICES: Dict[str, float] = {
     "main_switch_100a_4p": 680.0,        # 100A 4-Pole Main Switch
     "main_switch_160a_4p": 950.0,        # 160A 4-Pole Main Switch
     "main_switch_250a_4p": 1450.0,       # 250A 4-Pole Main Switch
+
+    # MCCB incomers — market estimates (2026), verify with supplier quotes
+    "mccb_100a_3p": 3800.0,
+    "mccb_160a_3p": 5500.0,
+    "mccb_250a_3p": 8500.0,
+    "mccb_400a_3p": 14000.0,
 }
 
 

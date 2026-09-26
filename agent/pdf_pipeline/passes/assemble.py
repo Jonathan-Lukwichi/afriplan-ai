@@ -44,6 +44,7 @@ from core.rate_model import (
     build_rate,
     cable_install_rate,
     classify_point,
+    db_build_up,
     fitting_install_rate,
     routed_length,
     termination_install_rate,
@@ -201,7 +202,14 @@ def _assemble_incoming(acc: _Acc, facts: PdfFacts, cfg: AssembleConfig, params: 
 def _assemble_distribution(acc: _Acc, facts: PdfFacts) -> None:
     for db in facts.spine.distribution_boards:
         ways = max(len(db.circuits), 1)
-        price = _db_enclosure_price(ways, db.enclosure_mount)
+        # Complete board from its SLD contents (issue 004): enclosure + incomer +
+        # every non-spare breaker + ELCB + SPD, wired and installed.
+        price = round(db_build_up(
+            ways=ways, phases=db.phases or 3, main_breaker_a=db.main_breaker_a,
+            circuits=[(c.breaker_a, c.breaker_poles) for c in db.circuits if not c.is_spare],
+            elcb=db.elcb_present, surge=db.surge_protection,
+            floor_standing=db.enclosure_mount == "floor_standing",
+        ).combined_rate, 2)
         acc.lines.append(BQLineItem(
             section=BQSection.DISTRIBUTION,
             description=(
@@ -215,20 +223,6 @@ def _assemble_distribution(acc: _Acc, facts: PdfFacts) -> None:
             drawing_ref="SLD",
         ))
     _finalise_line_totals(acc.lines)
-
-
-def _db_enclosure_price(ways: int, mount: str) -> float:
-    if ways <= 12:
-        base = constants.DB_PRICES["db_12way_surface"]
-    elif ways <= 18:
-        base = constants.DB_PRICES["db_18way_surface"]
-    elif ways <= 24:
-        base = constants.DB_PRICES["db_24way_surface"]
-    else:
-        base = constants.DB_PRICES["db_48way_surface"]
-    if mount == "floor_standing":
-        base *= 1.6
-    return base
 
 
 # ─── Section 3/9 — feeders + earth + terminations + trench ───────────────────

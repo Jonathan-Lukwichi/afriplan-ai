@@ -193,3 +193,24 @@ def test_build_rate_is_deterministic():
     a = build_rate(material_cost=938.0, install_labour=200.0)
     b = build_rate(material_cost=938.0, install_labour=200.0)
     assert a == b
+
+
+# ─── DB build-up (issue 004) ─────────────────────────────────────────
+
+def test_db_build_up_prices_the_contents_not_just_the_enclosure():
+    from core.rate_model import db_build_up
+    empty = db_build_up(ways=12, phases=3, main_breaker_a=0, circuits=[])
+    full = db_build_up(ways=24, phases=3, main_breaker_a=250,
+                       circuits=[(20, 1)] * 18 + [(32, 3)] * 2, elcb=True, surge=True)
+    assert full.combined_rate > 5 * empty.combined_rate
+    assert full.install_rate > empty.install_rate            # more ways → more labour
+
+
+def test_db_build_up_is_monotonic_and_deterministic():
+    from core.rate_model import db_build_up
+    base = dict(ways=18, phases=3, main_breaker_a=100, circuits=[(20, 1)] * 12)
+    a = db_build_up(**base).combined_rate
+    assert db_build_up(**base, surge=True).combined_rate > a
+    assert db_build_up(**base, elcb=True).combined_rate > a
+    assert db_build_up(**base, floor_standing=True).combined_rate > a
+    assert db_build_up(**base).combined_rate == a

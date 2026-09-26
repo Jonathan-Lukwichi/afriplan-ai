@@ -200,3 +200,15 @@ def test_site_lighting_is_billed_without_reticulation_wire():
     assert fams["light_solar_post"].qty == 18 and fams["light_solar_post"].unit_price_zar > 0
     assert fams["light_highmast"].qty == 7 and fams["light_highmast"].unit_price_zar > 0
     assert not any("reticulation" in l.description for l in boq.line_items)
+
+
+def test_db_line_prices_incomer_breakers_and_protection():
+    """Issue 004: a DB line is priced from its SLD contents, far above an empty enclosure."""
+    from agent.pdf_pipeline.passes.facts import SpineCircuit
+    from core import constants
+    db = SpineDB(name="DB-X", main_breaker_a=250, phases=3, enclosure_mount="surface",
+                 elcb_present=True, surge_protection=True,
+                 circuits=[SpineCircuit(circuit_id=f"L{i}", breaker_a=20) for i in range(18)])
+    boq = build_boq_from_facts(PdfFacts(spine=PowerSpine(distribution_boards=[db])))
+    line = next(l for l in boq.line_items if l.section == BQSection.DISTRIBUTION)
+    assert line.unit_price_zar > 5 * constants.DB_PRICES["db_24way_surface"]
