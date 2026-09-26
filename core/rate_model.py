@@ -378,3 +378,26 @@ def db_build_up(
     hours = _DB_INSTALL_BASE_H + _DB_INSTALL_PER_WAY_H * ways
     labour = crew.hourly_cost(1, 1, 0) * hours
     return build_rate(material_cost=material, install_labour=labour, params=params)
+
+
+# ─── Feeder companions shared by both assemblers ─────────────────────────────
+
+# Termination material per cable END (gland + shroud + lugs), from the rate sheet.
+TERMINATION_MATERIAL: Dict[str, float] = {
+    "95mm2": 1168.0, "70mm2": 663.0, "50mm2": 346.0, "35mm2": 327.2,
+    "25mm2": 195.8, "16mm2": 184.0, "10mm2": 130.8, "6mm2": 130.8,
+    "4mm2": 96.6, "2.5mm2": 94.2,
+}
+
+
+def earth_size_for(cable_mm2: float) -> float:
+    """BCEW earth size (mm²) chosen from the phase-conductor size — SA practice."""
+    if cable_mm2 >= 95:
+        return 70.0
+    if cable_mm2 >= 50:
+        return 35.0
+    if cable_mm2 >= 25:
+        return 16.0
+    if cable_mm2 >= 10:
+        return 10.0
+    return 6.0

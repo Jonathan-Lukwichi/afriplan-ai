@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from agent.dxf_pipeline.passes.recognize import DxfRecognition
+from agent.dxf_pipeline.passes.sld import SldFacts
 from agent.dxf_pipeline.patterns import (
     EXACT_BLOCK_MAP,
     REGEX_BLOCK_PATTERNS,
@@ -37,8 +38,13 @@ from core.rate_model import (
     DEFAULT_PARAMS,
     CrewRates,
     RateParams,
+    TERMINATION_MATERIAL,
+    bcew_install_rate,
     build_rate,
     cable_install_rate,
+    db_build_up,
+    earth_size_for,
+    termination_install_rate,
 )
 
 
@@ -48,6 +54,9 @@ class DxfAssembleConfig:
     retic_light_size: str = "1.5mm2"
     retic_power_size: str = "2.5mm2"
     db_enclosure_price: float = 4500.0
+    assumed_feeder_m: float = 30.0                 # SLDs rarely print route lengths (issue 002)
+    trench_rate_per_m: float = 180.0
+    warning_tape_rate_per_m: float = 5.4
 
 
 DEFAULT_DXF_CONFIG = DxfAssembleConfig()
@@ -96,12 +105,19 @@ def build_boq_from_recognition(
     crew: CrewRates = DEFAULT_CREW,
     params: RateParams = DEFAULT_PARAMS,
     config: DxfAssembleConfig = DEFAULT_DXF_CONFIG,
+    sld: Optional[SldFacts] = None,
 ) -> BillOfQuantities:
-    """Deterministically turn a DXF recognition into a priced A–H bill."""
+    """Deterministically turn a DXF recognition (+ SLD facts, if the drawing is an SLD)
+    into a priced A–H bill."""
     lines: List[BQLineItem] = []
     gaps: List[GapItem] = []
 
-    _assemble_dbs(lines, gaps, rec, config)
+    if sld is not None and sld.boards:
+        _assemble_sld_boards(lines, sld, crew, params)       # the SLD is the authority on boards
+    else:
+        _assemble_dbs(lines, gaps, rec, config)
+    if sld is not None and sld.feeders:
+        _assemble_sld_feeders(lines, gaps, sld, crew, params, config)
     _assemble_fittings(lines, rec, crew, params)
     _assemble_reticulation(lines, rec, crew, params, config)
 
@@ -138,6 +154,77 @@ def _assemble_dbs(lines, gaps, rec: DxfRecognition, cfg: DxfAssembleConfig) -> N
             suggested_action="Confirm DB size from the SLD/schedule.",
             severity="medium", drawing_ref="DXF",
         ))
+
+
+# ─── Section 2/3/9 — boards and feeders read from an SLD drawing (issue 001) ─
+
+def _size_key(mm2: float) -> str:
+    return f"{int(mm2)}mm2" if float(mm2).is_integer() else f"{mm2}mm2"
+
+
+def _assemble_sld_boards(lines, sld: SldFacts, crew: CrewRates, params: RateParams) -> None:
+    for b in sld.boards:
+        rate = db_build_up(ways=len(b.circuits) + b.spares, phases=b.phases,
+                           main_breaker_a=b.main_breaker_a, circuits=b.circuits,
+                           crew=crew, params=params)
+        lines.append(BQLineItem(
+            section=BQSection.DISTRIBUTION,
+            description=(f"{b.name}: {b.phases}ph {b.main_breaker_a}A, {b.ka:g}kA, "
+                         f"{len(b.circuits) + b.spares}-way ({b.spares} spare)"),
+            unit="Sum", qty=1, unit_price_zar=round(rate.combined_rate, 2),
+            source=ItemConfidence.EXTRACTED, line_kind=LineKind.COMBINED,
+            building_block=b.name, drawing_ref="SLD (DXF)",
+            notes="Board, incomer and breakers read from the SLD; ELCB/SPD not priced unless shown.",
+        ))
+
+
+def _assemble_sld_feeders(lines, gaps, sld: SldFacts, crew: CrewRates, params: RateParams,
+                          cfg: DxfAssembleConfig) -> None:
+    for fd in sld.feeders:
+        assumed = not (fd.length_annotated and fd.length_m > 0)
+        length = cfg.assumed_feeder_m if assumed else fd.length_m
+        src = ItemConfidence.ASSUMED if assumed else ItemConfidence.EXTRACTED
+        note = f"Length assumed {length:.0f} m (not printed on the SLD)." if assumed else ""
+        key = _size_key(fd.cable_size_mm2)
+        label = f"{fd.cable_size_mm2:g}mm² x{fd.cable_cores}C SWA feeder {fd.from_source}→{fd.to_db}"
+        if assumed:
+            gaps.append(GapItem(
+                section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
+                description=f"Feeder {fd.from_source}→{fd.to_db} route length not on the SLD",
+                assumption=f"Assumed {length:.0f} m.",
+                suggested_action="Measure the route on the site plan (upload it) or confirm on site.",
+                severity="high", drawing_ref="SLD (DXF)",
+            ))
+        cable = build_rate(material_cost=constants.CABLE_PRICES.get(f"swa_{key}_4c", 0.0),
+                           install_labour=cable_install_rate(key, crew) or 0.0, params=params)
+        e_mm2 = earth_size_for(fd.cable_size_mm2)
+        e_key = _size_key(e_mm2)
+        earth = build_rate(material_cost=constants.CABLE_PRICES.get(f"earth_wire_{e_key}", 0.0),
+                           install_labour=bcew_install_rate(e_key, crew) or 0.0, params=params)
+        term = build_rate(material_cost=TERMINATION_MATERIAL.get(key, 0.0),
+                          install_labour=termination_install_rate(key, crew) or 0.0, params=params)
+        rows = [
+            (BQSection.SUBMAIN_CABLES, f"Supply {label}", "m", length, cable.supply_rate, LineKind.SUPPLY),
+            (BQSection.SUBMAIN_CABLES, f"Install {label}", "m", length, cable.install_rate, LineKind.INSTALL),
+            (BQSection.SUBMAIN_CABLES, f"Supply {e_mm2:g}mm² BCEW earth", "m", length, earth.supply_rate, LineKind.SUPPLY),
+            (BQSection.SUBMAIN_CABLES, f"Install {e_mm2:g}mm² BCEW earth", "m", length, earth.install_rate, LineKind.INSTALL),
+            (BQSection.SUBMAIN_CABLES, f"Terminate {fd.cable_size_mm2:g}mm² SWA (both ends)", "Ea", 2,
+             term.combined_rate, LineKind.COMBINED),
+        ]
+        if fd.is_underground:
+            rows += [
+                (BQSection.UNDERGROUND, f"Trench 600mm for {fd.from_source}→{fd.to_db}", "m", length,
+                 cfg.trench_rate_per_m, LineKind.COMBINED),
+                (BQSection.UNDERGROUND, "Warning tape 300mm above cable", "m", length,
+                 cfg.warning_tape_rate_per_m, LineKind.COMBINED),
+            ]
+        for section, desc, unit, qty, rate, kind in rows:
+            lines.append(BQLineItem(
+                section=section, description=desc, unit=unit, qty=round(qty, 2),
+                unit_price_zar=round(rate, 2), line_kind=kind, building_block=fd.to_db,
+                source=ItemConfidence.EXTRACTED if unit == "Ea" else src,
+                assumption="" if unit == "Ea" else note, drawing_ref="SLD (DXF)",
+            ))
 
 
 # ─── Section 5/6 — fittings (exact counts from blocks + geometry) ────

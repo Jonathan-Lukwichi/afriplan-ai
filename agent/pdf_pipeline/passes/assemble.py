@@ -43,8 +43,10 @@ from core.rate_model import (
     bcew_install_rate,
     build_rate,
     cable_install_rate,
+    TERMINATION_MATERIAL,
     classify_point,
     db_build_up,
+    earth_size_for,
     fitting_install_rate,
     routed_length,
     termination_install_rate,
@@ -70,26 +72,6 @@ class AssembleConfig:
 
 DEFAULT_CONFIG = AssembleConfig()
 
-
-# BCEW earth size (mm²) selected from the phase-conductor size — SA practice.
-def _earth_size_for(cable_mm2: float) -> float:
-    if cable_mm2 >= 95:
-        return 70.0
-    if cable_mm2 >= 50:
-        return 35.0
-    if cable_mm2 >= 25:
-        return 16.0
-    if cable_mm2 >= 10:
-        return 10.0
-    return 6.0
-
-
-# Termination material per end (gland+shroud+lugs), from the Wedela sheet.
-_TERMINATION_MATERIAL: Dict[str, float] = {
-    "95mm2": 1168.0, "70mm2": 663.0, "50mm2": 346.0, "35mm2": 327.2,
-    "25mm2": 195.8, "16mm2": 184.0, "10mm2": 130.8, "6mm2": 130.8,
-    "4mm2": 96.6, "2.5mm2": 94.2,
-}
 
 # room count field → (price_map, price_key, install_key|None, section, description, unit)
 _FITTING_SPECS: Dict[str, Tuple[str, str, Optional[str], BQSection, str, str]] = {
@@ -264,7 +246,7 @@ def _assemble_feeders(
                    rate.install_rate, src, bldg, assumption=assumption_txt)
 
         # BCEW earth — same length
-        e_size = fd.earth_size_mm2 or _earth_size_for(fd.cable_size_mm2)
+        e_size = fd.earth_size_mm2 or earth_size_for(fd.cable_size_mm2)
         e_key = _size_key(e_size)
         e_material = constants.CABLE_PRICES.get(f"earth_wire_{e_key}", 0.0)
         e_install = bcew_install_rate(e_key, crew) or 0.0
@@ -275,7 +257,7 @@ def _assemble_feeders(
                    e_rate.install_rate, src, bldg)
 
         # Terminations — 2 ends
-        t_material = _TERMINATION_MATERIAL.get(size_key, 0.0)
+        t_material = TERMINATION_MATERIAL.get(size_key, 0.0)
         t_install = termination_install_rate(size_key, crew) or 0.0
         t_rate = build_rate(material_cost=t_material, install_labour=t_install, params=params)
         acc.lines.append(BQLineItem(

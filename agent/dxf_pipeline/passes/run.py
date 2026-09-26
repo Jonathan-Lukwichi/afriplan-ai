@@ -34,6 +34,7 @@ from agent.dxf_pipeline.passes.assemble import (
 )
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import recognise
+from agent.dxf_pipeline.passes.sld import read_sld
 from agent.dxf_pipeline.passes.spatial import assign_spatial
 from agent.dxf_pipeline.passes.template_count import count_by_template
 from agent.shared import (
@@ -114,6 +115,7 @@ def run_dxf_estimator(
             )
 
     rec = recognise(doc)
+    sld = read_sld(doc)                      # boards + feeders when this drawing is an SLD
     project_name = project.project_name or "Untitled DXF project"
     # Pass A–B — legend: read the drawing's own symbol dictionary.
     legend = extract_legend(doc, sheet_ref=Path(file_name).stem)
@@ -125,7 +127,7 @@ def run_dxf_estimator(
     building_hint = project.project_name or Path(file_name).stem
     spatial = assign_spatial(rec, doc, building=building_hint)
     boq = build_boq_from_recognition(
-        rec, project_name=project_name, run_id=run_id, contractor=contractor,
+        rec, project_name=project_name, run_id=run_id, contractor=contractor, sld=sld,
     )
     # Mode 3 — count exploded-line-work legend symbols by template matching.
     _integrate_template_counts(boq, doc, legend)
