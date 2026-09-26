@@ -150,3 +150,14 @@ def _renumber_and_total(boq: BillOfQuantities) -> None:
     boq.total_excl_vat_zar, boq.vat_zar = excl, vat
     boq.total_incl_vat_zar = round(excl + vat, 2)
     boq.items_inferred = sum(1 for l in boq.line_items if l.source == ItemConfidence.INFERRED)
+
+
+def available_ratio_model():
+    """First fitted ratio model found under data/projects/*/ (local, client-derived), or None."""
+    from evaluation.dataset import DATA_ROOT
+    for p in sorted(DATA_ROOT.glob("*/ratio_model.json")):
+        try:
+            return RatioModel.model_validate_json(p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 — a corrupt file must not break pricing
+            continue
+    return None

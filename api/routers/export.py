@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api", tags=["export"])
 
 
 def _priced_boq_for(
-    run_id: str, markup: float, contingency: float, vat: float,
+    run_id: str, markup: Optional[float], contingency: float, vat: float, complete: bool = False,
 ):
     record = run_store.get(run_id)
     if record is None:
@@ -40,6 +40,18 @@ def _priced_boq_for(
     # priority over the raw pipeline output, matching the original app's
     # session_state.priced_boq override.
     base = record.sourced_boq if record.sourced_boq is not None else record.result.boq
+    # Derived items (boxes, chasing, conduit, wire, terminations) from fitted ratios,
+    # tagged INFERRED + gapped. `is True` because direct calls may pass a Query object.
+    if complete is True:
+        from audit.completer import available_ratio_model, complete_boq
+        model = available_ratio_model()
+        if model is not None:
+            base = complete_boq(base, model, building=base.project_name)
+    # v2 estimator rates already include the x1.3 material markup and the bill
+    # declares contractor_markup_pct = 0: default to the bill's own value so the
+    # markup is never applied twice (issue 009). An explicit value still wins.
+    if not isinstance(markup, (int, float)) or isinstance(markup, bool):
+        markup = base.contractor_markup_pct
     return reprice_boq(base, markup, contingency, vat)
 
 
@@ -58,10 +70,11 @@ def put_contractor_profile(profile: dict):
 @router.get("/export/excel/{run_id}")
 def export_excel(
     run_id: str,
-    markup: float = Query(20.0), contingency: float = Query(5.0), vat: float = Query(15.0),
+    markup: Optional[float] = Query(None), contingency: float = Query(5.0), vat: float = Query(15.0),
+    complete: bool = Query(False),
     quote_ref: Optional[str] = Query(None), validity_days: int = Query(30),
 ):
-    priced = _priced_boq_for(run_id, markup, contingency, vat)
+    priced = _priced_boq_for(run_id, markup, contingency, vat, complete=complete)
     xlsx_bytes = export_boq_to_excel(
         priced, project=ProjectMetadata(project_name=priced.project_name),
         contractor=ContractorProfile(markup_pct=markup, contingency_pct=contingency, vat_pct=vat),
@@ -78,10 +91,11 @@ def export_excel(
 @router.get("/export/pdf/{run_id}")
 def export_pdf(
     run_id: str,
-    markup: float = Query(20.0), contingency: float = Query(5.0), vat: float = Query(15.0),
+    markup: Optional[float] = Query(None), contingency: float = Query(5.0), vat: float = Query(15.0),
+    complete: bool = Query(False),
     quote_ref: Optional[str] = Query(None), validity_days: int = Query(30),
 ):
-    priced = _priced_boq_for(run_id, markup, contingency, vat)
+    priced = _priced_boq_for(run_id, markup, contingency, vat, complete=complete)
     pdf_bytes = export_boq_to_pdf(
         priced, project=ProjectMetadata(project_name=priced.project_name),
         contractor=ContractorProfile(markup_pct=markup, contingency_pct=contingency, vat_pct=vat),
@@ -97,9 +111,10 @@ def export_pdf(
 @router.get("/export/json/{run_id}")
 def export_json(
     run_id: str,
-    markup: float = Query(20.0), contingency: float = Query(5.0), vat: float = Query(15.0),
+    markup: Optional[float] = Query(None), contingency: float = Query(5.0), vat: float = Query(15.0),
+    complete: bool = Query(False),
 ):
-    priced = _priced_boq_for(run_id, markup, contingency, vat)
+    priced = _priced_boq_for(run_id, markup, contingency, vat, complete=complete)
     return priced.model_dump(mode="json")
 
 
@@ -107,7 +122,8 @@ class EmailBoqRequest(BaseModel):
     run_id: str
     to: EmailStr
     recipient_name: Optional[str] = None
-    markup: float = 20.0
+    markup: Optional[float] = None
+    complete: bool = False
     contingency: float = 5.0
     vat: float = 15.0
     quote_ref: Optional[str] = None
@@ -116,9 +132,9 @@ class EmailBoqRequest(BaseModel):
 
 @router.post("/export/email")
 def email_boq(body: EmailBoqRequest):
-    priced = _priced_boq_for(body.run_id, body.markup, body.contingency, body.vat)
+    priced = _priced_boq_for(body.run_id, body.markup, body.contingency, body.vat, complete=body.complete)
     ref = body.quote_ref or f"AFP-{datetime.utcnow():%Y%m%d}-{priced.run_id[:6].upper()}"
-    contractor = ContractorProfile(markup_pct=body.markup, contingency_pct=body.contingency, vat_pct=body.vat)
+    contractor = ContractorProfile(markup_pct=priced.contractor_markup_pct, contingency_pct=body.contingency, vat_pct=body.vat)
     project = ProjectMetadata(project_name=priced.project_name)
 
     xlsx_bytes = export_boq_to_excel(priced, project=project, contractor=contractor, quote_ref=ref, validity_days=body.validity_days)
