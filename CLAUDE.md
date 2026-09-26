@@ -41,7 +41,7 @@ Author: Hervé / Jonathan Lukwichi (JLWanalytics). Commercial product in develop
 # Backend (main.py has no __main__ block — run uvicorn)
 cd api; .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
 # Frontend
-npm run dev                                          # http://localhost:5173
+npm run dev                                          # http://127.0.0.1:5180
 # Verify (all must pass before a commit)
 api\.venv\Scripts\python.exe -m pytest -q -p no:warnings   # ~390 tests, no network (pytest.ini: pythonpath=api)
 npm run build

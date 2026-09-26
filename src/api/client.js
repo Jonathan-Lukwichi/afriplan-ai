@@ -1,4 +1,4 @@
-// Dev: Vite on :5173 talks to the API on :8000. Production: the API serves
+// Dev: Vite on :5180 talks to the API on :8000. Production: the API serves
 // the built frontend itself, so requests are same-origin (empty base).
 // See engineering-webapp-skills' engineering-webapp-scaffold skill.
 const API_BASE = import.meta.env.VITE_API_BASE_URL

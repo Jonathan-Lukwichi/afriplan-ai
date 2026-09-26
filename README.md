@@ -33,5 +33,5 @@ cd api; python -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r require
 npm install; npm run dev
 ```
 
-Then open http://localhost:5173 — the Landing page, then Sign in (demo
+Then open http://127.0.0.1:5180 — the Landing page, then Sign in (demo
 credentials are pre-filled) takes you into the app.

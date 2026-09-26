@@ -4,10 +4,10 @@
 ```powershell
 # 1. Backend — http://127.0.0.1:8000
 cd api; .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
-# 2. Frontend — http://localhost:5173
+# 2. Frontend — http://127.0.0.1:5180
 npm run dev
 ```
-Open **http://localhost:5173**, click *Sign in* (demo login, pre-filled).
+Open **http://127.0.0.1:5180**, click *Sign in* (demo login, pre-filled).
 The PDF path needs `ANTHROPIC_API_KEY` in `api/.env` (≈ R 1 per page). DXF/DWG is free.
 Wedela test files live in `data/projects/wedela/raw/` (local only — client data).
 

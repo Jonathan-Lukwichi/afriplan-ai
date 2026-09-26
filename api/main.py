@@ -14,7 +14,7 @@ init_db()
 
 # In production (Docker) the built frontend is copied to api/static and served
 # by this same process — one service, same origin, no CORS. In dev the folder
-# doesn't exist and Vite serves the frontend on :5173 as before.
+# doesn't exist and Vite serves the frontend on :5180 as before.
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _SERVE_FRONTEND = _STATIC_DIR.is_dir()
 
