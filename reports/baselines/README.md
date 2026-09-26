@@ -3,6 +3,7 @@
 Scored with the frozen scorer (`evaluation/metrics.py`, ADR-0003) against the Wedela
 reference BOQ — its priced building lines (excl. contingency, VAT, P&Gs).
 Reproduce any row with the command shown; saved runs re-score at R 0 with `--from-runs`.
+The per-run reports linked below quote client figures and are kept locally (gitignored).
 
 | Date | Pipeline | View | **RS** | Coverage | Precision | Qty acc | Report |
 |---|---|---|---:|---:|---:|---:|---|

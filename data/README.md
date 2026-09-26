@@ -7,13 +7,18 @@ electrical drawings together with the BOQ a human estimator priced from them.
 data/projects/<project>/
     manifest.json        COMMITTED  every input file + SHA-256 + role + building
     raw/                 GITIGNORED the client's drawings, PDFs and BOQ workbook
-    reference_boq.json   COMMITTED  parsed ground truth      (scripts/build_reference.py)
-    ratio_model.json     COMMITTED  fitted derived ratios    (scripts/build_reference.py)
+    reference_boq.json   LOCAL ONLY parsed ground truth      (scripts/build_reference.py)
+    ratio_model.json     LOCAL ONLY fitted derived ratios    (scripts/build_reference.py)
 data/ml/                 GITIGNORED generated CNN training images (scripts/build_symbol_dataset.py)
 ```
 
-## Why raw/ is not in git
-It is client data (confidential, ~32 MB of binary CAD). The committed `manifest.json`
+## Why client files are not in git
+The GitHub repository is public. `raw/` and everything derived from it that carries
+the client's priced lines, rates or totals (`reference_boq.json`, `ratio_model.json`,
+the Wedela baseline/audit reports) stay local and are gitignored (ADR-0005).
+Regenerate them with `python scripts/build_reference.py wedela` once `raw/` is present.
+
+`raw/` itself is client data (confidential, ~32 MB of binary CAD). The committed `manifest.json`
 pins the exact bytes, so a colleague who receives the files separately can prove they
 hold identical inputs:
 

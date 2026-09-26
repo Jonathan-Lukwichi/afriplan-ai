@@ -3,6 +3,7 @@
 import pytest
 
 from audit.sufficiency import render_sufficiency, sufficiency, sufficiency_for_project
+from evaluation.dataset import reference_available
 from evaluation.network import DrawingType as D
 from evaluation.reference import RefBuilding, RefLine, ReferenceBoq
 
@@ -38,6 +39,7 @@ def test_without_reference_lists_requirements_only():
     assert "lighting_layout" in rep.requests and "sld" in rep.requests
 
 
+@pytest.mark.skipif(not reference_available("wedela"), reason="client reference BOQ kept locally (gitignored)")
 def test_project_report_renders():
     from evaluation.reference import load_reference
     reps = sufficiency_for_project("wedela", load_reference("wedela"))

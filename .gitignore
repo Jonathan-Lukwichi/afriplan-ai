@@ -73,3 +73,10 @@ extract_electrical_dwg.py
 # Reference datasets: client files stay local (manifest.json is committed)
 data/**/raw/
 data/ml/
+# Client-derived artefacts (priced lines, rates, totals) — the GitHub repo is PUBLIC (ADR-0005)
+data/projects/*/reference_boq.json
+data/projects/*/ratio_model.json
+reports/baselines/*-wedela-*.md
+reports/audits/wedela-*.md
+baselines/wedela.json
+baselines/trichard.json

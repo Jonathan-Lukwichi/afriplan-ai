@@ -98,7 +98,18 @@ def test_unmatched_building_notes_a_warning():
 
 
 # ─── Real baselines load & are shaped right ──────────────────────────
+# baselines/wedela.json and trichard.json hold client totals: kept locally, gitignored.
 
+def _have(name: str) -> bool:
+    from pathlib import Path
+    return (Path(__file__).resolve().parents[2] / "baselines" / f"{name}.json").is_file()
+
+
+_needs_wedela = pytest.mark.skipif(not _have("wedela"), reason="client baseline kept locally (gitignored)")
+_needs_trichard = pytest.mark.skipif(not _have("trichard"), reason="client baseline kept locally (gitignored)")
+
+
+@_needs_wedela
 def test_wedela_baseline_loads():
     b = load_baseline("wedela")
     assert b["structure"] == "per_building"
@@ -106,6 +117,7 @@ def test_wedela_baseline_loads():
     assert "Swimming Pool" in b["building_totals_zar"]
 
 
+@_needs_trichard
 def test_trichard_baseline_loads():
     b = load_baseline("trichard")
     assert b["structure"] == "single"
@@ -113,6 +125,7 @@ def test_trichard_baseline_loads():
     assert b["total_incl_vat_zar"] > 0
 
 
+@_needs_wedela
 def test_report_renders_without_error():
     boq = _boq(total_excl_vat_zar=6_000_000, total_incl_vat_zar=6_900_000)
     report = score_boq(boq, load_baseline("wedela"))

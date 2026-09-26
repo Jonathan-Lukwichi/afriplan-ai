@@ -1,12 +1,15 @@
 """Scorecard → markdown report."""
 
-from evaluation.dataset import load_manifest, uploaded_from_manifest
+import pytest
+
+from evaluation.dataset import load_manifest, reference_available, uploaded_from_manifest
 from evaluation.metrics import pred_lines_from_reference, score
 from evaluation.network import DrawingType as D
 from evaluation.reference import load_reference
 from evaluation.report import render_markdown
 
 
+@pytest.mark.skipif(not reference_available("wedela"), reason="client reference BOQ kept locally (gitignored)")
 def test_report_has_headline_and_gap_sections():
     ref = load_reference("wedela")
     pred = [p for p in pred_lines_from_reference(ref) if p.family != "chasing"]

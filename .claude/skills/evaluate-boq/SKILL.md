@@ -41,4 +41,6 @@ python scripts/evaluate.py --project wedela --boq boq.json --building "Storage" 
   rebuild the reference (`scripts/build_reference.py`) and re-run EVERY baseline in the
   same commit.
 - Report regressions as plainly as improvements.
-- Update `reports/baselines/README.md` and the "Current state" block of `CLAUDE.md`.
+- Update `reports/baselines/README.md` and the "Current state" block of `CLAUDE.md` with
+  percentages only. The per-run report quotes client figures: it is gitignored — never
+  force-add it (the repo is public, ADR-0005).

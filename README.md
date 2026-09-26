@@ -47,8 +47,7 @@ fix list is in [`issues/`](issues/README.md); the numbers in
 [`reports/baselines/`](reports/baselines/README.md).
 
 The reference bill itself was audited: 33 findings, incl. priced install lines left
-out of section totals and a duplicated DB line —
-[`reports/audits/wedela-reference-audit.md`](reports/audits/wedela-reference-audit.md).
+out of section totals and a duplicated DB line (report kept locally: client figures).
 
 ## Repository map
 
@@ -74,8 +73,10 @@ Read [`CLAUDE.md`](CLAUDE.md) → [`context.md`](context.md) → [`docs/architec
 Test-first; the architecture rules are enforced by CI and by a Claude Code hook; the scorer
 is frozen (ADR-0003); improvements are claimed only against a committed baseline.
 
-## Confidentiality
-`data/projects/*/reference_boq.json` contains a client's priced bill. Treat this
-repository as confidential.
+## Client data
+This repository is public. Client drawings, the parsed priced bill and every report
+quoting client figures are kept locally and gitignored (ADR-0005); tests that need them
+skip on a fresh clone. The checksummed `data/projects/*/manifest.json` lets anyone who
+receives the files from the owner reproduce every number exactly.
 
 *Hervé / Jonathan Lukwichi · JLWanalytics*

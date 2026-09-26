@@ -30,10 +30,10 @@ Author: Hervé / Jonathan Lukwichi (JLWanalytics). Commercial product in develop
 | CNN training-data generator (no model trained yet — ADR-0004) | `ml/` |
 | Live supplier pricing (mock suppliers) | `sourcing/` |
 | Legacy totals-only scorer (superseded by `evaluation/`) | `scoring/` |
-| Reference projects: manifest committed, raw client files gitignored | `data/projects/<p>/` |
+| Reference projects: manifest committed; raw files + parsed reference LOCAL ONLY | `data/projects/<p>/` |
 | Streamlit UI (pages) · exporters | `pages/`, `ui/`, `app.py` · `exports/` |
 | CLIs | `scripts/` |
-| Committed baseline + audit reports | `reports/` |
+| Baseline/audit reports (index committed; Wedela reports local — client figures) | `reports/` |
 
 ## Feedback loops (run before every commit)
 ```bash
@@ -72,7 +72,9 @@ before committing; report baseline numbers honestly, including regressions.
 ASK FIRST: new dependency · changing `BillOfQuantities` or any public schema ·
 paid API runs (PDF pipeline) · editing the scorer or taxonomy · committing client data.
 
-NEVER: commit `data/**/raw/` or `.streamlit/secrets.toml` · weaken or delete a test to
+NEVER: commit client data — `data/**/raw/`, `reference_boq.json`, `ratio_model.json`,
+rand figures from a client bill — (the GitHub repo is PUBLIC, ADR-0005) or
+`.streamlit/secrets.toml` · weaken or delete a test to
 go green · edit the scorer inside an optimisation loop · push/deploy without approval.
 
 ## Skills (follow them for these tasks)

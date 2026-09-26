@@ -4,7 +4,7 @@ import pytest
 
 from agent.shared import BillOfQuantities, BQLineItem, BQSection, LineKind
 from audit.boq_rules import audit_boq, audit_reference
-from evaluation.dataset import raw_available
+from evaluation.dataset import reference_available
 from evaluation.reference import RefBuilding, RefLine, ReferenceBoq
 
 
@@ -85,7 +85,7 @@ def test_pipeline_boq_is_audited_too():
     assert "COMPANION" in rules
 
 
-@pytest.mark.skipif(not raw_available("wedela"), reason="Wedela raw files not present")
+@pytest.mark.skipif(not reference_available("wedela"), reason="client reference BOQ kept locally (gitignored)")
 def test_real_wedela_reference_defects():
     from evaluation.reference import load_reference
     f = audit_reference(load_reference("wedela"))

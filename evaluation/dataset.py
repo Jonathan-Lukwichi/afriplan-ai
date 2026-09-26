@@ -134,3 +134,8 @@ def uploaded_from_manifest(manifest: ProjectManifest, building: str, *, source: 
 def raw_available(project: str) -> bool:
     """True when the gitignored raw inputs are present locally."""
     return (project_dir(project) / "raw").is_dir()
+
+
+def reference_available(project: str) -> bool:
+    """True when the (gitignored, client-derived) parsed reference BOQ exists locally."""
+    return (project_dir(project) / "reference_boq.json").is_file()

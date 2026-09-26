@@ -2,7 +2,7 @@
 
 import pytest
 
-from evaluation.dataset import raw_available
+from evaluation.dataset import reference_available
 from evaluation.ratios import RatioModel, Ratio, building_quantities, fit_ratios, input_total
 from evaluation.reference import RefBuilding, RefLine, ReferenceBoq
 
@@ -65,7 +65,7 @@ def test_predict_uses_family_wildcards():
     assert model.predict(counts)["wall_box|100x100"] == pytest.approx(12.0)
 
 
-@pytest.mark.skipif(not raw_available("wedela"), reason="Wedela raw files not present")
+@pytest.mark.skipif(not reference_available("wedela"), reason="client reference BOQ kept locally (gitignored)")
 def test_wedela_wall_boxes_track_outlets():
     from evaluation.reference import load_reference
     model = fit_ratios(load_reference("wedela"))
