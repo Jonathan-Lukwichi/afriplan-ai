@@ -43,7 +43,10 @@ from core.rate_model import (
     bcew_install_rate,
     build_rate,
     cable_install_rate,
+    TERMINATION_MATERIAL,
     classify_point,
+    db_build_up,
+    earth_size_for,
     fitting_install_rate,
     routed_length,
     termination_install_rate,
@@ -70,26 +73,6 @@ class AssembleConfig:
 DEFAULT_CONFIG = AssembleConfig()
 
 
-# BCEW earth size (mm²) selected from the phase-conductor size — SA practice.
-def _earth_size_for(cable_mm2: float) -> float:
-    if cable_mm2 >= 95:
-        return 70.0
-    if cable_mm2 >= 50:
-        return 35.0
-    if cable_mm2 >= 25:
-        return 16.0
-    if cable_mm2 >= 10:
-        return 10.0
-    return 6.0
-
-
-# Termination material per end (gland+shroud+lugs), from the Wedela sheet.
-_TERMINATION_MATERIAL: Dict[str, float] = {
-    "95mm2": 1168.0, "70mm2": 663.0, "50mm2": 346.0, "35mm2": 327.2,
-    "25mm2": 195.8, "16mm2": 184.0, "10mm2": 130.8, "6mm2": 130.8,
-    "4mm2": 96.6, "2.5mm2": 94.2,
-}
-
 # room count field → (price_map, price_key, install_key|None, section, description, unit)
 _FITTING_SPECS: Dict[str, Tuple[str, str, Optional[str], BQSection, str, str]] = {
     "downlights":        ("light", "downlight_led_6w",     "downlight_6w",       BQSection.LIGHTING, "6W LED downlight", "No"),
@@ -99,6 +82,8 @@ _FITTING_SPECS: Dict[str, Tuple[str, str, Optional[str], BQSection, str, str]] =
     "floodlights":       ("light", "flood_light_30w",      "flood_30w",          BQSection.LIGHTING, "30W LED floodlight", "No"),
     "emergency_lights":  ("light", "emergency_light_led",  None,                 BQSection.LIGHTING, "LED emergency light", "No"),
     "pole_lights":       ("light", "pole_light_60w",       None,                 BQSection.LIGHTING, "60W outdoor pole light", "No"),
+    "solar_post_lights": ("light", "solar_post_light_100w", None,                BQSection.LIGHTING, "100W LED solar post lantern (complete with pole)", "No"),
+    "high_mast_poles":   ("light", "high_mast_2x600w_10m", None,                 BQSection.LIGHTING, "2x600W LED flood light on 10m high-mast post", "No"),
     "double_sockets":    ("socket","double_socket_300",    None,                 BQSection.POWER_OUTLETS, "16A double switched socket", "No"),
     "single_sockets":    ("socket","single_socket_300",    None,                 BQSection.POWER_OUTLETS, "16A single switched socket", "No"),
     "waterproof_sockets":("socket","double_socket_waterproof", None,            BQSection.POWER_OUTLETS, "16A double waterproof socket", "No"),
@@ -200,7 +185,14 @@ def _assemble_incoming(acc: _Acc, facts: PdfFacts, cfg: AssembleConfig, params: 
 def _assemble_distribution(acc: _Acc, facts: PdfFacts) -> None:
     for db in facts.spine.distribution_boards:
         ways = max(len(db.circuits), 1)
-        price = _db_enclosure_price(ways, db.enclosure_mount)
+        # Complete board from its SLD contents (issue 004): enclosure + incomer +
+        # every non-spare breaker + ELCB + SPD, wired and installed.
+        price = round(db_build_up(
+            ways=ways, phases=db.phases or 3, main_breaker_a=db.main_breaker_a,
+            circuits=[(c.breaker_a, c.breaker_poles) for c in db.circuits if not c.is_spare],
+            elcb=db.elcb_present, surge=db.surge_protection,
+            floor_standing=db.enclosure_mount == "floor_standing",
+        ).combined_rate, 2)
         acc.lines.append(BQLineItem(
             section=BQSection.DISTRIBUTION,
             description=(
@@ -214,20 +206,6 @@ def _assemble_distribution(acc: _Acc, facts: PdfFacts) -> None:
             drawing_ref="SLD",
         ))
     _finalise_line_totals(acc.lines)
-
-
-def _db_enclosure_price(ways: int, mount: str) -> float:
-    if ways <= 12:
-        base = constants.DB_PRICES["db_12way_surface"]
-    elif ways <= 18:
-        base = constants.DB_PRICES["db_18way_surface"]
-    elif ways <= 24:
-        base = constants.DB_PRICES["db_24way_surface"]
-    else:
-        base = constants.DB_PRICES["db_48way_surface"]
-    if mount == "floor_standing":
-        base *= 1.6
-    return base
 
 
 # ─── Section 3/9 — feeders + earth + terminations + trench ───────────────────
@@ -269,7 +247,7 @@ def _assemble_feeders(
                    rate.install_rate, src, bldg, assumption=assumption_txt)
 
         # BCEW earth — same length
-        e_size = fd.earth_size_mm2 or _earth_size_for(fd.cable_size_mm2)
+        e_size = fd.earth_size_mm2 or earth_size_for(fd.cable_size_mm2)
         e_key = _size_key(e_size)
         e_material = constants.CABLE_PRICES.get(f"earth_wire_{e_key}", 0.0)
         e_install = bcew_install_rate(e_key, crew) or 0.0
@@ -280,7 +258,7 @@ def _assemble_feeders(
                    e_rate.install_rate, src, bldg)
 
         # Terminations — 2 ends
-        t_material = _TERMINATION_MATERIAL.get(size_key, 0.0)
+        t_material = TERMINATION_MATERIAL.get(size_key, 0.0)
         t_install = termination_install_rate(size_key, crew) or 0.0
         t_rate = build_rate(material_cost=t_material, install_labour=t_install, params=params)
         acc.lines.append(BQLineItem(
@@ -448,6 +426,7 @@ def _finalise_totals(boq: BillOfQuantities, params: RateParams) -> None:
     boq.subtotal_zar = subtotal
     boq.contingency_zar = contingency
     boq.markup_zar = 0.0                      # markup is baked into built-up rates
+    boq.contractor_markup_pct = 0.0           # ...so page 3 must not add it again
     boq.total_excl_vat_zar = excl_vat
     boq.vat_zar = vat
     boq.total_incl_vat_zar = round(excl_vat + vat, 2)

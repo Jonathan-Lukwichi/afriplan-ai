@@ -72,3 +72,35 @@ def test_legend_coverage_gaps_flag_uncounted_items():
     assert not any("16A Double Switched Socket" in g for g in gap_items)
     assert any("LED Floodlight" in g for g in gap_items)
     assert any("1-Lever Switch" in g for g in gap_items)
+
+
+# ─── legend region: glyphs in the legend table are not plan symbols (issue 006) ──
+
+def _doc_legend_and_plan():
+    doc = _doc_with_legend()
+    msp = doc.modelspace()
+    # a DB label out on the plan is classifiable text too — must not stretch the region
+    msp.add_text("DB-AB1", dxfattribs={"layer": "E-POWER"}).set_placement((20000, 20000))
+    # like the Wedela Revit exports: a legend glyph on the ELECTRICAL layer
+    msp.add_blockref("SW", (955, 900), dxfattribs={"layer": "E-POWER"})
+    doc.header["$EXTMIN"] = (0, 0, 0)
+    doc.header["$EXTMAX"] = (25000, 25000, 0)
+    return doc
+
+
+def test_legend_region_covers_the_table_not_the_plan():
+    from agent.dxf_pipeline.passes.legend import legend_region, in_region
+    region = legend_region(_doc_legend_and_plan())
+    assert region is not None
+    assert in_region(950, 700, region)            # the glyph beside its description
+    assert not in_region(5000, 5000, region)      # a plan instance
+    assert not in_region(20000, 20000, region)    # the stray DB label
+
+
+def test_run_excludes_legend_glyphs_from_the_bill():
+    import io
+    from agent.dxf_pipeline.passes.run import run_dxf_estimator
+    doc = _doc_legend_and_plan()
+    s = io.StringIO(); doc.write(s)
+    run = run_dxf_estimator(s.getvalue().encode(), "WD-X-01-LIGHTING.dxf")
+    assert run.symbol_count == 2                  # the two plan switches, not the legend glyph

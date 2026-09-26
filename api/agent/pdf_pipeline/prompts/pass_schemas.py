@@ -262,6 +262,11 @@ _ROOM_FITTINGS = {
     "floodlights":       {"type": "integer", "minimum": 0},
     "emergency_lights":  {"type": "integer", "minimum": 0},
     "pole_lights":       {"type": "integer", "minimum": 0},
+    # Site / external lighting (often on a site or external-works layout)
+    "solar_post_lights": {"type": "integer", "minimum": 0,
+                          "description": "Stand-alone SOLAR-powered LED post / lantern lights (count posts)."},
+    "high_mast_poles":   {"type": "integer", "minimum": 0,
+                          "description": "High-mast / tall flood-light POSTS (>= 6 m). Count posts, not lamp heads."},
     # Power
     "double_sockets":    {"type": "integer", "minimum": 0},
     "single_sockets":    {"type": "integer", "minimum": 0},

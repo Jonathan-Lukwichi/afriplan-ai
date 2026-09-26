@@ -8,7 +8,7 @@ pipeline (CI-enforced).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -40,7 +40,7 @@ class PipelineComparison(BaseModel):
     project_name: str = ""
     pdf_run_id: str = ""
     dxf_run_id: str = ""
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     section_agreements: Dict[str, SectionAgreement] = Field(default_factory=dict)
     field_disagreements: List[FieldDiscrepancy] = Field(default_factory=list)

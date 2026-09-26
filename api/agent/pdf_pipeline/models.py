@@ -8,7 +8,7 @@ metrics built into the evaluation step.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -188,7 +188,7 @@ class PdfPipelineRun(BaseModel):
     """End-to-end output of one PDF pipeline invocation."""
 
     run_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     input_file: str
     input_sha256: str
     page_count: int

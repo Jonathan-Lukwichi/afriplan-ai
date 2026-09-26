@@ -314,3 +314,90 @@ def average_length_per_point(total_looped_m: float, n_points: int) -> float:
     if n_points <= 0:
         return 0.0
     return total_looped_m / n_points
+
+
+# ─── Distribution board build-up (issue 004) ─────────────────────────────────
+# A DB line in a real bill is the COMPLETE board: enclosure + incomer + every
+# breaker + earth leakage + surge protection, wired and installed. Pricing only
+# the empty enclosure under-prices a board 20-50x. Everything here comes from what
+# the SLD shows (ways, incomer rating, circuit breakers, ELCB/SPD flags).
+
+_DB_ENCLOSURES = ((12, "db_12way_surface"), (18, "db_18way_surface"),
+                  (24, "db_24way_surface"), (36, "db_36way_surface"), (48, "db_48way_surface"))
+_MCCB = ((100, "mccb_100a_3p"), (160, "mccb_160a_3p"), (250, "mccb_250a_3p"), (400, "mccb_400a_3p"))
+_MCB_1P = ((10, "mcb_10a_1p"), (16, "mcb_16a_1p"), (20, "mcb_20a_1p"), (32, "mcb_32a_1p"),
+           (40, "mcb_40a_1p"), (63, "mcb_63a_1p"))
+_MCB_3P = ((20, "mcb_20a_3p"), (32, "mcb_32a_3p"), (40, "mcb_40a_3p"), (63, "mcb_63a_3p"),
+           (100, "mcb_100a_3p"))
+DB_FLOOR_STANDING_FACTOR = 1.6
+# Install crew 1E + 1S: 4 h to fix and connect the board + 0.25 h per way.
+_DB_INSTALL_BASE_H, _DB_INSTALL_PER_WAY_H = 4.0, 0.25
+
+
+def _pick(table, value: float, prices) -> float:
+    """Price of the smallest table entry >= value (largest entry if value exceeds all)."""
+    for limit, key in table:
+        if value <= limit:
+            return prices.get(key, 0.0)
+    return prices.get(table[-1][1], 0.0)
+
+
+def db_build_up(
+    *,
+    ways: int,
+    phases: int,
+    main_breaker_a: float,
+    circuits,
+    elcb: bool = False,
+    surge: bool = False,
+    floor_standing: bool = False,
+    crew: CrewRates = DEFAULT_CREW,
+    params: RateParams = DEFAULT_PARAMS,
+) -> BuiltUpRate:
+    """
+    Built-up rate for one complete distribution board.
+
+    circuits: iterable of (breaker_a, poles) for every NON-spare way.
+    Deterministic: the same SLD facts always give the same price.
+    """
+    from core.constants import DB_PRICES as P   # local import: rate_model stays import-light
+    circuits = list(circuits)
+    ways = max(int(ways), len(circuits), 1)
+    enclosure = _pick(_DB_ENCLOSURES, ways, P) * (DB_FLOOR_STANDING_FACTOR if floor_standing else 1.0)
+    incomer = 0.0
+    if main_breaker_a:
+        incomer = (_pick(_MCCB, main_breaker_a, P) if main_breaker_a > 63 or (phases == 3 and main_breaker_a > 40)
+                   else _pick(_MCB_3P if phases == 3 else _MCB_1P, main_breaker_a, P))
+    breakers = sum(_pick(_MCB_3P if poles >= 3 else _MCB_1P, amps or 20, P) for amps, poles in circuits)
+    protection = 0.0
+    if elcb:
+        protection += P.get("elcb_63a_30ma_4p" if phases == 3 else "elcb_63a_30ma_2p", 0.0)
+    if surge:
+        protection += P.get("spd_type2_3p" if phases == 3 else "spd_type2_1p", 0.0)
+    material = enclosure + incomer + breakers + protection
+    hours = _DB_INSTALL_BASE_H + _DB_INSTALL_PER_WAY_H * ways
+    labour = crew.hourly_cost(1, 1, 0) * hours
+    return build_rate(material_cost=material, install_labour=labour, params=params)
+
+
+# ─── Feeder companions shared by both assemblers ─────────────────────────────
+
+# Termination material per cable END (gland + shroud + lugs), from the rate sheet.
+TERMINATION_MATERIAL: Dict[str, float] = {
+    "95mm2": 1168.0, "70mm2": 663.0, "50mm2": 346.0, "35mm2": 327.2,
+    "25mm2": 195.8, "16mm2": 184.0, "10mm2": 130.8, "6mm2": 130.8,
+    "4mm2": 96.6, "2.5mm2": 94.2,
+}
+
+
+def earth_size_for(cable_mm2: float) -> float:
+    """BCEW earth size (mm²) chosen from the phase-conductor size — SA practice."""
+    if cable_mm2 >= 95:
+        return 70.0
+    if cable_mm2 >= 50:
+        return 35.0
+    if cable_mm2 >= 25:
+        return 16.0
+    if cable_mm2 >= 10:
+        return 10.0
+    return 6.0

@@ -12,3 +12,13 @@ test-results/
 playwright-report/
 screenshots/
 .DS_Store
+
+# Reference datasets — client files stay local; the GitHub repo is PUBLIC (docs/adr/0005)
+data/**/raw/
+data/ml/
+data/projects/*/reference_boq.json
+data/projects/*/ratio_model.json
+reports/baselines/*-wedela-*.md
+reports/audits/wedela-*.md
+runs/
+

@@ -104,3 +104,32 @@ def test_shared_does_not_import_either_pipeline():
             if mod.startswith("agent.pdf_pipeline") or mod.startswith("agent.dxf_pipeline"):
                 bad.append((path, lineno, line))
     assert not bad, "agent.shared imports pipeline code:\n" + _format(bad)
+
+
+_READ_ONLY_LAYERS = ("evaluation", "audit", "sourcing", "ml", "routers", "db")
+
+
+def test_agent_package_does_not_import_read_only_layers():
+    """evaluation/audit/sourcing/ml (and the web layer) read pipeline output; never the reverse."""
+    bad = []
+    for path in _python_files(REPO_ROOT / "api" / "agent"):
+        for lineno, line, mod in _imports_in(path):
+            if any(mod == p or mod.startswith(p + ".") for p in _READ_ONLY_LAYERS):
+                bad.append((path, lineno, line))
+    assert not bad, "api/agent imports a read-only layer:\n" + "\n".join(
+        f"  {p}:{i}: {ln}" for p, i, ln in bad
+    )
+
+
+def test_evaluation_and_audit_do_not_import_pipelines_or_llm_sdks():
+    """The scorer must be independent of what it scores (ADR-0003/0006): no pipeline, no LLM."""
+    forbidden = ("agent.pdf_pipeline", "agent.dxf_pipeline", "anthropic", "openai")
+    bad = []
+    for layer in ("evaluation", "audit"):
+        for path in _python_files(REPO_ROOT / "api" / layer):
+            for lineno, line, mod in _imports_in(path):
+                if any(mod == p or mod.startswith(p + ".") for p in forbidden):
+                    bad.append((path, lineno, line))
+    assert not bad, "evaluation/audit import a pipeline or an LLM SDK:\n" + "\n".join(
+        f"  {p}:{i}: {ln}" for p, i, ln in bad
+    )

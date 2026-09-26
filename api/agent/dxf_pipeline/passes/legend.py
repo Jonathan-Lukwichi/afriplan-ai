@@ -81,6 +81,63 @@ def extract_legend(doc: Drawing, *, sheet_ref: str = "") -> Legend:
     return Legend(entries=list(entries.values()), source="dxf", sheet_ref=sheet_ref)
 
 
+Region = Tuple[float, float, float, float]   # (x0, y0, x1, y1)
+
+
+def legend_region(doc: Drawing, *, gap_frac: float = 0.02, min_texts: int = 3) -> Optional[Region]:
+    """
+    Locate the legend TABLE: the largest tight cluster of legend-style descriptions
+    (text that classifies as an electrical item), expanded to the left to take in
+    the glyphs drawn beside each description. A lone classifiable label on the plan
+    ("DB-AB1") is its own tiny cluster and never stretches the region. Returns None
+    when no cluster of at least `min_texts` descriptions exists.
+    """
+    from agent.shared.legend import classify_description
+
+    pts: List[Tuple[float, float]] = []
+    for e in doc.modelspace():
+        if e.dxftype() in ("TEXT", "MTEXT") and classify_description(_plain_text(e).strip()):
+            pts.append(_text_pos(e))
+    if len(pts) < min_texts:
+        return None
+    try:
+        emax = doc.header.get("$EXTMAX", (0, 0, 0)); emin = doc.header.get("$EXTMIN", (0, 0, 0))
+        span = max(emax[0] - emin[0], emax[1] - emin[1])
+    except Exception:  # noqa: BLE001
+        span = 0.0
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    if not (0 < span < 1e9):          # unset / sentinel extents (ezdxf writes ±1e20)
+        span = max(max(xs) - min(xs), max(ys) - min(ys), 1.0)
+    gap = span * gap_frac
+
+    parent = list(range(len(pts)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            if math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) <= gap:
+                parent[find(i)] = find(j)
+    groups: Dict[int, List[Tuple[float, float]]] = {}
+    for i, p in enumerate(pts):
+        groups.setdefault(find(i), []).append(p)
+    best = max(groups.values(), key=len)
+    if len(best) < min_texts:
+        return None
+    x0, x1 = min(p[0] for p in best), max(p[0] for p in best)
+    y0, y1 = min(p[1] for p in best), max(p[1] for p in best)
+    # glyphs sit to the LEFT of their description; allow a row of margin around
+    return (x0 - gap, y0 - gap * 0.5, x1 + gap * 0.25, y1 + gap * 0.5)
+
+
+def in_region(x: float, y: float, region: Optional[Region]) -> bool:
+    return region is not None and region[0] <= x <= region[2] and region[1] <= y <= region[3]
+
+
 def _pairing_bands(positions: List[Tuple[float, float]]) -> Tuple[float, float]:
     """
     Scale the block→text pairing tolerance to the drawing's coordinates. A

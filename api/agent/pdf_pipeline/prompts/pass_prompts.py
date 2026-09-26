@@ -62,6 +62,9 @@ READ_LAYOUT_TAKEOFF_PROMPT = (
     "circuit labels visible in it (e.g. 'L2-1', 'S4', 'ISO1').\n"
     "  4. Capture area_m2 and ceiling_height_m only if they are labelled.\n"
     "  5. If a room is unnamed, label it 'Room <N>' by left-to-right order.\n"
+    "  6. Site / external lighting: count SOLAR post lanterns into solar_post_lights and "
+    "tall flood-light POSTS (high-mast, >= 6 m) into high_mast_poles — in a room named "
+    "'Site / external' when they stand outside the buildings.\n"
     "Count what you SEE. Do not infer counts from area or room type."
 )
 

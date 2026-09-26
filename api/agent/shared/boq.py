@@ -8,7 +8,7 @@ section by section.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Literal, Optional
 
@@ -170,7 +170,7 @@ class BillOfQuantities(BaseModel):
     project_name: str = ""
     pipeline: Literal["pdf", "dxf"]
     run_id: str = ""
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Line items
     line_items: List[BQLineItem] = Field(default_factory=list)

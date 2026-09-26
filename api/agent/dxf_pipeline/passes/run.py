@@ -18,7 +18,7 @@ import io
 import logging
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -32,8 +32,9 @@ from agent.dxf_pipeline.passes.assemble import (
     _number,
     build_boq_from_recognition,
 )
-from agent.dxf_pipeline.passes.legend import extract_legend
+from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import recognise
+from agent.dxf_pipeline.passes.sld import read_sld
 from agent.dxf_pipeline.passes.spatial import assign_spatial
 from agent.dxf_pipeline.passes.template_count import count_by_template
 from agent.shared import (
@@ -54,7 +55,7 @@ log = logging.getLogger(__name__)
 
 class DxfEstimatorRun(BaseModel):
     run_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     project_name: str = ""
     input_file: str = ""
     converted_from_dwg: bool = False
@@ -114,14 +115,19 @@ def run_dxf_estimator(
             )
 
     rec = recognise(doc)
+    sld = read_sld(doc)                      # boards + feeders when this drawing is an SLD
     project_name = project.project_name or "Untitled DXF project"
     # Pass A–B — legend: read the drawing's own symbol dictionary.
     legend = extract_legend(doc, sheet_ref=Path(file_name).stem)
+    # Legend glyphs are the key, not instances: drop symbols inside the legend table (issue 006).
+    region = legend_region(doc)
+    if region is not None:
+        rec.symbols = [s for s in rec.symbols if not in_region(s.x, s.y, region)]
     # Pass 5 — spatial: place each symbol in a room; building hint = file/project.
     building_hint = project.project_name or Path(file_name).stem
     spatial = assign_spatial(rec, doc, building=building_hint)
     boq = build_boq_from_recognition(
-        rec, project_name=project_name, run_id=run_id, contractor=contractor,
+        rec, project_name=project_name, run_id=run_id, contractor=contractor, sld=sld,
     )
     # Mode 3 — count exploded-line-work legend symbols by template matching.
     _integrate_template_counts(boq, doc, legend)
