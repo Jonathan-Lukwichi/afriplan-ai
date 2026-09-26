@@ -32,7 +32,7 @@ from agent.dxf_pipeline.passes.assemble import (
     _number,
     build_boq_from_recognition,
 )
-from agent.dxf_pipeline.passes.legend import extract_legend
+from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import recognise
 from agent.dxf_pipeline.passes.spatial import assign_spatial
 from agent.dxf_pipeline.passes.template_count import count_by_template
@@ -117,6 +117,10 @@ def run_dxf_estimator(
     project_name = project.project_name or "Untitled DXF project"
     # Pass A–B — legend: read the drawing's own symbol dictionary.
     legend = extract_legend(doc, sheet_ref=Path(file_name).stem)
+    # Legend glyphs are the key, not instances: drop symbols inside the legend table (issue 006).
+    region = legend_region(doc)
+    if region is not None:
+        rec.symbols = [s for s in rec.symbols if not in_region(s.x, s.y, region)]
     # Pass 5 — spatial: place each symbol in a room; building hint = file/project.
     building_hint = project.project_name or Path(file_name).stem
     spatial = assign_spatial(rec, doc, building=building_hint)
