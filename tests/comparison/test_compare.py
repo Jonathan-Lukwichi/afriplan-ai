@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -59,7 +59,7 @@ def _make_boq(pipeline: str, run_id: str, items: list[tuple[str, BQSection, floa
 def _make_pdf_run(boq: BillOfQuantities, mape=None) -> PdfPipelineRun:
     return PdfPipelineRun(
         run_id=boq.run_id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         input_file="test.pdf",
         input_sha256="a" * 64,
         page_count=3,
@@ -75,7 +75,7 @@ def _make_pdf_run(boq: BillOfQuantities, mape=None) -> PdfPipelineRun:
 def _make_dxf_run(boq: BillOfQuantities, mape=None) -> DxfPipelineRun:
     return DxfPipelineRun(
         run_id=boq.run_id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         input_file="test.dxf",
         input_sha256="b" * 64,
         drawing_units="mm",

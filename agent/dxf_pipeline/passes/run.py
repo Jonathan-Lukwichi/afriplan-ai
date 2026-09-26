@@ -18,7 +18,7 @@ import io
 import logging
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -55,7 +55,7 @@ log = logging.getLogger(__name__)
 
 class DxfEstimatorRun(BaseModel):
     run_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     project_name: str = ""
     input_file: str = ""
     converted_from_dwg: bool = False

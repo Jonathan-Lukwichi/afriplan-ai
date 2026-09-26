@@ -1,5 +1,7 @@
 # 001 — DXF pipeline recognises nothing on SLD drawings
 
+> **Status:** FIXED 2026-09-26 (25ea42c) — passes/sld.py reads boards, breakers, feeders; DXF project RS 2.4 % → 12.8 %.
+
 **Priority:** P0 — largest value gap · **Opened:** 2026-09-23
 
 **Evidence.** `reports/baselines/2026-09-23-wedela-dxf.md` run log: all 6 Wedela SLD DWGs

@@ -18,7 +18,7 @@ Design rules that mirror the rest of the codebase:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
@@ -91,7 +91,7 @@ class SupplierQuote(BaseModel):
     min_order_qty: float = 1.0
 
     valid_until: Optional[str] = None       # ISO date the quote expires
-    quoted_at: datetime = Field(default_factory=datetime.utcnow)
+    quoted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes: str = ""
     raw_source: str = ""                    # reply text / URL / catalog ref
     parse_confidence: float = 1.0           # 1.0 for structured sources; <1 for LLM-parsed
@@ -132,7 +132,7 @@ class ItemSourcingResult(BaseModel):
 class SourcingReport(BaseModel):
     project_name: str = ""
     boq_run_id: str = ""
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     results: List[ItemSourcingResult] = Field(default_factory=list)
 
     @property

@@ -1,5 +1,7 @@
 # 005 — DXF counts each DB once per drawing
 
+> **Status:** PARTLY — SLD boards replace plan DB refs when the drawing is an SLD; multi-drawing de-dup still open.
+
 **Priority:** P1 · **Opened:** 2026-09-23
 
 **Evidence.** DXF baseline: `db` 27 predicted vs 10. `agent/dxf_pipeline/passes/assemble.py:124`

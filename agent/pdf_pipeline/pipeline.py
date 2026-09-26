@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from agent.pdf_pipeline.llm import PdfLLM, build_default_pdf_llm
@@ -108,7 +108,7 @@ def run_pdf_pipeline(
 
     run = PdfPipelineRun(
         run_id=run_id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         input_file=ingest_result.file_name,
         input_sha256=ingest_result.file_sha256,
         page_count=ingest_result.page_count_total,
@@ -137,7 +137,7 @@ def _failure_run(
 ) -> PdfPipelineRun:
     return PdfPipelineRun(
         run_id=run_id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         input_file=file_name,
         input_sha256=sha,
         page_count=page_count,

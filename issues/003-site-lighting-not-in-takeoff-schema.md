@@ -1,5 +1,7 @@
 # 003 — Site lighting (solar post lanterns, high-mast floods) cannot be reported
 
+> **Status:** FIXED 2026-09-26 (03c6c98) — solar_post_lights / high_mast_poles in schema, facts, assembler.
+
 **Priority:** P0 · **Opened:** 2026-09-23
 
 **Evidence.** PDF baseline "Not produced": `light_solar_post` and `light_highmast` — together

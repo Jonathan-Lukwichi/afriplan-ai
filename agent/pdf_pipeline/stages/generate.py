@@ -9,7 +9,7 @@ from core.constants when an estimated BQ is requested.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 from agent.pdf_pipeline.models import PdfExtraction
@@ -155,7 +155,7 @@ def generate_boq(
         project_name=project_name,
         pipeline="pdf",
         run_id=run_id,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
         line_items=line_items,
         contractor_markup_pct=contractor.markup_pct,
         contingency_pct=contractor.contingency_pct,

@@ -8,7 +8,7 @@ produce the SA-compliant Excel and PDF deliverables.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import pandas as pd
@@ -188,7 +188,7 @@ with st.expander("Adjust pricing parameters", expanded=True):
     s1, s2 = st.columns(2)
     quote_ref = s1.text_input(
         "Quote reference",
-        value=f"AFP-{datetime.utcnow():%Y%m%d}-{base_boq.run_id[:6].upper()}",
+        value=f"AFP-{datetime.now(timezone.utc):%Y%m%d}-{base_boq.run_id[:6].upper()}",
     )
     validity_days = s2.number_input(
         "Quotation validity (days)", min_value=7, max_value=180, value=30, step=1,
@@ -346,7 +346,7 @@ dl_cols[2].download_button(
 
 st.caption(
     f"Quote reference **{quote_ref}**  ·  valid until "
-    f"{(datetime.utcnow() + timedelta(days=int(validity_days))):%Y-%m-%d}  ·  "
+    f"{(datetime.now(timezone.utc) + timedelta(days=int(validity_days))):%Y-%m-%d}  ·  "
     "All deliverables include cover page, executive summary, 14-section schedule, "
     "compliance declaration, and acceptance / signature block."
 )

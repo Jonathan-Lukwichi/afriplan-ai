@@ -7,7 +7,7 @@ value here is exact unless ezdxf raised an error.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
@@ -141,7 +141,7 @@ class DxfPipelineRun(BaseModel):
     """End-to-end output of one DXF pipeline invocation."""
 
     run_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     input_file: str
     input_sha256: str
     drawing_units: str

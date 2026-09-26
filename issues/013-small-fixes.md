@@ -1,5 +1,7 @@
 # 013 — Small correctness / hygiene fixes
 
+> **Status:** PARTLY — upload text fixed (80e7318); utcnow, DXF crew rates, switch section still open.
+
 **Priority:** P3 · **Opened:** 2026-09-23
 
 - `agent/dxf_pipeline/passes/assemble.py:156` — fitting install ignores `crew`; use

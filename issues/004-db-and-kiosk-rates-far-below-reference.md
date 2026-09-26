@@ -1,5 +1,7 @@
 # 004 — DB and kiosk prices are 20–50× below the reference
 
+> **Status:** FIXED 2026-09-26 (cd9e2be) — core.rate_model.db_build_up prices complete boards (PDF + DXF SLD).
+
 **Priority:** P1 · **Opened:** 2026-09-23
 
 **Evidence.** PDF baseline: `db` predicted rate ~40× below the reference average; DXF uses a

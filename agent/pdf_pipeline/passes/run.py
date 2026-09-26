@@ -22,7 +22,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, Field
@@ -173,7 +173,7 @@ def _summarise_file(file_name: str, per_page: List[PageClassification]) -> FileC
 
 class EstimatorRun(BaseModel):
     run_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     project_name: str = ""
     files: List[FileClassification] = Field(default_factory=list)
     page_count: int = 0

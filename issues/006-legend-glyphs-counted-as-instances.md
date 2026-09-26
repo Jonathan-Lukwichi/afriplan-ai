@@ -1,5 +1,7 @@
 # 006 — Legend glyph blocks are counted as real symbols
 
+> **Status:** FIXED 2026-09-26 (0642e1c) — legend_region excludes legend glyphs (real AB lighting: 15 → 13 switches).
+
 **Priority:** P1 · **Opened:** 2026-09-23
 
 **Evidence.** `ml/DATASET_CARD.md` and the labelled preview of `WD-AB-01-LIGHTING`: switch

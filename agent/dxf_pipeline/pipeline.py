@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from agent.dxf_pipeline.models import DxfPipelineRun
@@ -53,7 +53,7 @@ def run_dxf_pipeline(
     if not ingest_result.open_ok or doc is None:
         return DxfPipelineRun(
             run_id=run_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             input_file=ingest_result.file_name,
             input_sha256=ingest_result.file_sha256,
             drawing_units=ingest_result.drawing_units,
@@ -99,7 +99,7 @@ def run_dxf_pipeline(
 
     run = DxfPipelineRun(
         run_id=run_id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         input_file=ingest_result.file_name,
         input_sha256=ingest_result.file_sha256,
         drawing_units=ingest_result.drawing_units,
