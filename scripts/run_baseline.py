@@ -40,29 +40,35 @@ PROJECT = "Project (all buildings)"
 
 # ─── running the pipelines ───────────────────────────────────────────
 
-def run_dxf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
-    """One DXF run per drawing; line items concatenated per building."""
-    from agent.dxf_pipeline.passes.run import run_dxf_estimator
+_DXF_ROLES = ("sld", "lighting_layout", "plug_layout", "site_plan")
+
+
+def _attribute_dxf(boq: BillOfQuantities, manifest) -> Dict[str, BillOfQuantities]:
+    """Project-run lines → buildings, by the drawing each line came from (its drawing_ref)."""
+    building_of = {Path(f.path).stem: f.building for f in manifest.files}
     per_building: Dict[str, BillOfQuantities] = {}
-    log: List[str] = []
-    for b in ref.billed_buildings():
-        files = [f for role in ("sld", "lighting_layout", "plug_layout")
-                 for f in manifest.files_for(building=b.name, role=role)]
-        merged = BillOfQuantities(pipeline="dxf", project_name=b.name)
-        for f in files:
-            data = (project_dir(project) / f.path).read_bytes()
-            t = time.perf_counter()
-            run = run_dxf_estimator(data, Path(f.path).name, project=ProjectMetadata(project_name=b.name),
-                                    persist=True)
-            n = len(run.boq.line_items) if run.boq else 0
-            log.append(f"{b.name} | {Path(f.path).name} | run {run.run_id} | {n} lines | "
-                       f"{'ok' if run.success else 'FAILED: ' + str(run.error)[:60]} | {time.perf_counter() - t:.1f}s")
-            if run.boq:
-                merged.line_items.extend(run.boq.line_items)
-                merged.gaps.extend(run.boq.gaps)
-        if files:
-            per_building[b.name] = merged
-    return per_building, log
+    for ln in boq.line_items:
+        bld = building_of.get(ln.drawing_ref) or "(unattributed)"
+        per_building.setdefault(bld, BillOfQuantities(pipeline="dxf", project_name=bld)).line_items.append(ln)
+    return per_building
+
+
+def run_dxf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
+    """The whole DWG set as ONE project run — exactly what a user uploading the set gets:
+    boards/feeders from every SLD, feeder routes measured on the site plan, fittings from
+    every layout. Lines are attributed to buildings by the drawing they came from."""
+    from agent.dxf_pipeline.passes.run import run_dxf_project
+    files = [f for f in manifest.files
+             if f.path.lower().endswith(".dwg") and not f.superseded and f.role in _DXF_ROLES]
+    t = time.perf_counter()
+    run = run_dxf_project([((project_dir(project) / f.path).read_bytes(), Path(f.path).name) for f in files],
+                          project=ProjectMetadata(project_name=project), persist=True)
+    log = [f"DWG set ({len(files)} drawings) | run {run.run_id} | "
+           f"{len(run.boq.line_items) if run.boq else 0} lines | site plan: {run.site_plan_file or 'none'} | "
+           f"feeders measured on it: {run.routes_measured} | "
+           f"{'ok' if run.success else 'FAILED: ' + str(run.error)[:60]} | {time.perf_counter() - t:.0f}s"]
+    log += [f"  {n.role or '?'}: {n.file_name}" + ("" if n.ok else f" (FAILED: {n.error[:60]})") for n in run.files]
+    return (_attribute_dxf(run.boq, manifest) if run.boq else {}), log
 
 
 def _db_tokens(ref: ReferenceBoq) -> Dict[str, str]:
@@ -77,8 +83,9 @@ def _db_tokens(ref: ReferenceBoq) -> Dict[str, str]:
     return out
 
 
-def load_dxf_runs(run_ids: List[str], ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
-    """Re-score saved DXF runs (free, reproducible). Each run's project_name is its building."""
+def load_dxf_runs(run_ids: List[str], ref: ReferenceBoq, manifest=None) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
+    """Re-score saved DXF runs (free, reproducible). A project run (several drawings) is
+    attributed by drawing; an older single-drawing run's project_name is its building."""
     import json
     per_building: Dict[str, BillOfQuantities] = {}
     log: List[str] = []
@@ -87,6 +94,10 @@ def load_dxf_runs(run_ids: List[str], ref: ReferenceBoq) -> Tuple[Dict[str, Bill
         bld = raw.get("project_name", "")
         boq = BillOfQuantities.model_validate(raw["boq"]) if raw.get("boq") else None
         log.append(f"{bld} | {raw.get('input_file')} | saved run {rid} | {len(boq.line_items) if boq else 0} lines")
+        if boq and manifest is not None and len(raw.get("files") or []) > 1:
+            for b, part in _attribute_dxf(boq, manifest).items():
+                per_building.setdefault(b, BillOfQuantities(pipeline="dxf", project_name=b)).line_items.extend(part.line_items)
+            continue
         if boq and ref.building(bld) is not None:
             merged = per_building.setdefault(bld, BillOfQuantities(pipeline="dxf", project_name=bld))
             merged.line_items.extend(boq.line_items)
@@ -196,7 +207,7 @@ def main() -> int:
     model = load_ratio_model(args.project)
 
     if args.pipeline == "dxf":
-        per_building, log = (load_dxf_runs(args.from_runs, ref) if args.from_runs
+        per_building, log = (load_dxf_runs(args.from_runs, ref, manifest) if args.from_runs
                              else run_dxf(args.project, manifest, ref))
         source = "dwg"
     else:

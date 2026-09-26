@@ -14,7 +14,7 @@ agent.pdf_pipeline.* (CLAUDE.md single rule) — it shares only core + agent.sha
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 from agent.dxf_pipeline.passes.recognize import DxfRecognition
 from agent.dxf_pipeline.passes.sld import SldFacts
@@ -32,6 +32,7 @@ from agent.shared import (
     ItemConfidence,
     LineKind,
 )
+from agent.shared.routes import RouteNetwork, equipment_key
 from core import constants
 from core.rate_model import (
     DEFAULT_CREW,
@@ -55,6 +56,12 @@ class DxfAssembleConfig:
     retic_power_size: str = "2.5mm2"
     db_enclosure_price: float = 4500.0
     assumed_feeder_m: float = 30.0                 # SLDs rarely print route lengths (issue 002)
+    route_slack_pct: float = 5.0                   # snaking / sag on a route measured from the site plan
+    route_end_allowance_m: float = 1.5             # per end: rise into the board + termination tail
+    label_conflict_pct: float = 25.0               # designer's written lengths vs the scaled route
+    route_slack_pct: float = 5.0                   # snaking / sag on a route measured from the site plan
+    route_end_allowance_m: float = 1.5             # per end: rise into the board + termination tail
+    label_conflict_pct: float = 25.0               # designer's written lengths vs the scaled route
     trench_rate_per_m: float = 180.0
     warning_tape_rate_per_m: float = 5.4
 
@@ -106,18 +113,22 @@ def build_boq_from_recognition(
     params: RateParams = DEFAULT_PARAMS,
     config: DxfAssembleConfig = DEFAULT_DXF_CONFIG,
     sld: Optional[SldFacts] = None,
+    routes: Optional[RouteNetwork] = None,
+    known_boards: Iterable[str] = (),
 ) -> BillOfQuantities:
-    """Deterministically turn a DXF recognition (+ SLD facts, if the drawing is an SLD)
-    into a priced A–H bill."""
+    """Deterministically turn a DXF recognition (+ SLD facts, if the drawing is an SLD;
+    + the site plan's measured routes, when one was supplied) into a priced A–H bill.
+    `known_boards`: boards already priced from an SLD elsewhere in the project — a
+    layout's circuit tags must not bill them a second time."""
     lines: List[BQLineItem] = []
     gaps: List[GapItem] = []
 
     if sld is not None and sld.boards:
         _assemble_sld_boards(lines, sld, crew, params)       # the SLD is the authority on boards
     else:
-        _assemble_dbs(lines, gaps, rec, config)
+        _assemble_dbs(lines, gaps, rec, config, skip={equipment_key(b) for b in known_boards})
     if sld is not None and sld.feeders:
-        _assemble_sld_feeders(lines, gaps, sld, crew, params, config)
+        _assemble_sld_feeders(lines, gaps, sld, crew, params, config, routes=routes)
     _assemble_fittings(lines, rec, crew, params)
     _assemble_reticulation(lines, rec, crew, params, config)
 
@@ -137,8 +148,11 @@ def build_boq_from_recognition(
 
 # ─── Section 2 — distribution boards (from DB refs on the wiring) ─────
 
-def _assemble_dbs(lines, gaps, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
+def _assemble_dbs(lines, gaps, rec: DxfRecognition, cfg: DxfAssembleConfig,
+                  skip: Set[str] = frozenset()) -> None:
     for db in rec.db_refs():
+        if equipment_key(db) in skip:
+            continue
         lines.append(BQLineItem(
             section=BQSection.DISTRIBUTION,
             description=f"{db}: distribution board (rating per SLD)",
@@ -173,28 +187,78 @@ def _assemble_sld_boards(lines, sld: SldFacts, crew: CrewRates, params: RatePara
                          f"{len(b.circuits) + b.spares}-way ({b.spares} spare)"),
             unit="Sum", qty=1, unit_price_zar=round(rate.combined_rate, 2),
             source=ItemConfidence.EXTRACTED, line_kind=LineKind.COMBINED,
-            building_block=b.name, drawing_ref="SLD (DXF)",
+            building_block=b.name, drawing_ref=b.source or "SLD (DXF)",
             notes="Board, incomer and breakers read from the SLD; ELCB/SPD not priced unless shown.",
         ))
 
 
+def _feeder_order(feeders, routes: Optional[RouteNetwork] = None) -> list:
+    """Upstream feeders first, then shorter routes first, so a trench shared along
+    the way is billed with the feeder that runs along it before branching off."""
+    parent = {equipment_key(f.to_db): equipment_key(f.from_source) for f in feeders}
+
+    def route_m(f) -> float:
+        r = routes.route(f.from_source, f.to_db) if routes is not None and routes.found else None
+        return r.length_m if r is not None else float("inf")
+
+    def depth(k: str) -> int:
+        seen = {k}
+        n = 0
+        while k in parent and parent[k] not in seen:
+            k = parent[k]
+            seen.add(k)
+            n += 1
+        return n
+    return sorted(feeders, key=lambda f: (depth(equipment_key(f.to_db)), route_m(f)))
+
+
 def _assemble_sld_feeders(lines, gaps, sld: SldFacts, crew: CrewRates, params: RateParams,
-                          cfg: DxfAssembleConfig) -> None:
-    for fd in sld.feeders:
-        assumed = not (fd.length_annotated and fd.length_m > 0)
-        length = cfg.assumed_feeder_m if assumed else fd.length_m
-        src = ItemConfidence.ASSUMED if assumed else ItemConfidence.EXTRACTED
-        note = f"Length assumed {length:.0f} m (not printed on the SLD)." if assumed else ""
-        key = _size_key(fd.cable_size_mm2)
-        label = f"{fd.cable_size_mm2:g}mm² x{fd.cable_cores}C SWA feeder {fd.from_source}→{fd.to_db}"
-        if assumed:
+                          cfg: DxfAssembleConfig, routes: Optional[RouteNetwork] = None) -> None:
+    claimed: Set[int] = set()                        # route edges whose trench is already billed
+    for fd in _feeder_order(sld.feeders, routes):
+        ref = fd.source or "SLD (DXF)"
+        match = routes.route(fd.from_source, fd.to_db) if routes is not None and routes.found else None
+        if fd.length_annotated and fd.length_m > 0:
+            length, trench, src, note = fd.length_m, fd.length_m, ItemConfidence.EXTRACTED, ""
+        elif match is not None:
+            length = match.length_m * (1 + cfg.route_slack_pct / 100) + 2 * cfg.route_end_allowance_m
+            trench = routes.length_of(match.edges - claimed)
+            claimed |= match.edges
+            src = ItemConfidence.INFERRED
+            note = (f"Route measured {match.length_m:.1f} m on the site plan, "
+                    f"+{cfg.route_slack_pct:g}% and {cfg.route_end_allowance_m:g} m at each end.")
             gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
-                description=f"Feeder {fd.from_source}→{fd.to_db} route length not on the SLD",
-                assumption=f"Assumed {length:.0f} m.",
-                suggested_action="Measure the route on the site plan (upload it) or confirm on site.",
-                severity="high", drawing_ref="SLD (DXF)",
+                description=f"Feeder {fd.from_source}→{fd.to_db} length taken from the site-plan route",
+                assumption=note,
+                suggested_action="Check the route against the designer's cable schedule or on site.",
+                severity="low", drawing_ref=ref,
             ))
+            if match.stated_m and abs(match.stated_m - match.length_m) > cfg.label_conflict_pct / 100 * match.length_m:
+                gaps.append(GapItem(
+                    section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
+                    description=(f"Feeder {fd.from_source}→{fd.to_db}: lengths written on the site plan "
+                                 f"add to {match.stated_m:g} m, the drawn route scales to {match.length_m:.0f} m"),
+                    assumption="Priced on the scaled route.",
+                    suggested_action="Confirm which is right — written dimensions normally govern.",
+                    severity="medium", drawing_ref=ref,
+                ))
+        else:
+            length = trench = cfg.assumed_feeder_m
+            src = ItemConfidence.ASSUMED
+            note = f"Length assumed {length:.0f} m (not printed on the SLD)."
+            on_plan = routes is not None and routes.found
+            gaps.append(GapItem(
+                section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
+                description=(f"Feeder {fd.from_source}→{fd.to_db} has no drawn route on the site plan"
+                             if on_plan else f"Feeder {fd.from_source}→{fd.to_db} route length not on the SLD"),
+                assumption=f"Assumed {length:.0f} m.",
+                suggested_action=("Draw or confirm the route for this board on the site plan."
+                                  if on_plan else "Measure the route on the site plan (upload it) or confirm on site."),
+                severity="high", drawing_ref=ref,
+            ))
+        key = _size_key(fd.cable_size_mm2)
+        label = f"{fd.cable_size_mm2:g}mm² x{fd.cable_cores}C SWA feeder {fd.from_source}→{fd.to_db}"
         cable = build_rate(material_cost=constants.CABLE_PRICES.get(f"swa_{key}_4c", 0.0),
                            install_labour=cable_install_rate(key, crew) or 0.0, params=params)
         e_mm2 = earth_size_for(fd.cable_size_mm2)
@@ -211,11 +275,11 @@ def _assemble_sld_feeders(lines, gaps, sld: SldFacts, crew: CrewRates, params: R
             (BQSection.SUBMAIN_CABLES, f"Terminate {fd.cable_size_mm2:g}mm² SWA (both ends)", "Ea", 2,
              term.combined_rate, LineKind.COMBINED),
         ]
-        if fd.is_underground:
+        if fd.is_underground and trench > 0:           # 0: the whole route shares a trench billed upstream
             rows += [
-                (BQSection.UNDERGROUND, f"Trench 600mm for {fd.from_source}→{fd.to_db}", "m", length,
+                (BQSection.UNDERGROUND, f"Trench 600mm for {fd.from_source}→{fd.to_db}", "m", trench,
                  cfg.trench_rate_per_m, LineKind.COMBINED),
-                (BQSection.UNDERGROUND, "Warning tape 300mm above cable", "m", length,
+                (BQSection.UNDERGROUND, "Warning tape 300mm above cable", "m", trench,
                  cfg.warning_tape_rate_per_m, LineKind.COMBINED),
             ]
         for section, desc, unit, qty, rate, kind in rows:
@@ -223,9 +287,8 @@ def _assemble_sld_feeders(lines, gaps, sld: SldFacts, crew: CrewRates, params: R
                 section=section, description=desc, unit=unit, qty=round(qty, 2),
                 unit_price_zar=round(rate, 2), line_kind=kind, building_block=fd.to_db,
                 source=ItemConfidence.EXTRACTED if unit == "Ea" else src,
-                assumption="" if unit == "Ea" else note, drawing_ref="SLD (DXF)",
+                assumption="" if unit == "Ea" else note, drawing_ref=ref,
             ))
-
 
 # ─── Section 5/6 — fittings (exact counts from blocks + geometry) ────
 

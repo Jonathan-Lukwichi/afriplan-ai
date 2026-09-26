@@ -35,6 +35,13 @@ _FEEDER = re.compile(
     r".*?cable\s+(?P<size>\d+(?:\.\d+)?)\s*mm", re.I | re.S)
 _LENGTH = re.compile(r"\b(\d{1,4}(?:\.\d+)?)\s*m\b(?!m)", re.I)
 _BREAKER = re.compile(r"^\s*(\d{1,3})\s*A\s*$", re.I)
+# A main kiosk / MSB header often carries no DB name: '400V, 300A, 15kA, 50Hz, 3PH+N+E'
+_ANON_HEADER = re.compile(
+    r"^\s*(?P<v>\d{3})\s*V\s*,\s*(?P<a>\d{2,4})\s*A\s*,\s*(?P<ka>\d+(?:\.\d+)?)\s*kA.*?(?P<ph>[13])\s*PH",
+    re.I | re.S)
+# Incoming supply: 'EXISTING MINI SUB' + '95mm² 4CORE COPPER PVC PVC SWA PVC CABLE'
+_MINI_SUB = re.compile(r"MINI\s*-?\s*SUB", re.I)
+_SUPPLY_CABLE = re.compile(r"(?P<size>\d+(?:\.\d+)?)\s*mm.*?(?P<cores>\d)\s*CORE.*?SWA", re.I | re.S)
 
 
 def _norm_db(name: str) -> str:
@@ -52,6 +59,7 @@ class SldBoard:
     y: float = 0.0
     circuits: List[Tuple[int, int]] = field(default_factory=list)   # (amps, poles)
     spares: int = 0
+    source: str = ""                # sheet the board was read from
 
 
 @dataclass
@@ -63,6 +71,7 @@ class SldFeeder:
     length_m: float = 0.0
     length_annotated: bool = False
     is_underground: bool = True
+    source: str = ""                # sheet the feeder was read from
 
 
 @dataclass
@@ -80,12 +89,19 @@ def _pos(e) -> Tuple[float, float]:
     return (p.x, p.y) if p is not None else (0.0, 0.0)
 
 
-def read_sld(doc: Drawing) -> SldFacts:
+def _anon_board_name(sheet_name: str) -> str:
+    """Name for a board whose header carries none: the kiosk on a kiosk sheet, else the MSB."""
+    return "KIOSK" if re.search(r"KIOSK", sheet_name, re.I) else "MSB"
+
+
+def read_sld(doc: Drawing, sheet_name: str = "") -> SldFacts:
     facts = SldFacts()
     boards: dict = {}
     breakers: List[Tuple[int, float, float]] = []
     spares: List[Tuple[float, float]] = []
     seen_feeders = set()
+    mini_sub = False
+    supply_cable = None
 
     for e in doc.modelspace():
         if e.dxftype() not in ("TEXT", "MTEXT"):
@@ -94,13 +110,14 @@ def read_sld(doc: Drawing) -> SldFacts:
         if not text:
             continue
         x, y = _pos(e)
-        h = _HEADER.search(text)
+        h = _HEADER.search(text) or _ANON_HEADER.search(text)
         if h:
-            name = _norm_db(h.group("name"))
+            name = (_norm_db(h.group("name")) if "name" in h.groupdict()
+                    else _anon_board_name(sheet_name))
             if name not in boards:                       # the same header can be drawn twice
                 boards[name] = SldBoard(
                     name=name, voltage_v=int(h.group("v")), main_breaker_a=int(h.group("a")),
-                    ka=float(h.group("ka")), phases=int(h.group("ph")), x=x, y=y)
+                    ka=float(h.group("ka")), phases=int(h.group("ph")), x=x, y=y, source=sheet_name)
             continue
         f = _FEEDER.search(text)
         if f:
@@ -111,7 +128,15 @@ def read_sld(doc: Drawing) -> SldFacts:
                 lm = _LENGTH.search(tail)
                 facts.feeders.append(SldFeeder(
                     from_source=key[0], to_db=key[1], cable_size_mm2=float(f.group("size")),
-                    length_m=float(lm.group(1)) if lm else 0.0, length_annotated=bool(lm)))
+                    length_m=float(lm.group(1)) if lm else 0.0, length_annotated=bool(lm),
+                    source=sheet_name))
+            continue
+        if _MINI_SUB.search(text):
+            mini_sub = True
+            continue
+        c = _SUPPLY_CABLE.search(text)
+        if c and supply_cable is None:
+            supply_cable = (float(c.group("size")), int(c.group("cores")))
             continue
         b = _BREAKER.match(text)
         if b:
@@ -120,6 +145,13 @@ def read_sld(doc: Drawing) -> SldFacts:
             spares.append((x, y))
 
     facts.boards = list(boards.values())
+    # The incoming supply: a mini-sub on the sheet, a SWA cable spec, and an unnamed
+    # main board it feeds (named boards already declare their source with FED FROM).
+    anon = _anon_board_name(sheet_name)
+    if mini_sub and supply_cable and anon in boards and ("MINI-SUB", anon) not in seen_feeders:
+        facts.feeders.insert(0, SldFeeder(
+            from_source="MINI-SUB", to_db=anon, cable_size_mm2=supply_cable[0],
+            cable_cores=supply_cable[1], source=sheet_name))
     if facts.boards:
         # Boards drawn side by side own the breaker COLUMN below their header: assign
         # along the layout axis (plain Euclidean distance pulls the lower breakers of one

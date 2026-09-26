@@ -43,6 +43,36 @@ def test_feeders_need_a_cable_size():
     assert not feeders[("DB-CR", "DB-AB1")].length_annotated
 
 
+def _kiosk_sld_doc():
+    """Main-kiosk SLD, Wedela style: no DB name on the header, supply from the mini-sub."""
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    t = lambda s, x, y: msp.add_text(s, dxfattribs={"layer": "TEXT"}).set_placement((x, y))   # noqa: E731
+    t("EXISTING MINI SUB", 0, 3000)
+    t("95mm2y\\H1.42857xx4CORE COPPER PVC PVC SWA PVC CABLE", 0, 2500)
+    t("400V, 300A, 15kA, 50Hz, 3PH+N+E", 0, 2000)
+    for i, a in enumerate(["50A", "63A", "20A"]):
+        t(a, 100 * i, 1500)
+    t("SPARE", 400, 1500)
+    t("DB-CR", 0, 500)
+    return doc
+
+
+def test_unnamed_main_board_takes_the_sheet_name_and_its_mini_sub_supply():
+    sld = read_sld(_kiosk_sld_doc(), sheet_name="WD-KIOSK-01-SLD 100425")
+    assert [b.name for b in sld.boards] == ["KIOSK"]
+    assert sld.boards[0].main_breaker_a == 300 and sld.boards[0].spares == 1
+    supply = [(f.from_source, f.to_db, f.cable_size_mm2, f.cable_cores) for f in sld.feeders]
+    assert supply == [("MINI-SUB", "KIOSK", 95.0, 4)]
+    assert sld.boards[0].source == "WD-KIOSK-01-SLD 100425"
+
+
+def test_named_boards_and_feeders_record_their_sheet():
+    sld = read_sld(_sld_doc(), sheet_name="WD-AB-01-SLD")
+    assert {b.source for b in sld.boards} == {"WD-AB-01-SLD"}
+    assert {f.source for f in sld.feeders} == {"WD-AB-01-SLD"}
+
+
 def test_sld_drawing_produces_priced_boards_and_feeders():
     from agent.dxf_pipeline.passes.run import run_dxf_estimator
     from agent.shared import BQSection, ItemConfidence
