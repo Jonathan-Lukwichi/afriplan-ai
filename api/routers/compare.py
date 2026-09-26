@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -30,10 +30,10 @@ router = APIRouter(prefix="/api/compare", tags=["compare"])
 
 async def _run_both_then_compare(
     compare_id: str, dxf_run_id: str, pdf_run_id: str,
-    dxf_bytes: bytes, dxf_name: str, pdf_pairs: list[tuple[bytes, str]],
+    dxf_pairs: list[tuple[bytes, str]], pdf_pairs: list[tuple[bytes, str]],
 ) -> None:
     await asyncio.gather(
-        run_in_threadpool(run_dxf_job, dxf_run_id, dxf_bytes, dxf_name),
+        run_in_threadpool(run_dxf_job, dxf_run_id, dxf_pairs),
         run_in_threadpool(run_pdf_job, pdf_run_id, pdf_pairs),
     )
 
@@ -58,11 +58,15 @@ async def _run_both_then_compare(
 @router.post("")
 async def create_comparison(
     background_tasks: BackgroundTasks,
-    dxf_file: UploadFile = File(...),
     pdf_files: List[UploadFile] = File(...),
+    dxf_files: Optional[List[UploadFile]] = File(None),
+    dxf_file: Optional[UploadFile] = File(None),      # older clients: a single drawing
 ):
-    dxf_bytes = await dxf_file.read()
-    dxf_name = dxf_file.filename or "input.dxf"
+    dxf_uploads = list(dxf_files or []) + ([dxf_file] if dxf_file is not None else [])
+    if not dxf_uploads:
+        raise HTTPException(400, "no DXF/DWG drawing uploaded")
+    dxf_pairs = [(await f.read(), f.filename or "input.dxf") for f in dxf_uploads]
+    dxf_name = dxf_pairs[0][1] if len(dxf_pairs) == 1 else f"{len(dxf_pairs)} files"
     pdf_pairs = [(await f.read(), f.filename or "input.pdf") for f in pdf_files]
 
     dxf_run_id = uuid.uuid4().hex[:12]
@@ -78,10 +82,10 @@ async def create_comparison(
         compare_id=compare_id, dxf_run_id=dxf_run_id, pdf_run_id=pdf_run_id, status="running",
     ))
     if ON_VERCEL:
-        await _run_both_then_compare(compare_id, dxf_run_id, pdf_run_id, dxf_bytes, dxf_name, pdf_pairs)
+        await _run_both_then_compare(compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs)
     else:
         background_tasks.add_task(
-            _run_both_then_compare, compare_id, dxf_run_id, pdf_run_id, dxf_bytes, dxf_name, pdf_pairs,
+            _run_both_then_compare, compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs,
         )
 
     # See runs.py's create_run: report the real status, since on Vercel the

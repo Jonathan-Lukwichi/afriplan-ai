@@ -27,16 +27,17 @@ import uuid
 from fastapi import BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
 
-from agent.dxf_pipeline.passes.run import run_dxf_estimator
+from agent.dxf_pipeline.passes.run import run_dxf_project
 from agent.pdf_pipeline.passes.run import run_pdf_estimator
 from core.run_store import RunRecord, run_store
 
 ON_VERCEL = bool(os.environ.get("VERCEL"))
 
 
-def run_dxf_job(run_id: str, file_bytes: bytes, file_name: str) -> None:
+def run_dxf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
+    """One drawing or a whole drawing set (SLDs + layouts + site plan) as one project."""
     try:
-        result = run_dxf_estimator(file_bytes, file_name)
+        result = run_dxf_project(files)
         record = run_store.get(run_id)
         record.result = result
         record.status = "passed" if result.success else "failed"
@@ -64,15 +65,14 @@ def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
         run_store.put(record)
 
 
-async def launch_dxf_run(background_tasks: BackgroundTasks, file_bytes: bytes, file_name: str) -> str:
+async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]]) -> str:
     run_id = uuid.uuid4().hex[:12]
-    run_store.put(RunRecord(
-        run_id=run_id, pipeline="dxf", status="running", input_file=file_name or "input.dxf",
-    ))
+    label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
+    run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="running", input_file=label))
     if ON_VERCEL:
-        await run_in_threadpool(run_dxf_job, run_id, file_bytes, file_name or "input.dxf")
+        await run_in_threadpool(run_dxf_job, run_id, pairs)
     else:
-        background_tasks.add_task(run_in_threadpool, run_dxf_job, run_id, file_bytes, file_name or "input.dxf")
+        background_tasks.add_task(run_in_threadpool, run_dxf_job, run_id, pairs)
     return run_id
 
 

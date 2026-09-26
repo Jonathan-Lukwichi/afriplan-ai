@@ -61,7 +61,7 @@ def test_compare_orchestration_runs_concurrently_and_computes_result(monkeypatch
     dxf_bytes = buf.getvalue().encode("utf-8")
 
     asyncio.run(_run_both_then_compare(
-        compare_id, dxf_run_id, pdf_run_id, dxf_bytes, "test.dxf", [(b"%PDF-fake", "test.pdf")],
+        compare_id, dxf_run_id, pdf_run_id, [(dxf_bytes, "test.dxf")], [(b"%PDF-fake", "test.pdf")],
     ))
 
     record = compare_store.get(compare_id)

@@ -78,8 +78,17 @@ def _uploaded_for(record) -> set:
     """Drawing types a run actually had: file types + evidence extracted (PDF), file name (DXF)."""
     result = record.result
     if record.pipeline == "dxf":
-        dt = drawing_type_from_filename(record.input_file or getattr(result, "input_file", ""))
-        return {dt} if dt else set()
+        notes = [n for n in getattr(result, "files", []) or [] if n.ok]
+        if not notes:                                  # single-drawing run: its file name
+            dt = drawing_type_from_filename(record.input_file or getattr(result, "input_file", ""))
+            return {dt} if dt else set()
+        up = set()
+        for n in notes:                                # a drawing set: what each drawing was read as
+            dt = DrawingType.SITE if n.role == "site plan" else (
+                DrawingType.SLD if n.role == "SLD" else drawing_type_from_filename(n.file_name))
+            if dt:
+                up.add(dt)
+        return up
     up = drawing_types_from_page_types(
         getattr(getattr(fc, "sheet_type", None), "value", "") for fc in getattr(result, "files", []) or [])
     facts = getattr(result, "facts", None)

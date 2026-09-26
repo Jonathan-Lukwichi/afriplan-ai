@@ -1,7 +1,7 @@
 """
 POST /api/runs, GET /api/runs/{run_id} — the keyed run-cache pattern.
 
-DXF is a single-file, no-LLM, sub-second job. PDF is a multi-file, LLM-backed
+DXF is a no-LLM job over one drawing or a whole drawing set (run as one project). PDF is a multi-file, LLM-backed
 job that can take up to ~60s (vision calls with retry/escalation inside
 PdfLLM.call_with_tool) - both run as threadpool jobs behind the same
 create/poll contract so the frontend doesn't need to know which. Off Vercel
@@ -33,12 +33,13 @@ async def create_run(
 ):
     if pipeline not in ("dxf", "pdf"):
         raise HTTPException(400, f"pipeline '{pipeline}' not supported")
-    if pipeline == "dxf" and len(files) != 1:
-        raise HTTPException(400, "the DXF pipeline takes exactly one file")
+    if not files:
+        raise HTTPException(400, "no files uploaded")
 
     if pipeline == "dxf":
-        file_bytes = await files[0].read()
-        run_id = await launch_dxf_run(background_tasks, file_bytes, files[0].filename or "input.dxf")
+        # one drawing, or the whole set (SLDs + layouts + site plan) run as one project
+        pairs = [(await f.read(), f.filename or "input.dxf") for f in files]
+        run_id = await launch_dxf_run(background_tasks, pairs)
     else:
         pairs = [(await f.read(), f.filename or "input.pdf") for f in files]
         run_id = await launch_pdf_run(background_tasks, pairs)

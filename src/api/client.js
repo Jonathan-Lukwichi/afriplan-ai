@@ -28,7 +28,7 @@ export const api = {
   health: (signal) => request('/api/health', { signal }),
 
   runs: {
-    // `files` is a single File (dxf) or an array of Files (pdf, multi-drawing).
+    // `files`: one File or an array — a DXF/DWG set runs as one project, a PDF set as one run.
     create: (files, pipeline = 'dxf') => {
       const form = new FormData();
       (Array.isArray(files) ? files : [files]).forEach((f) => form.append('files', f));
@@ -39,9 +39,9 @@ export const api = {
   },
 
   compare: {
-    create: (dxfFile, pdfFiles) => {
+    create: (dxfFiles, pdfFiles) => {
       const form = new FormData();
-      form.append('dxf_file', dxfFile);
+      (Array.isArray(dxfFiles) ? dxfFiles : [dxfFiles]).forEach((f) => form.append('dxf_files', f));
       pdfFiles.forEach((f) => form.append('pdf_files', f));
       return request('/api/compare', { method: 'POST', body: form });
     },

@@ -20,7 +20,7 @@ const PIPELINES = [
 const PIPELINE_INFO = {
   dxf: {
     title: 'DXF engine',
-    body: 'Reads the exact CAD geometry directly — fast, precise, and free to run. A .dwg file is converted to .dxf automatically first.',
+    body: 'Reads the exact CAD geometry directly — fast, precise, and free to run. Select the whole drawing set (SLDs, lighting and plug layouts, electrical site plan): feeder lengths are measured on the site plan. .dwg files are converted automatically.',
   },
   pdf: {
     title: 'PDF engine',
@@ -40,13 +40,13 @@ const NEXT_STEPS = [
 
 export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
   const [pipeline, setPipeline] = useState('dxf');
-  const [files, setFiles] = useState([]);       // dxf: [File]; pdf: [File, ...]
-  const [dxfFile, setDxfFile] = useState(null); // both: the one DXF
+  const [files, setFiles] = useState([]);       // dxf or pdf: one drawing or the whole set
+  const [dxfFiles, setDxfFiles] = useState([]); // both: the DXF/DWG set
   const [pdfFiles, setPdfFiles] = useState([]); // both: one-or-more PDFs
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const ready = pipeline === 'both' ? (dxfFile && pdfFiles.length) : files.length;
+  const ready = pipeline === 'both' ? (dxfFiles.length && pdfFiles.length) : files.length;
 
   const submit = async () => {
     if (!ready) return;
@@ -54,7 +54,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
     setError(null);
     try {
       if (pipeline === 'both') {
-        const { compare_id } = await api.compare.create(dxfFile, pdfFiles);
+        const { compare_id } = await api.compare.create(dxfFiles, pdfFiles);
         onCompareCreated(compare_id);
         onNavigate('compare');
       } else {
@@ -71,7 +71,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
   const selectPipeline = (p) => {
     setPipeline(p);
     setFiles([]);
-    setDxfFile(null);
+    setDxfFiles([]);
     setPdfFiles([]);
   };
 
@@ -100,12 +100,21 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
           </div>
 
           {pipeline === 'dxf' && (
-            <input
-              type="file"
-              accept=".dxf,.dwg"
-              onChange={(e) => setFiles(e.target.files?.[0] ? [e.target.files[0]] : [])}
-              style={{ ...fileInputStyle, marginBottom: 'var(--space-md)' }}
-            />
+            <>
+              <input
+                type="file"
+                accept=".dxf,.dwg"
+                multiple
+                data-testid="dxf-files"
+                onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                style={{ ...fileInputStyle, marginBottom: 8 }}
+              />
+              <p style={{ fontSize: 12.5, color: 'var(--ink-muted)', margin: '0 0 var(--space-md)' }}>
+                {files.length > 1
+                  ? `${files.length} drawings — read together as one project.`
+                  : 'Tip: select every drawing of the job at once (Ctrl/Shift-click) so feeders can be measured on the site plan.'}
+              </p>
+            </>
           )}
 
           {pipeline === 'pdf' && (
@@ -120,11 +129,12 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
 
           {pipeline === 'both' && (
             <div style={{ marginBottom: 'var(--space-md)' }}>
-              <label style={{ fontSize: 13, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>DXF / DWG</label>
+              <label style={{ fontSize: 13, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>DXF / DWG drawing set</label>
               <input
                 type="file"
                 accept=".dxf,.dwg"
-                onChange={(e) => setDxfFile(e.target.files?.[0] || null)}
+                multiple
+                onChange={(e) => setDxfFiles(Array.from(e.target.files || []))}
                 style={{ ...fileInputStyle, marginBottom: 12 }}
               />
               <label style={{ fontSize: 13, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>PDF drawing set</label>
