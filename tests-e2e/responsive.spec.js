@@ -21,7 +21,7 @@ const SHOT_WIDTHS = [320, 390, 768, 1440];
 // login/welcome/upload/extraction/compare/boq/pricing all sit behind the
 // demo-login gate (App.jsx's isAuthed check) — authed via addInitScript
 // below rather than clicking through Login on every single test.
-const ROUTES = ['landing', 'login', 'welcome', 'upload', 'extraction', 'compare', 'boq', 'pricing'];
+const ROUTES = ['landing', 'login', 'welcome', 'upload', 'extraction', 'compare', 'boq', 'pricing', 'audit'];
 const AUTH_KEY = 'afriplan_demo_authed';
 
 fs.mkdirSync('screenshots', { recursive: true });

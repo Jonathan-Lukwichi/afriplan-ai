@@ -42,6 +42,7 @@ export default function Audit() {
 
       <div className="glass-card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
         <input type="file" accept=".xlsx" data-testid="audit-file"
+               style={{ minHeight: 44, padding: '8px 0', maxWidth: '100%', fontSize: 14 }}
                onChange={(e) => { setFile(e.target.files?.[0] || null); setResult(null); setError(null); }} />
         <button onClick={run} disabled={!file || busy} className="btn-gradient" style={{ padding: '10px 22px', fontSize: 14 }}>
           {busy ? 'Auditing…' : 'Audit this BoQ'}
