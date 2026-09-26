@@ -175,3 +175,9 @@ def test_empty_facts_yield_empty_priceable_bill():
     boq = build_boq_from_facts(PdfFacts())
     assert boq.line_items == []
     assert boq.total_incl_vat_zar == 0.0
+
+
+def test_markup_is_declared_as_baked_into_rates():
+    """Built-up rates already carry the x1.3 material markup: no second markup (issue 009)."""
+    boq = build_boq_from_facts(_wedela_like_facts())
+    assert boq.contractor_markup_pct == 0.0 and boq.markup_zar == 0.0

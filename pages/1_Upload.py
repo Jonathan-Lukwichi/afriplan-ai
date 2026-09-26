@@ -118,8 +118,8 @@ elif source == "dxf":
         type=["dxf", "dwg"],
         key="dxf_file_single",
         help="The DXF pipeline is deterministic — exact block counts and cable "
-             "lengths, no API cost. DWG files are auto-converted (needs the ODA "
-             "File Converter installed).",
+             "lengths, no API cost. DWG files are auto-converted with the free LibreDWG "
+             "dwg2dxf (ODA File Converter as a fallback).",
     )
     if dxf is not None:
         st.markdown(

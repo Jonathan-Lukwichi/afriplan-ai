@@ -18,6 +18,7 @@ welcome   = st.Page("pages/0_Welcome.py",        title="Welcome",      icon="�
 upload    = st.Page("pages/1_Upload.py",         title="Upload",       icon="📥")
 extract   = st.Page("pages/2_Extraction.py",     title="Extraction",   icon="⚙️")
 boq_gen   = st.Page("pages/3_BOQ_Generation.py", title="BOQ",          icon="📊")
+pricing   = st.Page("pages/4_Live_Pricing.py",    title="Live Pricing", icon="🏷️")
 
-pg = st.navigation([welcome, upload, extract, boq_gen])
+pg = st.navigation([welcome, upload, extract, boq_gen, pricing])
 pg.run()

@@ -209,6 +209,7 @@ def _finalise_totals(boq: BillOfQuantities, params: RateParams) -> None:
     boq.subtotal_zar = subtotal
     boq.contingency_zar = contingency
     boq.markup_zar = 0.0
+    boq.contractor_markup_pct = 0.0     # rates already include the x1.3 material markup
     boq.total_excl_vat_zar = excl
     boq.vat_zar = vat
     boq.total_incl_vat_zar = round(excl + vat, 2)

@@ -135,9 +135,13 @@ st.markdown('<div class="afp-eyebrow">PRICING</div>', unsafe_allow_html=True)
 
 with st.expander("Adjust pricing parameters", expanded=True):
     p1, p2, p3 = st.columns(3)
+    # v2 estimator rates are built up with a x1.3 material markup already, and the
+    # bill declares contractor_markup_pct = 0. Default to the bill's own value so the
+    # markup is never applied twice; a contractor can still add extra margin on purpose.
     new_markup = p1.number_input(
-        "Markup %", min_value=0.0, max_value=100.0,
-        value=float(contractor.markup_pct), step=1.0, key="boq_markup",
+        "Extra markup %", min_value=0.0, max_value=100.0,
+        value=float(base_boq.contractor_markup_pct), step=1.0, key="boq_markup",
+        help="Rates already include material markup (x1.3) and labour. Add extra margin only if intended.",
     )
     new_contingency = p2.number_input(
         "Contingency %", min_value=0.0, max_value=50.0,
