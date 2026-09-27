@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from agent.shared import GapItem
 
@@ -79,6 +79,8 @@ class PowerSpine(BaseModel):
     feeders: List[Feeder] = Field(default_factory=list)
     incoming_supply: IncomingSupply = Field(default_factory=IncomingSupply)
     warnings: List[str] = Field(default_factory=list)
+    # merge bookkeeping (issue 011): which sheets each board/feeder was read on; not serialised
+    _pages: Dict[Any, List[int]] = PrivateAttr(default_factory=dict)
 
 
 # ─── Pass 3 — layout takeoff ─────────────────────────────────────────
@@ -115,6 +117,7 @@ class TakeoffRoom(BaseModel):
     day_night_switches: int = 0
 
     confidence: float = 0.0
+    source_pages: List[int] = Field(default_factory=list)   # sheets this room was read on (merge, issue 011)
 
     _LIGHT_FIELDS = ("downlights", "panel_lights", "bulkheads", "vapour_proof",
                      "floodlights", "emergency_lights", "pole_lights")

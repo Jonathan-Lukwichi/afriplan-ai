@@ -72,8 +72,10 @@ def test_plugs_and_lighting_both_feed_takeoff(mock_llm):
     llm = mock_llm(tool_responses={"read_layout_takeoff": LAYOUT})
     classifications = _classifications([PageType.LIGHTING_LAYOUT, PageType.PLUGS_LAYOUT])
     facts, _ = extract_facts(llm, _pages(2), classifications)
-    # both pages routed to read_layout_takeoff → two merged rooms
-    assert len(facts.takeoff.rooms) == 2
+    # both pages routed to read_layout_takeoff; the same room read on both is ONE room (issue 011)
+    assert len(facts.takeoff.rooms) == 1
+    assert facts.takeoff.rooms[0].source_pages == [0, 1]
+    assert facts.takeoff.rooms[0].double_sockets == 6            # not 12
 
 
 def test_unknown_pages_are_skipped(mock_llm):
@@ -106,8 +108,10 @@ def test_full_chain_produces_priced_bill(mock_llm):
 def test_multi_sld_pages_merge_feeders(mock_llm):
     spine_a = {"distribution_boards": [], "feeders": [
         {"from_source": "A", "to_db": "B", "length_annotated": True, "length_m": 10}]}
-    # same canned response for both SLD pages → feeders accumulate
+    # same feeder on both SLD pages → one feeder, not two (issue 011)
     llm = mock_llm(tool_responses={"read_power_spine": spine_a})
     classifications = _classifications([PageType.SLD, PageType.SLD])
-    facts, _ = extract_facts(llm, _pages(2), classifications)
-    assert len(facts.spine.feeders) == 2
+    facts, costs = extract_facts(llm, _pages(2), classifications)
+    assert len(costs) == 6                                       # both pages were read (3 samples each)
+    assert len(facts.spine.feeders) == 1
+    assert facts.spine.feeders[0].length_m == 10

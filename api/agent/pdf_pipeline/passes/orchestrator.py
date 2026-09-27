@@ -5,9 +5,10 @@ Given classified pages, route each to its pass tool, call the vision LLM with
 the pass prompt, and merge the validated tool output into a single PdfFacts.
 Passes 4–5 (deterministic) then run via passes.assemble.build_boq_from_facts.
 
-Merging across pages is order-independent accumulation (extend lists, keep the
-first non-empty scalar) so a multi-sheet SLD or multi-sheet layout collapses
-into one coherent fact set.
+Merging across pages collapses a multi-sheet SLD or layout into one coherent
+fact set: a board, feeder or room read on two sheets is ONE item (matched by
+name, spacing/hyphens ignored), the fuller reading wins, and every disagreement
+between sheets becomes a gap (issue 011).
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ from agent.pdf_pipeline.prompts.pass_prompts import PROMPT_BY_PASS_TOOL
 from agent.pdf_pipeline.prompts.pass_schemas import TOOL_FOR_SHEET_TYPE
 from agent.pdf_pipeline.stages.ingest import IngestedPage
 from agent.shared import BillOfQuantities, BQSection, ContractorProfile, GapItem
+from agent.shared.routes import equipment_key
 from core.config import OPUS_4_6, SONNET_4_5
 
 log = logging.getLogger(__name__)
@@ -131,7 +133,7 @@ def extract_facts(
                 facts.takeoff.warnings.append(f"p{cls.page_index} {tool['name']}: {e}")
                 continue
             costs.extend(call_costs)
-            _merge_spine(facts.spine, spine)
+            _merge_spine(facts.spine, spine, page=cls.page_index, gaps=facts.extraction_gaps)
             facts.extraction_gaps.extend(gaps)
             continue
 
@@ -154,8 +156,9 @@ def extract_facts(
             continue
 
         costs.append(result.cost)
-        _merge(facts, tool["name"], result.tool_input)
+        _merge(facts, tool["name"], result.tool_input, page=cls.page_index)
 
+    facts.extraction_gaps.extend(_site_lighting_gaps(facts.takeoff))
     facts.extraction_gaps.extend(_check_spine_orphans(facts.spine))
     facts.extraction_gaps.extend(_check_source_alignment(facts.spine))
     return facts, costs
@@ -163,13 +166,13 @@ def extract_facts(
 
 # ─── merge helpers (order-independent accumulation) ─────────────────────
 
-def _merge(facts: PdfFacts, tool_name: str, tool_input: dict) -> None:
+def _merge(facts: PdfFacts, tool_name: str, tool_input: dict, page: int = -1) -> None:
     if tool_name == "read_project_context":
         _merge_context(facts.context, parse_project_context(tool_input))
     elif tool_name == "read_power_spine":
-        _merge_spine(facts.spine, parse_power_spine(tool_input))
+        _merge_spine(facts.spine, parse_power_spine(tool_input), page=page, gaps=facts.extraction_gaps)
     elif tool_name == "read_layout_takeoff":
-        _merge_takeoff(facts.takeoff, parse_layout_takeoff(tool_input))
+        _merge_takeoff(facts.takeoff, parse_layout_takeoff(tool_input), page=page, gaps=facts.extraction_gaps)
 
 
 def _first(a: str, b: str) -> str:
@@ -198,9 +201,80 @@ def _merge_context(dst: ProjectContext, src: ProjectContext) -> None:
     dst.notes.extend(src.notes)
 
 
-def _merge_spine(dst: PowerSpine, src: PowerSpine) -> None:
-    dst.distribution_boards.extend(src.distribution_boards)
-    dst.feeders.extend(src.feeders)
+#  Issue 011: a board, feeder or room drawn on two sheets (an SLD page and a
+#  schedule, a lighting plan and a plug plan) is ONE item. Merge by name — the
+#  shared equipment_key ignores spacing/hyphens, so 'DB-1' and 'DB1' meet — and
+#  record every disagreement as a gap instead of silently picking a value.
+
+def _conflict(gaps: Optional[List[GapItem]], section: BQSection, block: str, what: str,
+              a, pa: str, b, pb: str, kept) -> None:
+    if gaps is None:
+        return
+    gaps.append(GapItem(
+        section=section, building_block=block,
+        description=f"{block}: {what} reads {a} on {pa} but {b} on {pb}",
+        assumption=f"Used {kept}.",
+        suggested_action="Check both sheets; correct the bill if the other value is right.",
+        severity="medium", drawing_ref=f"{pa}, {pb}",
+    ))
+
+
+def _pg(pages: List[int]) -> str:
+    return ", ".join(f"p{p}" for p in pages if p >= 0) or "another sheet"
+
+
+def _merge_spine(dst: PowerSpine, src: PowerSpine, page: int = -1,
+                 gaps: Optional[List[GapItem]] = None) -> None:
+    by_key = {equipment_key(d.name): d for d in dst.distribution_boards if d.name}
+    pages = dst._pages                                       # key → sheets it was read on
+    for db in src.distribution_boards:
+        k = equipment_key(db.name)
+        old = by_key.get(k) if k else None
+        if old is None:
+            dst.distribution_boards.append(db)
+            if k:
+                by_key[k] = db
+                pages[("db", k)] = [page]
+            continue
+        seen = _pg(pages.get(("db", k), []))
+        for field in ("main_breaker_a", "phases", "ka_rating"):
+            a, b = getattr(old, field), getattr(db, field)
+            if a and b and a != b:
+                _conflict(gaps, BQSection.DISTRIBUTION, old.name, field.replace("_", " "),
+                          a, seen, b, _pg([page]), a)
+            elif not a and b:
+                setattr(old, field, b)
+        if len(db.circuits) > len(old.circuits):             # the fuller reading of the board wins
+            old.circuits = db.circuits
+        for field in ("elcb_present", "surge_protection"):
+            setattr(old, field, getattr(old, field) or getattr(db, field))
+        old.location = old.location or db.location
+        old.source_snippet = old.source_snippet or db.source_snippet
+        old.confidence = max(old.confidence, db.confidence)
+        pages[("db", k)].append(page)
+
+    by_run = {(equipment_key(f.from_source), equipment_key(f.to_db)): f for f in dst.feeders}
+    for fd in src.feeders:
+        k = (equipment_key(fd.from_source), equipment_key(fd.to_db))
+        old = by_run.get(k)
+        if old is None:
+            dst.feeders.append(fd)
+            by_run[k] = fd
+            pages[("feeder", k)] = [page]
+            continue
+        label = f"{old.from_source}→{old.to_db}"
+        if old.cable_size_mm2 and fd.cable_size_mm2 and old.cable_size_mm2 != fd.cable_size_mm2:
+            _conflict(gaps, BQSection.SUBMAIN_CABLES, label, "cable size (mm²)", f"{old.cable_size_mm2:g}",
+                      _pg(pages.get(("feeder", k), [])), f"{fd.cable_size_mm2:g}", _pg([page]),
+                      f"{old.cable_size_mm2:g} mm²")
+        elif not old.cable_size_mm2:
+            old.cable_size_mm2 = fd.cable_size_mm2
+        if fd.length_annotated and not old.length_annotated:  # a written length beats none
+            old.length_m, old.length_annotated = fd.length_m, True
+        old.earth_size_mm2 = old.earth_size_mm2 or fd.earth_size_mm2
+        old.confidence = max(old.confidence, fd.confidence)
+        pages[("feeder", k)].append(page)
+
     # keep the richest incoming supply seen
     if src.incoming_supply.kiosk_present or src.incoming_supply.meter_count or \
        src.incoming_supply.supply_source != "unknown":
@@ -209,10 +283,68 @@ def _merge_spine(dst: PowerSpine, src: PowerSpine) -> None:
     dst.warnings.extend(src.warnings)
 
 
-def _merge_takeoff(dst: LayoutTakeoff, src: LayoutTakeoff) -> None:
-    dst.rooms.extend(src.rooms)
+_ROOM_COUNTS = (
+    "downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights", "emergency_lights",
+    "pole_lights", "solar_post_lights", "high_mast_poles", "double_sockets", "single_sockets",
+    "waterproof_sockets", "floor_sockets", "data_outlets", "switches_1lever", "switches_2lever",
+    "switches_3lever", "isolators", "day_night_switches",
+)
+_SITE_LIGHTS = ("pole_lights", "solar_post_lights", "high_mast_poles")
+_LIGHT_COUNTS = _ROOM_COUNTS[:9]
+
+
+def _room_key(r) -> Tuple[str, str]:
+    return equipment_key(r.served_by_db) if r.served_by_db else "", " ".join(r.room_name.lower().split())
+
+
+def _merge_takeoff(dst: LayoutTakeoff, src: LayoutTakeoff, page: int = -1,
+                   gaps: Optional[List[GapItem]] = None) -> None:
+    """A room already read on ANOTHER sheet is the same room: counts merge field by
+    field, taking the higher reading (a lighting sheet shows 0 sockets, a plug sheet
+    0 lights) and flagging real disagreements. Same-named rooms on one sheet stay apart."""
+    for room in src.rooms:
+        k = _room_key(room)
+        old = next((r for r in dst.rooms if room.room_name and _room_key(r) == k
+                    and page not in r.source_pages), None)
+        if old is None:
+            room.source_pages = [page]
+            dst.rooms.append(room)
+            continue
+        for field in _ROOM_COUNTS:
+            a, b = getattr(old, field), getattr(room, field)
+            if a and b and a != b:
+                _conflict(gaps, BQSection.LIGHTING if field in _LIGHT_COUNTS else BQSection.POWER_OUTLETS,
+                          old.room_name, field.replace("_", " "), a, _pg(old.source_pages), b, _pg([page]),
+                          f"the higher count, {max(a, b)}")
+            setattr(old, field, max(a, b))
+        old.served_by_db = old.served_by_db or room.served_by_db
+        old.area_m2 = old.area_m2 or room.area_m2
+        old.circuit_tags += [t for t in room.circuit_tags if t not in old.circuit_tags]
+        old.confidence = max(old.confidence, room.confidence)
+        old.source_pages.append(page)
     dst.legend.update(src.legend)
     dst.warnings.extend(src.warnings)
+
+
+def _site_lighting_gaps(takeoff: LayoutTakeoff) -> List[GapItem]:
+    """Site lighting found on more than one sheet: the same poles are often drawn on the
+    site plan AND each building's layout. Names differ, so it can't be merged — say so."""
+    per_page: Dict[int, int] = {}
+    for r in takeoff.rooms:
+        n = sum(getattr(r, f) for f in _SITE_LIGHTS)
+        if n:
+            for p in r.source_pages or [-1]:
+                per_page[p] = per_page.get(p, 0) + n
+    if len(per_page) < 2:
+        return []
+    detail = ", ".join(f"{n} on p{p}" if p >= 0 else f"{n} on an unknown sheet" for p, n in sorted(per_page.items()))
+    return [GapItem(
+        section=BQSection.LIGHTING, building_block="Site lighting",
+        description=f"Site lighting read on {len(per_page)} sheets ({detail}) — the same poles may be counted twice",
+        assumption="All counts billed as read.",
+        suggested_action="Compare the sheets; remove poles that appear on more than one.",
+        severity="medium", drawing_ref=_pg(sorted(per_page)),
+    )]
 
 
 # ─── Self-consistency voting for the power-spine pass ────────────────
