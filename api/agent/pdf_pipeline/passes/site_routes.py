@@ -112,9 +112,14 @@ def read_page_routes(page: "fitz.Page") -> RouteNetwork:
         return RouteNetwork()                           # no 'X fed from Y' tag: not a site plan
     h = statistics.median([lb.h for lb in tags if lb.h > 0] or [0.0]) or 1.0
     dashed, solid_segs, outlines = _paths(page)
-    strokes = [s for s in solid_segs if math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= 3 * h]
-    route_segs = dashed + join_dashes(strokes, max_gap=1.5 * h)
     boxes = equipment_boxes(outlines, max_size=8 * h)
+    pad = 0.2 * h
+
+    def in_symbol(s: Seg) -> bool:                      # a symbol's own edges are not dashes
+        return any(b.distance(s.x1, s.y1) <= pad and b.distance(s.x2, s.y2) <= pad for b in boxes)
+    strokes = [s for s in solid_segs
+               if math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= 3 * h and not in_symbol(s)]
+    route_segs = dashed + join_dashes(strokes, max_gap=1.5 * h)
     return build_route_network(route_segs, labels, boxes, units_per_m=_page_scale(page.get_text()),
                                snap_decade=False)
 

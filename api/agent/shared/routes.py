@@ -1,7 +1,7 @@
 """
-Cable-route network measurement (issue 002) â€” pure geometry, no LLM, no I/O.
+Cable-route network measurement (issue 002) — pure geometry, no LLM, no I/O.
 
-SLDs name each feeder ('DB-AB1 FED FROM DB-CR â€¦ 16mmÂ²') but almost never print
+SLDs name each feeder ('DB-AB1 FED FROM DB-CR … 16mm²') but almost never print
 its length. The length lives on the electrical SITE PLAN: dashed route lines
 running between equipment symbols, each symbol tagged 'DB-AB1 Fed from DB-PFA',
 often with the designer's run lengths written beside the route ('35m').
@@ -11,11 +11,11 @@ from X to Y?". It is fed by thin adapters in each pipeline (DXF entities, or
 vector paths from a PDF page), so both pipelines measure the same way without
 sharing state or calling each other.
 
-    segments  â†’ graph (endpoints snapped, T-junctions split)
-    tag texts â†’ equipment ('DB-CR', 'KIOSK', 'MINI SUB') anchored to the symbol
+    segments  → graph (endpoints snapped, T-junctions split)
+    tag texts → equipment ('DB-CR', 'KIOSK', 'MINI SUB') anchored to the symbol
                 box (or loose route end) nearest the tag
-    'Nm' textsâ†’ scale calibration (drawing units per metre) + stated lengths
-    route(X,Y)â†’ shortest path length in metres + the edges used (trench union)
+    'Nm' texts→ scale calibration (drawing units per metre) + stated lengths
+    route(X,Y)→ shortest path length in metres + the edges used (trench union)
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class Box:
         return math.hypot(dx, dy)
 
 
-# â”€â”€â”€ tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── tags ────────────────────────────────────────────────────────────
 
 _NAME = r"DB[\s-]?[A-Z0-9]+(?:-(?!FED\b)[A-Z0-9]+)?|KIOSK|MINI[\s-]*SUB(?:STATION)?"
 _TAG = re.compile(
@@ -70,14 +70,14 @@ _LENGTH = re.compile(r"^\s*(\d{1,4}(?:\.\d+)?)\s*m\s*$", re.I)
 
 
 def equipment_key(name: str) -> str:
-    """'DB-1', 'DB1', 'db 1' â†’ 'DB1'; 'Existing Mini sub' â†’ 'MINISUB'. Matching only."""
+    """'DB-1', 'DB1', 'db 1' → 'DB1'; 'Existing Mini sub' → 'MINISUB'. Matching only."""
     s = re.sub(r"^\s*(EXISTING|NEW)\s+", "", name.strip(), flags=re.I).upper()
     s = re.sub(r"SUBSTATION$", "SUB", re.sub(r"[\s\-_]+", "", s))
     return s
 
 
 def parse_tag(text: str) -> Optional[Tuple[str, Optional[str]]]:
-    """An equipment tag â†’ (key, source key or None); anything else â†’ None."""
+    """An equipment tag → (key, source key or None); anything else → None."""
     m = _TAG.match(" ".join(text.split()))
     if not m:
         return None
@@ -86,7 +86,7 @@ def parse_tag(text: str) -> Optional[Tuple[str, Optional[str]]]:
 
 
 def tag_name(text: str) -> str:
-    """The equipment name as drawn ('DB-AB1 Fed from DB-PFA' â†’ 'DB-AB1')."""
+    """The equipment name as drawn ('DB-AB1 Fed from DB-PFA' → 'DB-AB1')."""
     m = _TAG.match(" ".join(text.split()))
     return m.group("name").upper() if m else text.strip()
 
@@ -96,7 +96,7 @@ def parse_length(text: str) -> Optional[float]:
     return float(m.group(1)) if m else None
 
 
-# â”€â”€â”€ the network â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── the network ─────────────────────────────────────────────────────
 
 @dataclass
 class Edge:
@@ -119,9 +119,9 @@ class RouteMatch:
 class RouteNetwork:
     nodes: List[Tuple[float, float]] = field(default_factory=list)
     edges: List[Edge] = field(default_factory=list)
-    equipment: Dict[str, Set[int]] = field(default_factory=dict)     # key â†’ anchor nodes
-    names: Dict[str, str] = field(default_factory=dict)              # key â†’ name as drawn
-    fed_from: Dict[str, str] = field(default_factory=dict)           # key â†’ source key (tags)
+    equipment: Dict[str, Set[int]] = field(default_factory=dict)     # key → anchor nodes
+    names: Dict[str, str] = field(default_factory=dict)              # key → name as drawn
+    fed_from: Dict[str, str] = field(default_factory=dict)           # key → source key (tags)
     units_per_m: float = 1.0
     scale_source: str = ""
     warnings: List[str] = field(default_factory=list)
@@ -179,7 +179,7 @@ class RouteNetwork:
         )
 
 
-# â”€â”€â”€ building it â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── building it ─────────────────────────────────────────────────────
 
 def _point_seg_dist(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> Tuple[float, float]:
     """(distance, t along the segment 0..1)."""
@@ -215,6 +215,41 @@ class _Nodes:
         return len(self.xy) - 1
 
 
+def _straight_legs(nodes: List[Tuple[float, float]], edges: List[Edge]) -> List[Edge]:
+    """
+    Merge pieces that continue in a straight line through a plain vertex into one
+    leg (corner to corner, junction to junction). A plotted PDF delivers a route as
+    many dash-sized pieces; the designer's '35m' describes the whole leg, so scale
+    calibration and stated lengths must see legs, not dashes.
+    """
+    alive = [True] * len(edges)
+    inc: Dict[int, List[int]] = {}
+    for i, e in enumerate(edges):
+        inc.setdefault(e.a, []).append(i)
+        inc.setdefault(e.b, []).append(i)
+    for n in list(inc):
+        live = [i for i in inc[n] if alive[i]]
+        if len(live) != 2:
+            continue
+        i, j = live
+        a = edges[i].b if edges[i].a == n else edges[i].a
+        b = edges[j].b if edges[j].a == n else edges[j].a
+        if a == b:
+            continue
+        (nx, ny), (ax, ay), (bx, by) = nodes[n], nodes[a], nodes[b]
+        va, vb = (ax - nx, ay - ny), (bx - nx, by - ny)
+        la, lb = math.hypot(*va), math.hypot(*vb)
+        if la == 0 or lb == 0 or (va[0] * vb[0] + va[1] * vb[1]) / (la * lb) > -0.996:
+            continue                                     # a corner (>~5°): keep the vertex
+        alive[i] = alive[j] = False
+        edges.append(Edge(a, b, edges[i].length + edges[j].length))
+        alive.append(True)
+        k = len(edges) - 1
+        inc[a] = [x for x in inc[a] if x != i] + [k]
+        inc[b] = [x for x in inc[b] if x != j] + [k]
+    return [e for e, keep in zip(edges, alive) if keep]
+
+
 def build_route_network(
     segments: Sequence[Seg],
     labels: Sequence[Label],
@@ -237,7 +272,7 @@ def build_route_network(
         return net                                   # not a site route overview
     if not segments or len(segments) > max_segments:
         if segments:
-            net.warnings.append(f"{len(segments)} candidate route segments â€” too many to be a site plan")
+            net.warnings.append(f"{len(segments)} candidate route segments — too many to be a site plan")
         return net
 
     heights = [lb.h for lb, _ in tags if lb.h > 0]
@@ -248,7 +283,7 @@ def build_route_network(
         h = max(max(xs) - min(xs), max(ys) - min(ys)) / 200.0 or 1.0
     tol = 0.5 * h
 
-    # 1. endpoints â†’ nodes (snapped); split segments at T-junctions
+    # 1. endpoints → nodes (snapped); split segments at T-junctions
     nodes = _Nodes(tol)
     raw = [(nodes.get(s.x1, s.y1), nodes.get(s.x2, s.y2)) for s in segments]
     pieces: List[Tuple[int, int]] = []
@@ -275,6 +310,7 @@ def build_route_network(
         (px, py), (qx, qy) = nodes.xy[p], nodes.xy[q]
         net.edges.append(Edge(p, q, math.hypot(qx - px, qy - py)))
     net.nodes = nodes.xy
+    net.edges = _straight_legs(net.nodes, net.edges)
 
     # 2. equipment anchors: symbol boxes touched by the route, else loose route ends
     degree: Dict[int, int] = {}
@@ -321,7 +357,7 @@ def build_route_network(
             if other and other != key and bx.distance(lb.x, lb.y) < 1.25 * d_own:
                 net.warnings.append(
                     f"{net.names.get(key, key)} tag is about as close to {net.names.get(other, other)}'s "
-                    "symbol â€” check which route belongs to which board")
+                    "symbol — check which route belongs to which board")
                 break
     for _, (key, src) in tags:
         if src:
@@ -330,7 +366,7 @@ def build_route_network(
     if missing:
         net.warnings.append("Tagged but not on a drawn route: " + ", ".join(missing))
 
-    # 3. designer lengths â†’ nearest edge; scale calibration
+    # 3. designer lengths → nearest edge; scale calibration
     ratios: List[float] = []
     for lb in labels:
         value = parse_length(lb.text)
@@ -360,16 +396,16 @@ def build_route_network(
     elif units_per_m:
         net.units_per_m, net.scale_source = units_per_m, "drawing scale"
     else:
-        net.units_per_m, net.scale_source = 1.0, "unknown â€” assumed 1 unit = 1 m"
+        net.units_per_m, net.scale_source = 1.0, "unknown — assumed 1 unit = 1 m"
         net.warnings.append("Drawing scale unknown: route lengths assume 1 drawing unit = 1 m")
     return net
 
 
-# â”€â”€â”€ symbol outlines and dashed lines (adapter helpers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── symbol outlines and dashed lines (adapter helpers) ────────────
 
 def equipment_boxes(solid: List[Sequence[Tuple[float, float]]], max_size: float) -> List[Box]:
     """
-    Closed small outlines among solid linework â†’ one Box each. Pieces are joined
+    Closed small outlines among solid linework → one Box each. Pieces are joined
     where their endpoints meet; dangling pieces (a line that merely touches a
     symbol's corner) are peeled off, and what still closes on itself inside
     `max_size` is a symbol outline.
@@ -434,15 +470,18 @@ def equipment_boxes(solid: List[Sequence[Tuple[float, float]]], max_size: float)
 def join_dashes(segments: Sequence[Seg], max_gap: float, min_dashes: int = 3) -> List[Seg]:
     """
     Rebuild dashed lines that were plotted as separate short strokes (how most
-    CADâ†’PDF plots draw a dashed linetype). A stroke's end links to the nearest
+    CAD→PDF plots draw a dashed linetype). A stroke's end links to the nearest
     other stroke end within `max_gap` when the gap CONTINUES the stroke's
-    direction (a dashed line, possibly turning a corner) â€” not when it steps
-    sideways (hatching, text-like strokes). Chains of at least `min_dashes`
-    strokes come back as the strokes plus the bridging gaps; the rest is dropped.
+    direction (a dashed line, possibly turning a corner) — not when it steps
+    sideways (hatching). A chain counts as a dashed line only with at least
+    `min_dashes` strokes separated by real gaps (touching strokes are symbol
+    outlines or arcs, not dashes). Each chain comes back as a clean polyline —
+    corners and junctions only — so its pieces are never smaller than the graph's
+    snapping tolerance.
     """
     if not segments or max_gap <= 0:
         return []
-    ends: List[Tuple[float, float, int, float, float]] = []      # x, y, seg, outward ux, uy
+    ends: List[Tuple[float, float, int, float, float]] = []      # x, y, stroke, outward ux, uy
     for i, s in enumerate(segments):
         L = math.hypot(s.x2 - s.x1, s.y2 - s.y1)
         if L == 0:
@@ -462,7 +501,8 @@ def join_dashes(segments: Sequence[Seg], max_gap: float, min_dashes: int = 3) ->
             i = parent[i]
         return i
 
-    bridges: List[Tuple[int, Seg]] = []
+    touch = 0.02 * max_gap
+    links: List[Tuple[int, int, bool]] = []                         # end k ↔ end m, real gap?
     for k, (x, y, i, ux, uy) in enumerate(ends):
         gx, gy = int(x // max_gap), int(y // max_gap)
         best, best_d = None, max_gap
@@ -475,24 +515,95 @@ def join_dashes(segments: Sequence[Seg], max_gap: float, min_dashes: int = 3) ->
                     d = math.hypot(ox - x, oy - y)
                     if d > best_d:
                         continue
-                    ahead = ((ox - x) * ux + (oy - y) * uy) / d if d > 0 else 1.0
-                    if ahead >= 0.5 or d <= 0.1 * max_gap:           # continues the line (or touches)
+                    # a dash gap lies straight ahead of the stroke (≈25°) — also at a corner,
+                    # where the gap runs on to the vertex; strokes that merely touch may turn
+                    if d <= touch or ((ox - x) * ux + (oy - y) * uy) / d >= 0.9:
                         best, best_d = m, d
         if best is not None:
-            ox, oy, j, *_ = ends[best]
-            parent[find(i)] = find(j)
-            if best_d > 0:
-                bridges.append((i, Seg(x, y, ox, oy)))
+            links.append((k, best, best_d > touch))
 
-    size: Dict[int, int] = {}
+    # A dash has a real gap at one end at least; arc facets and symbol edges only touch.
+    has_gap = [False] * len(segments)
+    for k, m, real in links:
+        if real:
+            has_gap[ends[k][2]] = has_gap[ends[m][2]] = True
+    links = [(k, m, real) for k, m, real in links if has_gap[ends[k][2]] and has_gap[ends[m][2]]]
+    for k, m, _ in links:
+        parent[find(ends[k][2])] = find(ends[m][2])
+
+    strokes: Dict[int, int] = {}
+    gaps: Dict[int, int] = {}
     for i in range(len(segments)):
-        size[find(i)] = size.get(find(i), 0) + 1
-    keep = {r for r, n in size.items() if n >= min_dashes}
-    out = [s for i, s in enumerate(segments) if find(i) in keep]
-    seen: Set[tuple] = set()
-    for i, br in bridges:
-        key = tuple(sorted([(round(br.x1, 6), round(br.y1, 6)), (round(br.x2, 6), round(br.y2, 6))]))
-        if find(i) in keep and key not in seen:
-            seen.add(key)
-            out.append(br)
+        if has_gap[i]:
+            strokes[find(i)] = strokes.get(find(i), 0) + 1
+    for k, _m, real in links:
+        if real:
+            gaps[find(ends[k][2])] = gaps.get(find(ends[k][2]), 0) + 1
+    keep = {r for r, n in strokes.items() if n >= min_dashes and gaps.get(r, 0) >= min_dashes - 1}
+    if not keep:
+        return []
+
+    # point graph of the kept chains: stroke ends are points, strokes and gap links are edges
+    q = max_gap * 0.01
+    pid: Dict[Tuple[int, int], int] = {}
+    xy: List[Tuple[float, float]] = []
+
+    def point(x: float, y: float) -> int:
+        key = (round(x / q), round(y / q))
+        if key not in pid:
+            pid[key] = len(xy)
+            xy.append((x, y))
+        return pid[key]
+
+    adj: Dict[int, Set[int]] = {}
+
+    def join(a: int, b: int) -> None:
+        if a != b:
+            adj.setdefault(a, set()).add(b)
+            adj.setdefault(b, set()).add(a)
+
+    end_pt = [point(x, y) for x, y, *_ in ends]
+    for k in range(0, len(ends), 2):
+        if has_gap[ends[k][2]] and find(ends[k][2]) in keep:
+            join(end_pt[k], end_pt[k + 1])
+    for k, m, _ in links:
+        if find(ends[k][2]) in keep:
+            join(end_pt[k], end_pt[m])
+
+    out: List[Seg] = []
+    used: Set[Tuple[int, int]] = set()
+    starts = [n for n in adj if len(adj[n]) != 2] + list(adj)      # trails from ends/junctions, then loops
+    for s in starts:
+        for nxt in sorted(adj[s]):
+            if (min(s, nxt), max(s, nxt)) in used:
+                continue
+            trail = [s]
+            prev, cur = s, nxt
+            used.add((min(s, cur), max(s, cur)))
+            while True:
+                trail.append(cur)
+                if len(adj[cur]) != 2:
+                    break
+                step = next((n for n in adj[cur] if n != prev), None)
+                if step is None or (min(cur, step), max(cur, step)) in used:
+                    break
+                used.add((min(cur, step), max(cur, step)))
+                prev, cur = cur, step
+            pts = _simplify([xy[n] for n in trail], eps=0.1 * max_gap)
+            out += [Seg(a[0], a[1], b[0], b[1]) for a, b in zip(pts, pts[1:]) if a != b]
     return out
+
+
+def _simplify(pts: List[Tuple[float, float]], eps: float) -> List[Tuple[float, float]]:
+    """Ramer–Douglas–Peucker: keep only the corners of a nearly straight point chain."""
+    if len(pts) < 3:
+        return pts
+    (ax, ay), (bx, by) = pts[0], pts[-1]
+    far, far_d = 0, -1.0
+    for i in range(1, len(pts) - 1):
+        d, _ = _point_seg_dist(pts[i][0], pts[i][1], ax, ay, bx, by)
+        if d > far_d:
+            far, far_d = i, d
+    if far_d <= eps:
+        return [pts[0], pts[-1]]
+    return _simplify(pts[:far + 1], eps)[:-1] + _simplify(pts[far:], eps)

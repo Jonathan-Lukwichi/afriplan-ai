@@ -146,6 +146,12 @@ def build_boq_from_facts(
     length is not written take the measured route instead of the default."""
     acc = _Acc()
     acc.gaps.extend(facts.extraction_gaps)
+    if routes is not None and routes.found:
+        for w in routes.warnings:                    # attribution doubts on the site plan: never silent
+            acc.gaps.append(GapItem(
+                section=BQSection.SUBMAIN_CABLES, description=w, assumption="Route attribution as read.",
+                suggested_action="Check the site plan.", severity="medium", drawing_ref="Site plan",
+            ))
 
     _assemble_incoming(acc, facts, config, params)
     _assemble_distribution(acc, facts)

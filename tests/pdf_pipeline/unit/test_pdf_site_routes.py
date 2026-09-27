@@ -58,6 +58,14 @@ def test_a_pdf_without_a_site_plan_has_no_routes():
     assert net is None and where == ""
 
 
+def test_site_plan_doubts_reach_the_gap_report():
+    net, _ = read_pdf_site_routes([(_site_plan_pdf(False), "site.pdf")])
+    net.warnings.append("DB-C tag is about as close to DB-B's symbol — check which route belongs to which board")
+    boq = build_boq_from_facts(PdfFacts(spine=PowerSpine(feeders=[
+        Feeder(from_source="DB-A", to_db="DB-B", cable_size_mm2=16)])), routes=net)
+    assert any("about as close" in g.description and g.severity == "medium" for g in boq.gaps)
+
+
 def test_pdf_feeders_take_the_measured_route():
     net, _ = read_pdf_site_routes([(_site_plan_pdf(False), "site.pdf")])
     facts = PdfFacts(spine=PowerSpine(feeders=[
