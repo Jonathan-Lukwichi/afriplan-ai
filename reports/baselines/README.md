@@ -18,7 +18,25 @@ The per-run reports linked below quote client figures and are kept locally (giti
 | 2026-09-26 | PDF (+site lighting, DB build-up) | project-level | **17.8 %** | 53.0 % | 41.5 % | 33.6 % | [pdf](2026-09-26-wedela-pdf.md) |
 | 2026-09-26 | PDF | per building | **5.6 %** | 17.9 % | 67.7 % | 31.5 % | [pdf](2026-09-26-wedela-pdf.md) |
 
+| 2026-09-27 | DXF (one-project run + site-plan routes) | project-level | **44.6 %** | 61.1 % | 85.1 % | 73.0 % | [dxf](2026-09-27-wedela-dxf.md) |
+| 2026-09-27 | DXF + completer | project-level | **45.3 %** | 64.2 % | 85.3 % | 70.5 % | [dxf](2026-09-27-wedela-dxf.md) |
+| 2026-09-27 | DXF | per building | **30.7 %** | 60.5 % | 83.4 % | 50.7 % | [dxf](2026-09-27-wedela-dxf.md) |
+| 2026-09-27 | PDF (saved 09-26 facts, boards/feeders de-duplicated) | project-level | **17.1 %** | — | 39.2 % | 34.7 % | re-score, R 0 |
+
 PDF runs: 18 pages — `b0a84e5563bf` R 18.46 (09-23), `6d7094fe359b` R 19.31 (09-26). DXF: 17 drawings, R 0.
+
+### 2026-09-27 — what changed and what it showed (issues 002, 011)
+- **DXF 12.8 % → 44.6 %.** Ablation on the same data, same scorer:
+  `main` 12.8 % → whole DWG set as ONE project run (boards/feeders billed once, no layout
+  DB duplicates) **28.4 %** → + kiosk SLD's mini-sub supply cable **32.5 %** → + feeder
+  lengths and trench measured on the electrical site plan (`WD-OL-001`) **44.6 %**.
+  Quantity accuracy 21.6 % → 73.0 %. The baseline now runs the set exactly as a user
+  uploads it (`run_dxf_project`), so this number is what the product produces.
+- **PDF 17.8 % → 17.1 %** (free re-merge of the saved run's boards/feeders): removing
+  duplicate feeders is correct, but each duplicate had added another assumed 30 m —
+  accidentally closer to the real routes. The PDF set has no site plan, so its feeder
+  lengths remain the limit; a vector site-plan PDF is now measured when uploaded (R 0).
+  Rooms could not be re-merged (the saved run has no page numbers) — a new paid run would.
 
 ### 2026-09-26 — what changed and what it showed
 - **DXF 2.4 % → 12.8 %** (coverage 20 % → 59 %): SLD drawings now yield boards, breakers

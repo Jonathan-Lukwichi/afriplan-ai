@@ -25,7 +25,8 @@ Author: Hervé / Jonathan Lukwichi (JLWanalytics). Commercial product in develop
 | Thin HTTP layer (runs, compare, export, pricing, **audit**) | `api/routers/` |
 | Shared BOQ contract, legend spec | `api/agent/shared/` |
 | PDF pipeline — 5-pass estimator (`run_pdf_estimator`) | `api/agent/pdf_pipeline/passes/` |
-| DXF pipeline (`run_dxf_estimator`), SLD reader, DWG conversion | `api/agent/dxf_pipeline/passes/`, `dwg.py` |
+| DXF pipeline (`run_dxf_estimator`, `run_dxf_project` for a set), SLD reader, site routes, DWG conversion | `api/agent/dxf_pipeline/passes/`, `dwg.py` |
+| Route geometry shared by both pipelines (graph, tags, scale, dashes, symbols) | `api/agent/shared/routes.py` |
 | Rate model (crew×hours, DB build-up), prices, config, run store/jobs | `api/core/` |
 | Ground truth, ItemKey taxonomy, layered BOQ network, ratios, **frozen scorer** | `api/evaluation/` |
 | BOQ rule audit, drawing sufficiency, derived-item completer | `api/audit/` |
@@ -95,7 +96,12 @@ inside an optimisation loop · push to `main` / deploy without approval.
 
 ## Current state (update when it changes)
 - Reference project: **wedela** (7 billed buildings). Baselines (`reports/baselines/README.md`),
-  project-level Reproduction Score: **DXF 12.8 %** (13.5 % with completer), **PDF 17.8 %**.
-- Biggest levers next: feeder route lengths from the site plan (issue 002), cross-page
-  de-dup (011), building attribution (008), a second reference project (014).
-- Streamlit app retired 2026-09-26; its history lives on the `legacy-streamlit` branch.
+  project-level Reproduction Score (2026-09-27): **DXF 44.6 %** (45.3 % with completer),
+  **PDF 17.8 %** (the Wedela PDF set has no site plan, so its feeder lengths stay assumed).
+- A DWG/DXF **set** runs as one project (`run_dxf_project`): feeders from every SLD are
+  measured on the electrical site plan (`agent/shared/routes.py` + each pipeline's
+  `passes/site_routes.py`); the PDF pipeline measures vector site-plan PDFs the same way.
+- Biggest levers next: building attribution (008), a second reference project (014),
+  tag→symbol attribution on site plans (leader lines), site-lighting double counts across
+  PDF sheets (flagged, not yet merged).
+- Streamlit app retired 2026-09-26; its final state is the tag `archive/legacy-streamlit-2026-09-26`.

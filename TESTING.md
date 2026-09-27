@@ -17,14 +17,18 @@ Expect 9 bills, ~33 findings ranked by value at risk: priced install lines left 
 section totals, a duplicated DB line, a contingency not added to a total, two sheets
 not rolled into the summary, broken `#REF!` cells.
 
-## Test 2 — CAD drawing → priced BOQ (free, ~20 s)
-**Upload** → DXF/CAD → `Wedela Electrical/WD-PB-01-SLD 100425.dwg` → run.
-- **Take-off**: status passed; **Drawing coverage** says an SLD was recognised and asks
-  for the lighting layout, plug layout and site plan.
-- **BoQ**: boards DB-CR / DB-PFA priced as complete boards; feeders with earth,
-  terminations and trench (lengths **assumed 30 m** — see the Gap report); *Extra markup %*
-  starts at 0; **Audit** tab; download Excel and PDF from *Export & email*.
-Repeat with `WD-AB-01-LIGHTING 250325.dwg` and turn *Complete with derived items* on/off —
+## Test 2 — the whole CAD set → priced BOQ (free, ~1–2 min)
+**Upload** → DXF / DWG → open `Wedela Electrical/`, select **all** the `.dwg` files
+(Ctrl+A; leave out the older `WD-PB-01-LIGHTING 100225`) → *Run DXF engine*.
+- **Take-off**: the **Drawing set** panel lists each drawing as SLD / layout / site plan and
+  says *Feeder routes measured on WD-OL-001…* with the number of feeders priced on them.
+- **BoQ → Line items**: e.g. *SWA feeder MINI-SUB→KIOSK* priced on the measured route
+  + 5 % + 1.5 m per end (its assumption says so); trench billed once where feeders share it. Feeders the site plan
+  does not draw (DB-SGH, the pool pump boards) stay at an assumed 30 m — the **Gap report**
+  says so, and says where the site plan and the SLD disagree (DB-AB1's source).
+- *Extra markup %* starts at 0; **Audit** tab; Excel and PDF from *Export & email*.
+One drawing alone still works (e.g. `WD-PB-01-SLD 100425.dwg`): then feeders are assumed
+and the gap report asks for the site plan. Turn *Complete with derived items* on/off —
 wall boxes, chasing, conduit and wire appear as `inferred` lines.
 
 ## Test 3 — PDF drawing set → priced BOQ (≈ 12 min, ≈ R 20)
@@ -42,5 +46,7 @@ $env:VITE_API_BASE_URL="http://127.0.0.1:8000"; npm run build; npx playwright te
 ```
 
 ## Known gaps (see `issues/`)
-Feeder route lengths need a site plan (002); PDF lines are not yet split per building
-(008); site lights can be double-counted across sheets (011); one reference project only (014).
+Feeder lengths are measured only when the electrical site plan is in the upload (DWG, or
+a vector PDF — a scanned PDF cannot be measured); tags sitting between two symbols are
+flagged, not guessed. PDF lines are not yet split per building (008); site lights drawn
+on several PDF sheets are flagged, not merged (011); one reference project only (014).
