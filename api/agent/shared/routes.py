@@ -1,7 +1,7 @@
 """
-Cable-route network measurement (issue 002) — pure geometry, no LLM, no I/O.
+Cable-route network measurement (issue 002) â€” pure geometry, no LLM, no I/O.
 
-SLDs name each feeder ('DB-AB1 FED FROM DB-CR … 16mm²') but almost never print
+SLDs name each feeder ('DB-AB1 FED FROM DB-CR â€¦ 16mmÂ²') but almost never print
 its length. The length lives on the electrical SITE PLAN: dashed route lines
 running between equipment symbols, each symbol tagged 'DB-AB1 Fed from DB-PFA',
 often with the designer's run lengths written beside the route ('35m').
@@ -11,11 +11,11 @@ from X to Y?". It is fed by thin adapters in each pipeline (DXF entities, or
 vector paths from a PDF page), so both pipelines measure the same way without
 sharing state or calling each other.
 
-    segments  → graph (endpoints snapped, T-junctions split)
-    tag texts → equipment ('DB-CR', 'KIOSK', 'MINI SUB') anchored to the symbol
+    segments  â†’ graph (endpoints snapped, T-junctions split)
+    tag texts â†’ equipment ('DB-CR', 'KIOSK', 'MINI SUB') anchored to the symbol
                 box (or loose route end) nearest the tag
-    'Nm' texts→ scale calibration (drawing units per metre) + stated lengths
-    route(X,Y)→ shortest path length in metres + the edges used (trench union)
+    'Nm' textsâ†’ scale calibration (drawing units per metre) + stated lengths
+    route(X,Y)â†’ shortest path length in metres + the edges used (trench union)
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class Box:
         return math.hypot(dx, dy)
 
 
-# ─── tags ────────────────────────────────────────────────────────────
+# â”€â”€â”€ tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _NAME = r"DB[\s-]?[A-Z0-9]+(?:-(?!FED\b)[A-Z0-9]+)?|KIOSK|MINI[\s-]*SUB(?:STATION)?"
 _TAG = re.compile(
@@ -70,14 +70,14 @@ _LENGTH = re.compile(r"^\s*(\d{1,4}(?:\.\d+)?)\s*m\s*$", re.I)
 
 
 def equipment_key(name: str) -> str:
-    """'DB-1', 'DB1', 'db 1' → 'DB1'; 'Existing Mini sub' → 'MINISUB'. Matching only."""
+    """'DB-1', 'DB1', 'db 1' â†’ 'DB1'; 'Existing Mini sub' â†’ 'MINISUB'. Matching only."""
     s = re.sub(r"^\s*(EXISTING|NEW)\s+", "", name.strip(), flags=re.I).upper()
     s = re.sub(r"SUBSTATION$", "SUB", re.sub(r"[\s\-_]+", "", s))
     return s
 
 
 def parse_tag(text: str) -> Optional[Tuple[str, Optional[str]]]:
-    """An equipment tag → (key, source key or None); anything else → None."""
+    """An equipment tag â†’ (key, source key or None); anything else â†’ None."""
     m = _TAG.match(" ".join(text.split()))
     if not m:
         return None
@@ -86,7 +86,7 @@ def parse_tag(text: str) -> Optional[Tuple[str, Optional[str]]]:
 
 
 def tag_name(text: str) -> str:
-    """The equipment name as drawn ('DB-AB1 Fed from DB-PFA' → 'DB-AB1')."""
+    """The equipment name as drawn ('DB-AB1 Fed from DB-PFA' â†’ 'DB-AB1')."""
     m = _TAG.match(" ".join(text.split()))
     return m.group("name").upper() if m else text.strip()
 
@@ -96,7 +96,7 @@ def parse_length(text: str) -> Optional[float]:
     return float(m.group(1)) if m else None
 
 
-# ─── the network ─────────────────────────────────────────────────────
+# â”€â”€â”€ the network â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class Edge:
@@ -119,9 +119,9 @@ class RouteMatch:
 class RouteNetwork:
     nodes: List[Tuple[float, float]] = field(default_factory=list)
     edges: List[Edge] = field(default_factory=list)
-    equipment: Dict[str, Set[int]] = field(default_factory=dict)     # key → anchor nodes
-    names: Dict[str, str] = field(default_factory=dict)              # key → name as drawn
-    fed_from: Dict[str, str] = field(default_factory=dict)           # key → source key (tags)
+    equipment: Dict[str, Set[int]] = field(default_factory=dict)     # key â†’ anchor nodes
+    names: Dict[str, str] = field(default_factory=dict)              # key â†’ name as drawn
+    fed_from: Dict[str, str] = field(default_factory=dict)           # key â†’ source key (tags)
     units_per_m: float = 1.0
     scale_source: str = ""
     warnings: List[str] = field(default_factory=list)
@@ -179,7 +179,7 @@ class RouteNetwork:
         )
 
 
-# ─── building it ─────────────────────────────────────────────────────
+# â”€â”€â”€ building it â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _point_seg_dist(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> Tuple[float, float]:
     """(distance, t along the segment 0..1)."""
@@ -237,7 +237,7 @@ def build_route_network(
         return net                                   # not a site route overview
     if not segments or len(segments) > max_segments:
         if segments:
-            net.warnings.append(f"{len(segments)} candidate route segments — too many to be a site plan")
+            net.warnings.append(f"{len(segments)} candidate route segments â€” too many to be a site plan")
         return net
 
     heights = [lb.h for lb, _ in tags if lb.h > 0]
@@ -248,7 +248,7 @@ def build_route_network(
         h = max(max(xs) - min(xs), max(ys) - min(ys)) / 200.0 or 1.0
     tol = 0.5 * h
 
-    # 1. endpoints → nodes (snapped); split segments at T-junctions
+    # 1. endpoints â†’ nodes (snapped); split segments at T-junctions
     nodes = _Nodes(tol)
     raw = [(nodes.get(s.x1, s.y1), nodes.get(s.x2, s.y2)) for s in segments]
     pieces: List[Tuple[int, int]] = []
@@ -321,7 +321,7 @@ def build_route_network(
             if other and other != key and bx.distance(lb.x, lb.y) < 1.25 * d_own:
                 net.warnings.append(
                     f"{net.names.get(key, key)} tag is about as close to {net.names.get(other, other)}'s "
-                    "symbol — check which route belongs to which board")
+                    "symbol â€” check which route belongs to which board")
                 break
     for _, (key, src) in tags:
         if src:
@@ -330,7 +330,7 @@ def build_route_network(
     if missing:
         net.warnings.append("Tagged but not on a drawn route: " + ", ".join(missing))
 
-    # 3. designer lengths → nearest edge; scale calibration
+    # 3. designer lengths â†’ nearest edge; scale calibration
     ratios: List[float] = []
     for lb in labels:
         value = parse_length(lb.text)
@@ -360,6 +360,139 @@ def build_route_network(
     elif units_per_m:
         net.units_per_m, net.scale_source = units_per_m, "drawing scale"
     else:
-        net.units_per_m, net.scale_source = 1.0, "unknown — assumed 1 unit = 1 m"
+        net.units_per_m, net.scale_source = 1.0, "unknown â€” assumed 1 unit = 1 m"
         net.warnings.append("Drawing scale unknown: route lengths assume 1 drawing unit = 1 m")
     return net
+
+
+# â”€â”€â”€ symbol outlines and dashed lines (adapter helpers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+def equipment_boxes(solid: List[Sequence[Tuple[float, float]]], max_size: float) -> List[Box]:
+    """
+    Closed small outlines among solid linework â†’ one Box each. Pieces are joined
+    where their endpoints meet; dangling pieces (a line that merely touches a
+    symbol's corner) are peeled off, and what still closes on itself inside
+    `max_size` is a symbol outline.
+    """
+    if max_size <= 0:
+        return []
+    tol = max_size / 50.0
+    node_of: Dict[Tuple[int, int], int] = {}
+
+    def node(x: float, y: float) -> int:
+        return node_of.setdefault((round(x / tol), round(y / tol)), len(node_of))
+
+    pieces: List[Tuple[int, int, Sequence[Tuple[float, float]]]] = []
+    for pts in solid:
+        if len(pts) < 2:
+            continue
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        if max(xs) - min(xs) > max_size or max(ys) - min(ys) > max_size:
+            continue
+        pieces.append((node(*pts[0]), node(*pts[-1]), pts))
+
+    alive = [True] * len(pieces)
+    degree: Dict[int, int] = {}
+    for a, b, _ in pieces:
+        degree[a] = degree.get(a, 0) + 1
+        degree[b] = degree.get(b, 0) + 1
+    changed = True
+    while changed:                                     # peel dangling pieces
+        changed = False
+        for i, (a, b, _) in enumerate(pieces):
+            if alive[i] and a != b and (degree[a] < 2 or degree[b] < 2):
+                alive[i] = False
+                degree[a] -= 1
+                degree[b] -= 1
+                changed = True
+
+    parent = list(range(len(node_of)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i, (a, b, _) in enumerate(pieces):
+        if alive[i]:
+            parent[find(a)] = find(b)
+    groups: Dict[int, List[Sequence[Tuple[float, float]]]] = {}
+    for i, (a, _, pts) in enumerate(pieces):
+        if alive[i]:
+            groups.setdefault(find(a), []).append(pts)
+    boxes: List[Box] = []
+    for members in groups.values():
+        xs = [p[0] for pts in members for p in pts]
+        ys = [p[1] for pts in members for p in pts]
+        w, h = max(xs) - min(xs), max(ys) - min(ys)
+        if 0 < w <= max_size and 0 < h <= max_size:
+            boxes.append(Box(min(xs), min(ys), max(xs), max(ys)))
+    return boxes
+
+
+def join_dashes(segments: Sequence[Seg], max_gap: float, min_dashes: int = 3) -> List[Seg]:
+    """
+    Rebuild dashed lines that were plotted as separate short strokes (how most
+    CADâ†’PDF plots draw a dashed linetype). A stroke's end links to the nearest
+    other stroke end within `max_gap` when the gap CONTINUES the stroke's
+    direction (a dashed line, possibly turning a corner) â€” not when it steps
+    sideways (hatching, text-like strokes). Chains of at least `min_dashes`
+    strokes come back as the strokes plus the bridging gaps; the rest is dropped.
+    """
+    if not segments or max_gap <= 0:
+        return []
+    ends: List[Tuple[float, float, int, float, float]] = []      # x, y, seg, outward ux, uy
+    for i, s in enumerate(segments):
+        L = math.hypot(s.x2 - s.x1, s.y2 - s.y1)
+        if L == 0:
+            continue
+        ux, uy = (s.x2 - s.x1) / L, (s.y2 - s.y1) / L
+        ends.append((s.x1, s.y1, i, -ux, -uy))
+        ends.append((s.x2, s.y2, i, ux, uy))
+    grid: Dict[Tuple[int, int], List[int]] = {}
+    for k, (x, y, *_rest) in enumerate(ends):
+        grid.setdefault((int(x // max_gap), int(y // max_gap)), []).append(k)
+
+    parent = list(range(len(segments)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    bridges: List[Tuple[int, Seg]] = []
+    for k, (x, y, i, ux, uy) in enumerate(ends):
+        gx, gy = int(x // max_gap), int(y // max_gap)
+        best, best_d = None, max_gap
+        for a in range(gx - 1, gx + 2):
+            for b in range(gy - 1, gy + 2):
+                for m in grid.get((a, b), ()):
+                    ox, oy, j, *_ = ends[m]
+                    if j == i:
+                        continue
+                    d = math.hypot(ox - x, oy - y)
+                    if d > best_d:
+                        continue
+                    ahead = ((ox - x) * ux + (oy - y) * uy) / d if d > 0 else 1.0
+                    if ahead >= 0.5 or d <= 0.1 * max_gap:           # continues the line (or touches)
+                        best, best_d = m, d
+        if best is not None:
+            ox, oy, j, *_ = ends[best]
+            parent[find(i)] = find(j)
+            if best_d > 0:
+                bridges.append((i, Seg(x, y, ox, oy)))
+
+    size: Dict[int, int] = {}
+    for i in range(len(segments)):
+        size[find(i)] = size.get(find(i), 0) + 1
+    keep = {r for r, n in size.items() if n >= min_dashes}
+    out = [s for i, s in enumerate(segments) if find(i) in keep]
+    seen: Set[tuple] = set()
+    for i, br in bridges:
+        key = tuple(sorted([(round(br.x1, 6), round(br.y1, 6)), (round(br.x2, 6), round(br.y2, 6))]))
+        if find(i) in keep and key not in seen:
+            seen.add(key)
+            out.append(br)
+    return out

@@ -558,8 +558,9 @@ def build_bill(
     project_name: str = "",
     run_id: str = "",
     contractor: Optional[ContractorProfile] = None,
+    routes=None,
 ) -> BillOfQuantities:
-    """Thin wrapper around the deterministic assembler."""
+    """Thin wrapper around the deterministic assembler (`routes`: a measured site plan)."""
     return build_boq_from_facts(
-        facts, project_name=project_name, run_id=run_id, contractor=contractor,
+        facts, project_name=project_name, run_id=run_id, contractor=contractor, routes=routes,
     )

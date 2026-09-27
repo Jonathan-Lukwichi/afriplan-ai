@@ -1,4 +1,6 @@
 """Route-network measurement (issue 002): pure geometry shared by both pipelines."""
+import math
+
 import pytest
 
 from agent.shared.routes import (
@@ -105,6 +107,35 @@ def test_a_tag_nearly_equidistant_from_two_symbols_is_flagged():
     net = build_route_network(segs, labels, boxes, units_per_m=1.0)
     assert any("about as close" in w for w in net.warnings)
     assert not any("about as close" in w for w in build_route_network(*_site(), units_per_m=1.0).warnings)
+
+
+def _dashed(points, dash=3.0, gap=2.0):
+    """Plot a polyline the way a CAD plotter draws a dashed linetype: separate short strokes."""
+    out, carry = [], 0.0
+    for (x1, y1), (x2, y2) in zip(points, points[1:]):
+        L = math.hypot(x2 - x1, y2 - y1)
+        ux, uy = (x2 - x1) / L, (y2 - y1) / L
+        t = carry
+        while t < L:
+            end = min(t + dash, L)
+            out.append(Seg(x1 + ux * t, y1 + uy * t, x1 + ux * end, y1 + uy * end))
+            t += dash + gap
+        carry = t - L
+    return out
+
+
+def test_dashes_plotted_as_separate_strokes_are_rebuilt_into_the_route():
+    from agent.shared.routes import join_dashes
+    strokes = _dashed([(0, 0), (60, 0), (60, 40)])
+    joined = join_dashes(strokes, max_gap=4.0)
+    total = sum(math.hypot(s.x2 - s.x1, s.y2 - s.y1) for s in joined)
+    assert total == pytest.approx(100, abs=5)                    # dashes + gaps ≈ the drawn run
+
+
+def test_side_by_side_hatch_strokes_are_not_a_route():
+    from agent.shared.routes import join_dashes
+    hatch = [Seg(0, y, 3, y) for y in range(0, 20, 2)]           # parallel strokes, 2 apart
+    assert join_dashes(hatch, max_gap=4.0) == []
 
 
 def test_edges_on_a_path_are_reported_for_trench_union():

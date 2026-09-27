@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 from ezdxf.document import Drawing
 
 from agent.dxf_pipeline.passes.legend import in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import _plain_text
-from agent.shared.routes import Box, Label, RouteNetwork, Seg, build_route_network, parse_tag
+from agent.shared.routes import Label, RouteNetwork, Seg, build_route_network, equipment_boxes, parse_tag
 
 _ROUTE_LAYER = re.compile(r"cable|trench|route|sleeve|feeder|reticulation|underground", re.I)
 _DASHED = re.compile(r"dash|hidden|dot", re.I)
@@ -60,69 +60,6 @@ def _points(e) -> Pts:
         pts.append(pts[0])
     return pts
 
-
-def equipment_boxes(solid: List[Pts], max_size: float) -> List[Box]:
-    """
-    Closed small outlines among solid linework → one Box each. Pieces are joined
-    where their endpoints meet; dangling pieces (a line that merely touches a
-    symbol's corner) are peeled off, and what still closes on itself inside
-    `max_size` is a symbol outline.
-    """
-    if max_size <= 0:
-        return []
-    tol = max_size / 50.0
-    node_of: Dict[Tuple[int, int], int] = {}
-
-    def node(x: float, y: float) -> int:
-        return node_of.setdefault((round(x / tol), round(y / tol)), len(node_of))
-
-    pieces: List[Tuple[int, int, Pts]] = []
-    for pts in solid:
-        if len(pts) < 2:
-            continue
-        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-        if max(xs) - min(xs) > max_size or max(ys) - min(ys) > max_size:
-            continue
-        pieces.append((node(*pts[0]), node(*pts[-1]), pts))
-
-    alive = [True] * len(pieces)
-    degree: Dict[int, int] = {}
-    for a, b, _ in pieces:
-        degree[a] = degree.get(a, 0) + 1
-        degree[b] = degree.get(b, 0) + 1
-    changed = True
-    while changed:                                     # peel dangling pieces
-        changed = False
-        for i, (a, b, _) in enumerate(pieces):
-            if alive[i] and a != b and (degree[a] < 2 or degree[b] < 2):
-                alive[i] = False
-                degree[a] -= 1
-                degree[b] -= 1
-                changed = True
-
-    parent = list(range(len(node_of)))
-
-    def find(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    for i, (a, b, _) in enumerate(pieces):
-        if alive[i]:
-            parent[find(a)] = find(b)
-    groups: Dict[int, List[Pts]] = {}
-    for i, (a, _, pts) in enumerate(pieces):
-        if alive[i]:
-            groups.setdefault(find(a), []).append(pts)
-    boxes: List[Box] = []
-    for members in groups.values():
-        xs = [p[0] for pts in members for p in pts]
-        ys = [p[1] for pts in members for p in pts]
-        w, h = max(xs) - min(xs), max(ys) - min(ys)
-        if 0 < w <= max_size and 0 < h <= max_size:
-            boxes.append(Box(min(xs), min(ys), max(xs), max(ys)))
-    return boxes
 
 def read_site_routes(doc: Drawing) -> RouteNetwork:
     """The drawing's cable-route network, or an empty one when it is not a site plan."""

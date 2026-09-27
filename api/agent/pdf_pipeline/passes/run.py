@@ -32,6 +32,7 @@ from agent.pdf_pipeline.models import PageClassification, PageType, StageCost
 from agent.pdf_pipeline.passes.facts import PdfFacts
 from agent.pdf_pipeline.passes.legend import build_pdf_legend
 from agent.pdf_pipeline.passes.orchestrator import build_bill, extract_facts
+from agent.pdf_pipeline.passes.site_routes import read_pdf_site_routes
 from agent.shared.legend import Legend, billed_canonical_items, coverage_gaps
 from agent.pdf_pipeline.prompts.page_prompts import CLASSIFY_PROMPT
 from agent.pdf_pipeline.prompts.tool_schemas import CLASSIFY_PAGE_TOOL
@@ -180,6 +181,8 @@ class EstimatorRun(BaseModel):
     facts: PdfFacts = Field(default_factory=PdfFacts)
     legend: Optional[Legend] = None
     boq: Optional[BillOfQuantities] = None
+    site_plan_file: str = ""          # 'file p<n>' whose routes priced the feeders (issue 002)
+    routes_measured: int = 0          # feeders whose length came from that site plan
     stage_costs: List[StageCost] = Field(default_factory=list)
     cost_zar: float = 0.0
     duration_s: float = 0.0
@@ -232,7 +235,10 @@ def run_pdf_estimator(
         facts.context.project_name = project.project_name
 
     project_name = facts.context.project_name or project.project_name or "Untitled project"
-    boq = build_bill(facts, project_name=project_name, run_id=run_id, contractor=contractor)
+    # Feeder routes measured on a vector site plan — geometry, not the LLM (R 0).
+    routes, site_plan = read_pdf_site_routes(files)
+    boq = build_bill(facts, project_name=project_name, run_id=run_id, contractor=contractor,
+                     routes=routes)
 
     # LDSE — legend-first: read the drawing's legend, flag declared-but-uncounted items.
     legend = build_pdf_legend(facts, sheet_ref=project_name)
@@ -249,6 +255,10 @@ def run_pdf_estimator(
         facts=facts,
         legend=legend,
         boq=boq,
+        site_plan_file=site_plan,
+        routes_measured=sum(1 for fd in facts.spine.feeders
+                            if routes is not None and not fd.length_annotated
+                            and routes.route(fd.from_source, fd.to_db) is not None),
         stage_costs=all_costs,
         cost_zar=round(sum(c.cost_zar for c in all_costs), 4),
         duration_s=round(time.perf_counter() - started, 3),

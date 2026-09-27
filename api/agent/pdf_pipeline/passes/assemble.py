@@ -22,7 +22,7 @@ The estimator rule-set (from the reference bills + methodology):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from agent.pdf_pipeline.passes.facts import Feeder, PdfFacts, SpineDB, TakeoffRoom
 from agent.shared import (
@@ -34,6 +34,7 @@ from agent.shared import (
     ItemConfidence,
     LineKind,
 )
+from agent.shared.routes import RouteMatch, RouteNetwork, equipment_key
 from core import constants
 from core.rate_model import (
     DEFAULT_CREW,
@@ -58,6 +59,9 @@ from core.rate_model import (
 @dataclass(frozen=True)
 class AssembleConfig:
     assumed_feeder_m: float = 30.0           # used when a feeder length isn't drawn
+    route_slack_pct: float = 5.0             # a route measured on the site plan: snaking / sag
+    route_end_allowance_m: float = 1.5       # per end: rise into the board + termination tail
+    label_conflict_pct: float = 25.0         # designer's written lengths vs the scaled route
     default_ceiling_m: float = 3.0
     light_mount_m: float = 3.0               # lights at ceiling → ~0 drop
     socket_mount_m: float = 0.3
@@ -135,14 +139,17 @@ def build_boq_from_facts(
     crew: CrewRates = DEFAULT_CREW,
     params: RateParams = DEFAULT_PARAMS,
     config: AssembleConfig = DEFAULT_CONFIG,
+    routes: Optional[RouteNetwork] = None,
 ) -> BillOfQuantities:
-    """Deterministically turn extracted facts into a priced Bill of Quantities."""
+    """Deterministically turn extracted facts into a priced Bill of Quantities.
+    `routes`: cable routes measured on a vector site plan (no LLM) — feeders whose
+    length is not written take the measured route instead of the default."""
     acc = _Acc()
     acc.gaps.extend(facts.extraction_gaps)
 
     _assemble_incoming(acc, facts, config, params)
     _assemble_distribution(acc, facts)
-    _assemble_feeders(acc, facts, config, crew, params)
+    _assemble_feeders(acc, facts, config, crew, params, routes)
     _assemble_takeoff(acc, facts, config, crew, params)
 
     _number_lines(acc.lines)
@@ -210,25 +217,83 @@ def _assemble_distribution(acc: _Acc, facts: PdfFacts) -> None:
 
 # ─── Section 3/9 — feeders + earth + terminations + trench ───────────────────
 
+def _feeder_route(fd: Feeder, routes: Optional[RouteNetwork]) -> Optional[RouteMatch]:
+    if fd.length_annotated and fd.length_m > 0:
+        return None                                  # a written length always wins
+    return routes.route(fd.from_source, fd.to_db) if routes is not None and routes.found else None
+
+
+def _route_order(feeders: List[Feeder], routes: Optional[RouteNetwork]) -> List[Feeder]:
+    """Upstream first, then shorter routes: a trench shared along the way is billed with
+    the feeder that runs along it before branching off (same rule as the DXF pipeline)."""
+    parent = {equipment_key(f.to_db): equipment_key(f.from_source) for f in feeders}
+
+    def depth(k: str) -> int:
+        seen, n = {k}, 0
+        while k in parent and parent[k] not in seen:
+            k = parent[k]
+            seen.add(k)
+            n += 1
+        return n
+
+    def route_m(f: Feeder) -> float:
+        r = _feeder_route(f, routes)
+        return r.length_m if r is not None else float("inf")
+    return sorted(feeders, key=lambda f: (depth(equipment_key(f.to_db)), route_m(f)))
+
+
 def _assemble_feeders(
-    acc: _Acc, facts: PdfFacts, cfg: AssembleConfig, crew: CrewRates, params: RateParams
+    acc: _Acc, facts: PdfFacts, cfg: AssembleConfig, crew: CrewRates, params: RateParams,
+    routes: Optional[RouteNetwork] = None,
 ) -> None:
-    for fd in facts.spine.feeders:
+    claimed: Set[int] = set()                         # route edges whose trench is already billed
+    feeders = _route_order(facts.spine.feeders, routes) if routes is not None else facts.spine.feeders
+    for fd in feeders:
+        match = _feeder_route(fd, routes)
         length, assumed = _feeder_length(fd, cfg)
+        trench = length
         bldg = fd.to_db or "Sub-mains"
         size_key = _size_key(fd.cable_size_mm2)
         label = f"{int(fd.cable_size_mm2)}mm² x{fd.cable_cores}C SWA feeder {fd.from_source}→{fd.to_db}"
 
-        if assumed:
+        if match is not None:
+            length = match.length_m * (1 + cfg.route_slack_pct / 100) + 2 * cfg.route_end_allowance_m
+            trench = routes.length_of(match.edges - claimed)
+            claimed |= match.edges
+            assumed = False
+            src = ItemConfidence.INFERRED
+            assumption_txt = (f"Route measured {match.length_m:.1f} m on the site plan, "
+                              f"+{cfg.route_slack_pct:g}% and {cfg.route_end_allowance_m:g} m at each end.")
             acc.gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=bldg,
-                description=f"Feeder {fd.from_source}→{fd.to_db} length not annotated on SLD",
+                description=f"Feeder {fd.from_source}→{fd.to_db} length taken from the site-plan route",
+                assumption=assumption_txt,
+                suggested_action="Check the route against the designer's cable schedule or on site.",
+                severity="low", drawing_ref="Site plan",
+            ))
+            if match.stated_m and abs(match.stated_m - match.length_m) > cfg.label_conflict_pct / 100 * match.length_m:
+                acc.gaps.append(GapItem(
+                    section=BQSection.SUBMAIN_CABLES, building_block=bldg,
+                    description=(f"Feeder {fd.from_source}→{fd.to_db}: lengths written on the site plan "
+                                 f"add to {match.stated_m:g} m, the drawn route scales to {match.length_m:.0f} m"),
+                    assumption="Priced on the scaled route.",
+                    suggested_action="Confirm which is right — written dimensions normally govern.",
+                    severity="medium", drawing_ref="Site plan",
+                ))
+        elif assumed:
+            on_plan = routes is not None and routes.found
+            acc.gaps.append(GapItem(
+                section=BQSection.SUBMAIN_CABLES, building_block=bldg,
+                description=(f"Feeder {fd.from_source}→{fd.to_db} has no drawn route on the site plan" if on_plan
+                             else f"Feeder {fd.from_source}→{fd.to_db} length not annotated on SLD"),
                 assumption=f"Assumed {cfg.assumed_feeder_m:.0f} m default run.",
-                suggested_action="Confirm feeder length from the SLD or site.",
+                suggested_action=("Draw or confirm the route for this board on the site plan." if on_plan
+                                  else "Upload the electrical site plan (vector PDF) or confirm the length on site."),
                 severity="high", drawing_ref="SLD",
             ))
-        src = ItemConfidence.ASSUMED if assumed else ItemConfidence.EXTRACTED
-        assumption_txt = f"Length assumed {length:.0f} m (not drawn)." if assumed else ""
+        if match is None:
+            src = ItemConfidence.ASSUMED if assumed else ItemConfidence.EXTRACTED
+            assumption_txt = f"Length assumed {length:.0f} m (not drawn)." if assumed else ""
 
         # Cable: Supply + Install split
         material = _cable_material_per_m(fd.cable_size_mm2) or 0.0
@@ -268,11 +333,11 @@ def _assemble_feeders(
         ))
 
         # Trench + tape if underground
-        if fd.is_underground:
+        if fd.is_underground and trench > 0:          # 0: the route shares a trench billed upstream
             _add_line(acc, BQSection.UNDERGROUND, f"Trench 600mm for {fd.from_source}→{fd.to_db}",
-                      "m", length, cfg.trench_rate_per_m, src, bldg, assumption=assumption_txt)
+                      "m", round(trench, 2), cfg.trench_rate_per_m, src, bldg, assumption=assumption_txt)
             _add_line(acc, BQSection.UNDERGROUND, "Warning tape 300mm above cable",
-                      "m", length, cfg.warning_tape_rate_per_m, src, bldg)
+                      "m", round(trench, 2), cfg.warning_tape_rate_per_m, src, bldg)
 
     _finalise_line_totals(acc.lines)
 
