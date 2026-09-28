@@ -27,8 +27,21 @@ The per-run reports linked below quote client figures and are kept locally (giti
 | 2026-09-28 | DXF + AI symbol names + completer | project-level | **49.2 %** | 66.3 % | 85.5 % | 74.2 % | [dxf-ai](2026-09-28-wedela-dxf-ai.md) |
 | 2026-09-28 | PDF (Opus 5, pages in parallel, run `41c02f9505b0`, 288 s) | project-level | **27.1 %** | 63.1 % | 96.0 % | 43.0 % | [pdf](2026-09-28-wedela-pdf.md) |
 | 2026-09-28 | PDF + completer | project-level | **29.0 %** | 66.3 % | 96.2 % | 43.7 % | [pdf](2026-09-28-wedela-pdf.md) |
+| 2026-09-28 | **Combined** DWG + PDF (ADR-0008: DWG set R 0 with remembered AI names + saved PDF run `41c02f9505b0`; exact name matching — AI matcher not run, no API credit) | project-level | **47.2 %** | 63.3 % | 84.6 % | 74.6 % | [combined](2026-09-28-wedela-combined.md) |
+| 2026-09-28 | Combined + completer | project-level | **49.2 %** | 66.5 % | 85.5 % | 73.9 % | [combined](2026-09-28-wedela-combined.md) |
 
 PDF runs: 18 pages — `b0a84e5563bf` R 18.46 (09-23), `6d7094fe359b` R 19.31 (09-26). DXF: 17 drawings, R 0.
+
+### 2026-09-28 — one bill from both readers (ADR-0008)
+- Both engines now state **findings** and price them with **one pricer**; re-pricing gave the
+  identical DWG bill (every line, gap and total) and the identical PDF score (27.1 %).
+- **Combined 47.2 %** vs the better single engine (DWG + AI names) 46.2 % and PDF 27.1 %.
+  11 PDF pages were paired with their DWG sheet by the words both print; on those sheets the
+  DWG's counted symbols and measured wiring replaced the PDF's reading, and the PDF's
+  "length assumed" warnings went with the feeders the DWG measured.
+- Small gain because Wedela has a DWG for every sheet — the PDF can add little. The gain to
+  expect is on projects where some sheets exist only as PDF (needs a second project, issue 014).
+- Left for the AI matcher: the PDF's "KIOSK busbar" feeder (a duplicate of the DWG's kiosk supply).
 
 ### 2026-09-27 — what changed and what it showed (issues 002, 011)
 - **DXF 12.8 % → 44.6 %.** Ablation on the same data, same scorer:

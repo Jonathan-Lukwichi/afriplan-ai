@@ -90,6 +90,31 @@ def ingest_files(files: Sequence[Tuple[bytes, str]]) -> Tuple[List[IngestedPage]
     return all_pages, file_ingests
 
 
+def page_sheets_and_words(files: Sequence[Tuple[bytes, str]], file_ingests: List["FileIngest"]):
+    """({global page index: 'File p<n>'}, {'File p<n>': words printed on it}) — the words come
+    from the PDF's text layer (none on a scan), to pair each page with its CAD sheet (ADR-0008)."""
+    import fitz
+    from pathlib import Path
+    from agent.shared.sheets import sheet_words
+    sheets: Dict[int, str] = {}
+    words: Dict[str, List[str]] = {}
+    for (data, name), fi in zip(files, file_ingests):
+        try:
+            doc = fitz.open(stream=data, filetype="pdf")
+        except Exception:  # noqa: BLE001 — unreadable: the other passes report it
+            continue
+        with doc:
+            for p in fi.pages:
+                local = p.page_index - fi.first_global_index
+                sheet = f"{Path(name).stem} p{local}"
+                sheets[p.page_index] = sheet
+                try:
+                    words[sheet] = sheet_words([doc[local].get_text()])
+                except Exception:  # noqa: BLE001
+                    words[sheet] = []
+    return sheets, words
+
+
 # ─── File classification (per-page, with file summary + manual override) ─
 
 class FileClassification(BaseModel):
@@ -257,7 +282,9 @@ def run_pdf_estimator(
     project_name = facts.context.project_name or project.project_name or "Untitled project"
     # Feeder routes measured on a vector site plan — geometry, not the LLM (R 0).
     routes, site_plan = read_pdf_site_routes(files)
-    findings = findings_from_facts(facts, routes=routes)
+    page_sheets, sheet_texts = page_sheets_and_words(files, file_ingests)
+    findings = findings_from_facts(facts, routes=routes, page_sheets=page_sheets)
+    findings.sheet_words = sheet_texts
     boq = price_findings(findings, pipeline="pdf", project_name=project_name, run_id=run_id)
 
     # LDSE — legend-first: read the drawing's legend, flag declared-but-uncounted items.

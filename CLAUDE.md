@@ -105,6 +105,11 @@ inside an optimisation loop · push to `main` / deploy without approval.
 - A DWG/DXF **set** runs as one project (`run_dxf_project`): feeders from every SLD are
   measured on the electrical site plan (`agent/shared/routes.py` + each pipeline's
   `passes/site_routes.py`); the PDF pipeline measures vector site-plan PDFs the same way.
+- **One bill from both readers** (ADR-0008): each engine states *findings* (`agent/shared/findings.py`,
+  with evidence: measured > counted > written > seen > assumed) priced by ONE pricer
+  (`agent/shared/pricing.py`). `api/consolidate/combine.py` merges the two readers' findings
+  (PDF pages paired with CAD sheets by shared words, `agent/shared/sheets.py`); names Python cannot
+  pair go to the injected AI matcher `api/assist/finding_matcher.py`. Wedela combined **47.2 %**.
 - Biggest levers next: building attribution (008), a second reference project (014),
   tag→symbol attribution on site plans (leader lines), site-lighting double counts across
   PDF sheets (flagged, not yet merged).

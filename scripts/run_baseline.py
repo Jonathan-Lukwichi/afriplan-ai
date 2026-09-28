@@ -4,6 +4,8 @@ Run a pipeline over a reference project and score it — the reproducible baseli
     python scripts/run_baseline.py --project wedela --pipeline dxf
     python scripts/run_baseline.py --project wedela --pipeline pdf          # paid: uses ANTHROPIC_API_KEY
     python scripts/run_baseline.py --project wedela --pipeline pdf --from-runs <run_id>   # re-score, R 0
+    python scripts/run_baseline.py --project wedela --pipeline combined --from-runs <pdf_run_id>
+        # ADR-0008: the DWG set (R 0) + a saved PDF run's facts, combined; --ai-match pays for names
     ... --out reports/baselines/2026-09-23-wedela-dxf.md
 
 Scores every run twice with the frozen scorer:
@@ -166,6 +168,68 @@ def run_pdf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOf
     return _attribute_pdf(run.boq, ref), log
 
 
+def run_combined(project: str, manifest, ref: ReferenceBoq, pdf_run_id: str, *, ai_symbols: bool = False,
+                 ai_match: bool = False) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
+    """ADR-0008: the DWG set read now (R 0) + what a saved PDF run read (R 0), combined into
+    one set of findings and priced once. `ai_match`: leftover names are matched by the AI."""
+    import json
+    from agent.dxf_pipeline.passes.run import run_dxf_project
+    from agent.pdf_pipeline.passes.assemble import findings_from_facts
+    from agent.pdf_pipeline.passes.facts import PdfFacts
+    from agent.pdf_pipeline.passes.run import ingest_files, page_sheets_and_words
+    from agent.pdf_pipeline.passes.site_routes import read_pdf_site_routes
+    from agent.shared.pricing import price_findings
+    from consolidate.combine import combine
+
+    t = time.perf_counter()
+    files = [f for f in manifest.files
+             if f.path.lower().endswith(".dwg") and not f.superseded and f.role in _DXF_ROLES]
+    dxf = run_dxf_project([((project_dir(project) / f.path).read_bytes(), Path(f.path).name) for f in files],
+                          project=ProjectMetadata(project_name=project),
+                          name_shapes=_ai_namer() if ai_symbols else None)
+    raw = json.loads((Path("runs/pdf") / f"{pdf_run_id}.json").read_text(encoding="utf-8"))
+    pdfs = [((project_dir(project) / f.path).read_bytes(), Path(f.path).name)
+            for f in manifest.files if f.role.startswith("pdf_")]
+    _, ingests = ingest_files(pdfs)
+    page_sheets, words = page_sheets_and_words(pdfs, ingests)
+    routes, _ = read_pdf_site_routes(pdfs)
+    pdf = findings_from_facts(PdfFacts.model_validate(raw["facts"]), routes=routes, page_sheets=page_sheets)
+    pdf.sheet_words = words
+
+    costs: List[float] = []
+    matcher = None
+    if ai_match:
+        from agent.pdf_pipeline.llm import make_anthropic_client
+        from assist.finding_matcher import make_name_matcher
+        matcher = make_name_matcher(client=make_anthropic_client(), on_cost=costs.append)
+    c = combine(dxf.findings, pdf, match_names=matcher)
+    boq = price_findings(c.findings, pipeline="combined", project_name=project)
+    rid = f"{dxf.run_id}+{pdf_run_id}"
+    out = Path("runs/combined") / f"{rid}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"decisions": [d.model_dump() for d in c.decisions],
+                               "sheet_pairs": c.sheet_pairs, "boq": boq.model_dump(mode="json")},
+                              indent=1), encoding="utf-8")
+    kept = {k: sum(1 for d in c.decisions if d.kept == k) for k in ("dxf", "pdf", "both")}
+    log = [f"combined {rid} | DWG {len(dxf.boq.line_items)} lines + PDF run {pdf_run_id} | "
+           f"{len(c.sheet_pairs)} PDF pages paired with a DWG sheet | AI names matched: {c.ai_matched} "
+           f"(R {sum(costs):.2f}) | decisions kept DWG {kept['dxf']}, PDF {kept['pdf']} | "
+           f"{len(boq.line_items)} lines | {time.perf_counter() - t:.0f}s"]
+    log += [f"  {page} -> {sheet}" for page, sheet in sorted(c.sheet_pairs.items())]
+    return _attribute_combined(boq, manifest, ref), log
+
+
+def _attribute_combined(boq: BillOfQuantities, manifest, ref: ReferenceBoq) -> Dict[str, BillOfQuantities]:
+    """A DWG line goes to its drawing's building; a PDF line by its board name."""
+    stems = {Path(f.path).stem for f in manifest.files}
+    dwg = BillOfQuantities(pipeline="combined", line_items=[l for l in boq.line_items if l.drawing_ref in stems])
+    rest = BillOfQuantities(pipeline="combined", line_items=[l for l in boq.line_items if l.drawing_ref not in stems])
+    per_building = _attribute_dxf(dwg, manifest)
+    for b, part in _attribute_pdf(rest, ref).items():
+        per_building.setdefault(b, BillOfQuantities(pipeline="combined", project_name=b)).line_items.extend(part.line_items)
+    return per_building
+
+
 # ─── scoring ─────────────────────────────────────────────────────────
 
 def _project_ref(ref: ReferenceBoq) -> ReferenceBoq:
@@ -204,13 +268,20 @@ def _row(label: str, c: Scorecard) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--project", required=True)
-    ap.add_argument("--pipeline", choices=["dxf", "pdf"], required=True)
+    ap.add_argument("--pipeline", choices=["dxf", "pdf", "combined"], required=True)
     ap.add_argument("--out", type=Path)
     ap.add_argument("--ai-symbols", action="store_true",
                     help="DXF: name unnamed symbol shapes with the AI (ADR-0007; paid, a few rand)")
     ap.add_argument("--from-runs", nargs="+", metavar="RUN_ID",
                     help="re-score saved runs under runs/<pipeline>/ instead of running the pipeline")
+    ap.add_argument("--ai-match", action="store_true",
+                    help="combined: names Python cannot pair are matched by the AI (ADR-0008; paid, cents)")
     args = ap.parse_args()
+    try:                                    # the API key, as the app loads it (paid options only)
+        from dotenv import load_dotenv
+        load_dotenv(Path(__file__).resolve().parent.parent / "api" / ".env")
+    except ImportError:
+        pass
 
     manifest = load_manifest(args.project)
     problems = verify_manifest(manifest, project_dir(args.project))
@@ -223,6 +294,12 @@ def main() -> int:
         per_building, log = (load_dxf_runs(args.from_runs, ref, manifest) if args.from_runs
                              else run_dxf(args.project, manifest, ref, ai_symbols=args.ai_symbols))
         source = "dwg"
+    elif args.pipeline == "combined":
+        if not args.from_runs:
+            raise SystemExit("--pipeline combined needs --from-runs <saved PDF run id>")
+        per_building, log = run_combined(args.project, manifest, ref, args.from_runs[0],
+                                         ai_symbols=args.ai_symbols, ai_match=args.ai_match)
+        source = "all"
     else:
         per_building, log = (load_pdf_run(args.from_runs[0], ref) if args.from_runs
                              else run_pdf(args.project, manifest, ref))

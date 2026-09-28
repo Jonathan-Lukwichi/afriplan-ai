@@ -50,7 +50,7 @@ DEFAULT_PRICING = PricingConfig()
 def price_findings(
     findings: Findings,
     *,
-    pipeline: Literal["pdf", "dxf"],
+    pipeline: Literal["pdf", "dxf", "combined"],
     project_name: str = "",
     run_id: str = "",
     crew: CrewRates = DEFAULT_CREW,
@@ -71,7 +71,7 @@ def price_findings(
     number_lines(lines)
     boq = BillOfQuantities(
         project_name=project_name, pipeline=pipeline, run_id=run_id,
-        line_items=lines, gaps=list(findings.gaps),
+        line_items=lines, gaps=findings.all_gaps(),
         contingency_pct=params.contingency_pct * 100, vat_pct=params.vat_pct * 100,
     )
     finalise_totals(boq, params)

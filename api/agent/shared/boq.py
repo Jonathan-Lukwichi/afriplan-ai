@@ -3,7 +3,7 @@ Bill of Quantities — the canonical deliverable of either pipeline.
 
 Both the PDF pipeline and the DXF pipeline produce a `BillOfQuantities`
 with the same shape, so the cross-comparison layer can diff them
-section by section.
+section by section; combining both readers' findings (ADR-0008) produces one too.
 """
 
 from __future__ import annotations
@@ -168,7 +168,7 @@ class BillOfQuantities(BaseModel):
 
     # Provenance
     project_name: str = ""
-    pipeline: Literal["pdf", "dxf"]
+    pipeline: Literal["pdf", "dxf", "combined"]      # combined: both readers, ADR-0008
     run_id: str = ""
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

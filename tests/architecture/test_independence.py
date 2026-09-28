@@ -106,7 +106,8 @@ def test_shared_does_not_import_either_pipeline():
     assert not bad, "agent.shared imports pipeline code:\n" + _format(bad)
 
 
-_READ_ONLY_LAYERS = ("evaluation", "audit", "sourcing", "ml", "routers", "db", "assist")   # assist: ADR-0007
+_READ_ONLY_LAYERS = ("evaluation", "audit", "sourcing", "ml", "routers", "db", "assist",   # assist: ADR-0007
+                     "consolidate")                                                    # ADR-0008
 
 
 def test_agent_package_does_not_import_read_only_layers():
@@ -131,5 +132,18 @@ def test_evaluation_and_audit_do_not_import_pipelines_or_llm_sdks():
                 if any(mod == p or mod.startswith(p + ".") for p in forbidden):
                     bad.append((path, lineno, line))
     assert not bad, "evaluation/audit import a pipeline or an LLM SDK:\n" + "\n".join(
+        f"  {p}:{i}: {ln}" for p, i, ln in bad
+    )
+
+
+def test_combining_calls_no_pipeline_and_no_llm_sdk():
+    """ADR-0008: combining works on findings only; the AI matcher is injected from api/assist."""
+    forbidden = ("agent.pdf_pipeline", "agent.dxf_pipeline", "anthropic", "openai", "assist")
+    bad = []
+    for path in _python_files(REPO_ROOT / "api" / "consolidate"):
+        for lineno, line, mod in _imports_in(path):
+            if any(mod == p or mod.startswith(p + ".") for p in forbidden):
+                bad.append((path, lineno, line))
+    assert not bad, "api/consolidate imports a pipeline, the assist layer or an LLM SDK:\n" + "\n".join(
         f"  {p}:{i}: {ln}" for p, i, ln in bad
     )

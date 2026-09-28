@@ -10,7 +10,7 @@ strongest one by a rule that does not depend on the project.
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -29,6 +29,8 @@ class Evidence(str, Enum):
         return _RANK[self]
 
 
+KIOSK_ALLOWANCE = "Main LV kiosk"   # item name of a kiosk allowed for without its board
+
 _RANK = {Evidence.MEASURED: 5, Evidence.COUNTED: 4, Evidence.WRITTEN: 3,
          Evidence.SEEN: 2, Evidence.ASSUMED: 1}
 
@@ -41,6 +43,8 @@ class _Finding(BaseModel):
     confidence: ItemConfidence = ItemConfidence.EXTRACTED   # how the bill line is flagged
     assumption: str = ""
     notes: str = ""
+    gaps: List[GapItem] = Field(default_factory=list)   # things to check about THIS finding —
+                                                        # dropped with it if combining drops it
 
 
 class BoardFinding(_Finding):
@@ -101,7 +105,14 @@ class Findings(BaseModel):
     feeders: List[FeederFinding] = Field(default_factory=list)
     items: List[ItemFinding] = Field(default_factory=list)
     wires: List[WireFinding] = Field(default_factory=list)
-    gaps: List[GapItem] = Field(default_factory=list)
+    gaps: List[GapItem] = Field(default_factory=list)        # about the drawing set, not one finding
+    sheet_words: Dict[str, List[str]] = Field(default_factory=dict)   # sheet → words printed on it
+
+    def all(self) -> list:
+        return [*self.boards, *self.feeders, *self.items, *self.wires]
+
+    def all_gaps(self) -> List[GapItem]:
+        return [*self.gaps, *(g for f in self.all() for g in f.gaps)]
 
     def extend(self, other: "Findings") -> None:
         self.boards += other.boards
@@ -109,3 +120,4 @@ class Findings(BaseModel):
         self.items += other.items
         self.wires += other.wires
         self.gaps += other.gaps
+        self.sheet_words.update(other.sheet_words)

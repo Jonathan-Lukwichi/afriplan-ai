@@ -33,6 +33,7 @@ from agent.shared import (
     ItemConfidence,
 )
 from agent.shared.findings import (
+    KIOSK_ALLOWANCE,
     BoardFinding,
     Evidence,
     FeederFinding,
@@ -135,8 +136,11 @@ def findings_from_facts(
     config: AssembleConfig = DEFAULT_CONFIG,
     routes: Optional[RouteNetwork] = None,
     crew: CrewRates = DEFAULT_CREW,
+    page_sheets: Optional[Dict[int, str]] = None,
 ) -> Findings:
-    """What the AI read on the drawings (+ routes measured on a vector site plan), unpriced."""
+    """What the AI read on the drawings (+ routes measured on a vector site plan), unpriced.
+    `page_sheets`: global page index → sheet name ('Set p3'), so each room's items say which
+    page they were read on and can be matched to the CAD sheet of that page."""
     out = Findings(gaps=list(facts.extraction_gaps))
     if routes is not None and routes.found:
         for w in routes.warnings:                    # attribution doubts on the site plan: never silent
@@ -147,7 +151,7 @@ def findings_from_facts(
     _incoming(out, facts, config)
     _boards(out, facts)
     _feeders(out, facts, config, routes)
-    _takeoff(out, facts, config, crew)
+    _takeoff(out, facts, config, crew, page_sheets or {})
     return out
 
 
@@ -158,6 +162,7 @@ def _incoming(out: Findings, facts: PdfFacts, cfg: AssembleConfig) -> None:
     if inc.kiosk_present:
         out.items.append(ItemFinding(
             reader="pdf", section=BQSection.INCOMING, description="Mini-substation / LV kiosk supply & install",
+            item=KIOSK_ALLOWANCE,
             unit="Sum", qty=1, price_zar=cfg.kiosk_price, building="Bulk Supply", evidence=Evidence.SEEN,
         ))
     if inc.meter_count:
@@ -215,6 +220,7 @@ def _feeders(out: Findings, facts: PdfFacts, cfg: AssembleConfig,
     claimed: Set[int] = set()                         # route edges whose trench is already billed
     feeders = _route_order(facts.spine.feeders, routes) if routes is not None else facts.spine.feeders
     for fd in feeders:
+        gaps: List[GapItem] = []
         match = _feeder_route(fd, routes)
         bldg = fd.to_db or "Sub-mains"
         if match is not None:
@@ -224,7 +230,7 @@ def _feeders(out: Findings, facts: PdfFacts, cfg: AssembleConfig,
             src, ev = ItemConfidence.INFERRED, Evidence.MEASURED
             note = (f"Route measured {match.length_m:.1f} m on the site plan, "
                     f"+{cfg.route_slack_pct:g}% and {cfg.route_end_allowance_m:g} m at each end.")
-            out.gaps.append(GapItem(
+            gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=bldg,
                 description=f"Feeder {fd.from_source}→{fd.to_db} length taken from the site-plan route",
                 assumption=note,
@@ -232,7 +238,7 @@ def _feeders(out: Findings, facts: PdfFacts, cfg: AssembleConfig,
                 severity="low", drawing_ref="Site plan",
             ))
             if match.stated_m and abs(match.stated_m - match.length_m) > cfg.label_conflict_pct / 100 * match.length_m:
-                out.gaps.append(GapItem(
+                gaps.append(GapItem(
                     section=BQSection.SUBMAIN_CABLES, building_block=bldg,
                     description=(f"Feeder {fd.from_source}→{fd.to_db}: lengths written on the site plan "
                                  f"add to {match.stated_m:g} m, the drawn route scales to {match.length_m:.0f} m"),
@@ -248,7 +254,7 @@ def _feeders(out: Findings, facts: PdfFacts, cfg: AssembleConfig,
             src, ev = ItemConfidence.ASSUMED, Evidence.ASSUMED
             note = f"Length assumed {length:.0f} m (not drawn)."
             on_plan = routes is not None and routes.found
-            out.gaps.append(GapItem(
+            gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=bldg,
                 description=(f"Feeder {fd.from_source}→{fd.to_db} has no drawn route on the site plan" if on_plan
                              else f"Feeder {fd.from_source}→{fd.to_db} length not annotated on SLD"),
@@ -258,7 +264,7 @@ def _feeders(out: Findings, facts: PdfFacts, cfg: AssembleConfig,
                 severity="high", drawing_ref="SLD",
             ))
         if not constants.CABLE_PRICES.get(f"swa_{_size_key(fd.cable_size_mm2)}_4c"):
-            out.gaps.append(GapItem(
+            gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=bldg,
                 description=f"No material price for {_size_key(fd.cable_size_mm2)} SWA cable",
                 assumption="Supply rate set to 0 pending a price.",
@@ -268,16 +274,18 @@ def _feeders(out: Findings, facts: PdfFacts, cfg: AssembleConfig,
             reader="pdf", from_board=fd.from_source, to_board=fd.to_db, cable_size_mm2=fd.cable_size_mm2,
             cable_cores=fd.cable_cores, earth_size_mm2=fd.earth_size_mm2, underground=fd.is_underground,
             length_m=length, trench_m=trench, building=bldg, sheet="SLD", evidence=ev,
-            confidence=src, assumption=note,
+            confidence=src, assumption=note, gaps=gaps,
         ))
 
 
 # ─── Section 5/6 — fittings, outlets, reticulation wire ──────────────────────
 
-def _takeoff(out: Findings, facts: PdfFacts, cfg: AssembleConfig, crew: CrewRates) -> None:
+def _takeoff(out: Findings, facts: PdfFacts, cfg: AssembleConfig, crew: CrewRates,
+             page_sheets: Dict[int, str]) -> None:
     free_issue = [s.lower() for s in facts.context.free_issue_items]
     for room in facts.takeoff.rooms:
         bldg = room.served_by_db or room.room_name or "General"
+        sheet = next((page_sheets[p] for p in room.source_pages if p in page_sheets), "Layout")
         for fieldname, (price_kind, price_key, install_key, section, desc, name) in _FITTING_SPECS.items():
             count = getattr(room, fieldname, 0)
             if count <= 0:
@@ -288,13 +296,13 @@ def _takeoff(out: Findings, facts: PdfFacts, cfg: AssembleConfig, crew: CrewRate
                 item=name, qty=count, material_zar=_PRICE_MAPS[price_kind].get(price_key, 0.0),
                 install_zar=(fitting_install_rate(install_key, crew) if install_key else None)
                 or cfg.default_point_install_labour,
-                free_issue=is_free, building=bldg, location=room.room_name, sheet="Layout",
+                free_issue=is_free, building=bldg, location=room.room_name, sheet=sheet,
                 evidence=Evidence.SEEN, notes="Free-issued by client — install only." if is_free else "",
             ))
-        _wiring(out, room, cfg, bldg)
+        _wiring(out, room, cfg, bldg, sheet)
 
 
-def _wiring(out: Findings, room: TakeoffRoom, cfg: AssembleConfig, bldg: str) -> None:
+def _wiring(out: Findings, room: TakeoffRoom, cfg: AssembleConfig, bldg: str, sheet: str) -> None:
     """Point-method reticulation wire: points × average routed length (allowance)."""
     ceiling = room.ceiling_height_m or cfg.default_ceiling_m
     for kind, points, per_point, mount, size in (
@@ -308,11 +316,11 @@ def _wiring(out: Findings, room: TakeoffRoom, cfg: AssembleConfig, bldg: str) ->
                                               horizontal_run_m=per_point)).value
         out.wires.append(WireFinding(
             reader="pdf", description=f"{size} {kind} reticulation wire — {room.room_name}".rstrip(" —"),
-            size_key=size, metres=length, building=bldg, sheet="Layout", evidence=Evidence.ASSUMED,
+            size_key=size, metres=length, building=bldg, sheet=sheet, evidence=Evidence.ASSUMED,
             confidence=ItemConfidence.ASSUMED,
             assumption=f"Point-method allowance ({pclass}); {length:g} m from point count.",
         ))
-        out.gaps.append(GapItem(
+        out.wires[-1].gaps.append(GapItem(
             section=BQSection.FINAL_CABLES, building_block=bldg,
             description=f"{kind.title()} reticulation wire for {room.room_name} not dimensioned",
             assumption=f"Allowance {length:g} m ({size}, {pclass} point class).",

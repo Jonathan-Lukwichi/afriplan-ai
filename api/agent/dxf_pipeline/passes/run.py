@@ -134,6 +134,7 @@ def run_dxf_estimator(
     # Mode 3 — count exploded-line-work legend symbols by template matching.
     findings.items += _template_findings(doc, a.legend)
     findings.gaps += _legend_coverage_gaps(findings, a.legend)
+    findings.sheet_words[Path(file_name).stem] = _words(doc)
     boq = price_findings(findings, pipeline="dxf", project_name=project_name, run_id=run_id)
     rec, legend, spatial = a.rec, a.legend, a.spatial
 
@@ -301,6 +302,7 @@ def run_dxf_project(
         part.gaps += _legend_coverage_gaps(part, a.legend)
         for f in (*part.boards, *part.items, *part.wires):
             f.sheet = stem
+        part.sheet_words[stem] = _words(doc)
         for g in part.gaps:
             g.drawing_ref = g.drawing_ref or stem
         findings.extend(part)
@@ -348,6 +350,15 @@ def run_dxf_project(
 
 ShapeNamer = Callable[[List[ShapeGroup], List[str]], Tuple[Dict[str, Tuple[str, str]], float]]
 _PRICE_MAPS = {"light": "LIGHT_PRICES", "socket": "SOCKET_PRICES", "switch": "SWITCH_PRICES", "db": "DB_PRICES"}
+
+
+def _words(doc) -> List[str]:
+    """The words printed on a drawing (text + block attributes), to pair it with its PDF print."""
+    from agent.shared.sheets import sheet_words
+    msp = doc.modelspace()
+    texts = [_plain_text(e) for e in msp.query("TEXT MTEXT")]
+    texts += [a.dxf.text for e in msp.query("INSERT") for a in e.attribs]
+    return sheet_words(texts)
 
 
 def _item_texts(analyses) -> List[str]:

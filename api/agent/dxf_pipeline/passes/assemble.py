@@ -142,7 +142,7 @@ def _tagged_boards(out: Findings, rec: DxfRecognition, skip: Set[str] = frozense
             name=db, contents_known=False, sheet="DXF", evidence=Evidence.WRITTEN,
             notes="DB inferred from circuit tags; ways/rating not in layout DXF.",
         ))
-        out.gaps.append(GapItem(
+        out.boards[-1].gaps.append(GapItem(
             section=BQSection.DISTRIBUTION, building_block=db,
             description=f"{db} rating/ways not in the layout DXF",
             assumption="Priced as a nominal enclosure.",
@@ -194,6 +194,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
                  routes: Optional[RouteNetwork] = None) -> None:
     claimed: Set[int] = set()                        # route edges whose trench is already billed
     for fd in _feeder_order(sld.feeders, routes):
+        gaps: list = []
         ref = fd.source or "SLD (DXF)"
         match = routes.route(fd.from_source, fd.to_db) if routes is not None and routes.found else None
         if fd.length_annotated and fd.length_m > 0:
@@ -206,7 +207,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
             src, ev = ItemConfidence.INFERRED, Evidence.MEASURED
             note = (f"Route measured {match.length_m:.1f} m on the site plan, "
                     f"+{cfg.route_slack_pct:g}% and {cfg.route_end_allowance_m:g} m at each end.")
-            out.gaps.append(GapItem(
+            gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
                 description=f"Feeder {fd.from_source}→{fd.to_db} length taken from the site-plan route",
                 assumption=note,
@@ -214,7 +215,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
                 severity="low", drawing_ref=ref,
             ))
             if match.stated_m and abs(match.stated_m - match.length_m) > cfg.label_conflict_pct / 100 * match.length_m:
-                out.gaps.append(GapItem(
+                gaps.append(GapItem(
                     section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
                     description=(f"Feeder {fd.from_source}→{fd.to_db}: lengths written on the site plan "
                                  f"add to {match.stated_m:g} m, the drawn route scales to {match.length_m:.0f} m"),
@@ -227,7 +228,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
             src, ev = ItemConfidence.ASSUMED, Evidence.ASSUMED
             note = f"Length assumed {length:.0f} m (not printed on the SLD)."
             on_plan = routes is not None and routes.found
-            out.gaps.append(GapItem(
+            gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
                 description=(f"Feeder {fd.from_source}→{fd.to_db} has no drawn route on the site plan"
                              if on_plan else f"Feeder {fd.from_source}→{fd.to_db} route length not on the SLD"),
@@ -239,7 +240,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
         out.feeders.append(FeederFinding(
             from_board=fd.from_source, to_board=fd.to_db, cable_size_mm2=fd.cable_size_mm2,
             cable_cores=fd.cable_cores, underground=fd.is_underground, length_m=length, trench_m=trench,
-            sheet=ref, evidence=ev, confidence=src, assumption=note,
+            sheet=ref, evidence=ev, confidence=src, assumption=note, gaps=gaps,
         ))
 
 
