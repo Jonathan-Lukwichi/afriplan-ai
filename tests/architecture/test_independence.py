@@ -106,7 +106,7 @@ def test_shared_does_not_import_either_pipeline():
     assert not bad, "agent.shared imports pipeline code:\n" + _format(bad)
 
 
-_READ_ONLY_LAYERS = ("evaluation", "audit", "sourcing", "ml", "routers", "db")
+_READ_ONLY_LAYERS = ("evaluation", "audit", "sourcing", "ml", "routers", "db", "assist")   # assist: ADR-0007
 
 
 def test_agent_package_does_not_import_read_only_layers():

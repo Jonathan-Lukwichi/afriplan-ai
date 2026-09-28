@@ -333,6 +333,14 @@ class PdfLLM:
         return None
 
 
+# ─── Convenience factories ────────────────────────────────────────────
+
+def make_anthropic_client(*, api_key: Optional[str] = None):
+    """An Anthropic client with the same TLS tolerance and retries as the PDF pipeline
+    (for other callers that talk to the API, e.g. api/assist)."""
+    return PdfLLM(api_key=api_key, system_prompt="")._client
+
+
 # ─── Convenience factory for the standard PDF-pipeline LLM ────────────
 
 def build_default_pdf_llm(*, api_key: Optional[str] = None) -> PdfLLM:

@@ -79,6 +79,15 @@ def _schema_statements(is_postgres: bool) -> list[str]:
             profile_json TEXT NOT NULL
         )
         """,
+        # ADR-0007: what each unnamed CAD symbol shape is — named once (by the AI or a
+        # person), then reused so it is never paid for again. 'person' beats 'ai'.
+        """
+        CREATE TABLE IF NOT EXISTS symbol_names (
+            signature TEXT PRIMARY KEY,
+            item TEXT NOT NULL,
+            named_by TEXT NOT NULL
+        )
+        """,
     ]
 
 

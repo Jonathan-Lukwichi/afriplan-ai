@@ -23,6 +23,8 @@ The per-run reports linked below quote client figures and are kept locally (giti
 | 2026-09-27 | DXF | per building | **30.7 %** | 60.5 % | 83.4 % | 50.7 % | [dxf](2026-09-27-wedela-dxf.md) |
 | 2026-09-27 | PDF (saved 09-26 facts, boards/feeders de-duplicated) | project-level | **17.1 %** | — | 39.2 % | 34.7 % | re-score, R 0 |
 | 2026-09-28 | DXF (+ board contents, built-up trench, kiosk) | project-level | **44.8 %** | 61.3 % | 89.0 % | 73.1 % | [dxf](2026-09-28-wedela-dxf.md) |
+| 2026-09-28 | DXF + AI symbol names (ADR-0007, run `567266a07a97`, AI R 1.20) | project-level | **46.2 %** | 63.1 % | 84.9 % | 73.3 % | [dxf-ai](2026-09-28-wedela-dxf-ai.md) |
+| 2026-09-28 | DXF + AI symbol names + completer | project-level | **49.2 %** | 66.3 % | 85.5 % | 74.2 % | [dxf-ai](2026-09-28-wedela-dxf-ai.md) |
 | 2026-09-28 | PDF (Opus 5, pages in parallel, run `41c02f9505b0`, 288 s) | project-level | **27.1 %** | 63.1 % | 96.0 % | 43.0 % | [pdf](2026-09-28-wedela-pdf.md) |
 | 2026-09-28 | PDF + completer | project-level | **29.0 %** | 66.3 % | 96.2 % | 43.7 % | [pdf](2026-09-28-wedela-pdf.md) |
 

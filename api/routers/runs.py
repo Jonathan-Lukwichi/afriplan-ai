@@ -30,6 +30,7 @@ async def create_run(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     pipeline: str = Form("dxf"),
+    ai_symbols: bool = Form(False),     # DXF: name unnamed symbol shapes with AI (ADR-0007)
 ):
     if pipeline not in ("dxf", "pdf"):
         raise HTTPException(400, f"pipeline '{pipeline}' not supported")
@@ -39,7 +40,7 @@ async def create_run(
     if pipeline == "dxf":
         # one drawing, or the whole set (SLDs + layouts + site plan) run as one project
         pairs = [(await f.read(), f.filename or "input.dxf") for f in files]
-        run_id = await launch_dxf_run(background_tasks, pairs)
+        run_id = await launch_dxf_run(background_tasks, pairs, ai_symbols=ai_symbols)
     else:
         pairs = [(await f.read(), f.filename or "input.pdf") for f in files]
         run_id = await launch_pdf_run(background_tasks, pairs)

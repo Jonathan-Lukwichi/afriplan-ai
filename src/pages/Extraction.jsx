@@ -4,6 +4,7 @@ import PipelineStatusCard from '../components/ui/PipelineStatusCard';
 import LegendPanel from '../components/ui/LegendPanel';
 import CoveragePanel from '../components/ui/CoveragePanel';
 import DrawingSetPanel from '../components/ui/DrawingSetPanel';
+import AiSymbolsPanel from '../components/ui/AiSymbolsPanel';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 
@@ -69,6 +70,8 @@ export default function Extraction({ runId, onNavigate }) {
       )}
 
       {run?.status === 'passed' && run.pipeline === 'dxf' && <DrawingSetPanel result={run.result} />}
+
+      {run?.status === 'passed' && run.pipeline === 'dxf' && <AiSymbolsPanel result={run.result} />}
 
       {run?.status === 'passed' && <LegendPanel legend={run.result?.legend} />}
 

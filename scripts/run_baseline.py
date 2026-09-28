@@ -53,7 +53,7 @@ def _attribute_dxf(boq: BillOfQuantities, manifest) -> Dict[str, BillOfQuantitie
     return per_building
 
 
-def run_dxf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
+def run_dxf(project: str, manifest, ref: ReferenceBoq, ai_symbols: bool = False) -> Tuple[Dict[str, BillOfQuantities], List[str]]:
     """The whole DWG set as ONE project run — exactly what a user uploading the set gets:
     boards/feeders from every SLD, feeder routes measured on the site plan, fittings from
     every layout. Lines are attributed to buildings by the drawing they came from."""
@@ -62,13 +62,24 @@ def run_dxf(project: str, manifest, ref: ReferenceBoq) -> Tuple[Dict[str, BillOf
              if f.path.lower().endswith(".dwg") and not f.superseded and f.role in _DXF_ROLES]
     t = time.perf_counter()
     run = run_dxf_project([((project_dir(project) / f.path).read_bytes(), Path(f.path).name) for f in files],
-                          project=ProjectMetadata(project_name=project), persist=True)
-    log = [f"DWG set ({len(files)} drawings) | run {run.run_id} | "
+                          project=ProjectMetadata(project_name=project), persist=True,
+                          name_shapes=_ai_namer() if ai_symbols else None)
+    log = [f"DWG set ({len(files)} drawings) | run {run.run_id} | ai symbols: {len(run.ai_symbols)} "
+           f"(R {run.ai_cost_zar:.2f}) | "
            f"{len(run.boq.line_items) if run.boq else 0} lines | site plan: {run.site_plan_file or 'none'} | "
            f"feeders measured on it: {run.routes_measured} | "
            f"{'ok' if run.success else 'FAILED: ' + str(run.error)[:60]} | {time.perf_counter() - t:.0f}s"]
     log += [f"  {n.role or '?'}: {n.file_name}" + ("" if n.ok else f" (FAILED: {n.error[:60]})") for n in run.files]
     return (_attribute_dxf(run.boq, manifest) if run.boq else {}), log
+
+
+def _ai_namer():
+    """ADR-0007 namer for the baseline: names are remembered in the local database."""
+    from agent.pdf_pipeline.llm import make_anthropic_client
+    from assist.symbol_namer import make_shape_namer
+    from db.symbol_names import load_symbol_names, save_symbol_name
+    return make_shape_namer(client=make_anthropic_client(), remembered=load_symbol_names(),
+                            on_named=lambda sig, item: save_symbol_name(sig, item, "ai"))
 
 
 def _db_tokens(ref: ReferenceBoq) -> Dict[str, str]:
@@ -195,6 +206,8 @@ def main() -> int:
     ap.add_argument("--project", required=True)
     ap.add_argument("--pipeline", choices=["dxf", "pdf"], required=True)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--ai-symbols", action="store_true",
+                    help="DXF: name unnamed symbol shapes with the AI (ADR-0007; paid, a few rand)")
     ap.add_argument("--from-runs", nargs="+", metavar="RUN_ID",
                     help="re-score saved runs under runs/<pipeline>/ instead of running the pipeline")
     args = ap.parse_args()
@@ -208,7 +221,7 @@ def main() -> int:
 
     if args.pipeline == "dxf":
         per_building, log = (load_dxf_runs(args.from_runs, ref, manifest) if args.from_runs
-                             else run_dxf(args.project, manifest, ref))
+                             else run_dxf(args.project, manifest, ref, ai_symbols=args.ai_symbols))
         source = "dwg"
     else:
         per_building, log = (load_pdf_run(args.from_runs[0], ref) if args.from_runs

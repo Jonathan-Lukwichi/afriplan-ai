@@ -43,6 +43,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
   const [files, setFiles] = useState([]);       // dxf or pdf: one drawing or the whole set
   const [dxfFiles, setDxfFiles] = useState([]); // both: the DXF/DWG set
   const [pdfFiles, setPdfFiles] = useState([]); // both: one-or-more PDFs
+  const [aiSymbols, setAiSymbols] = useState(false);   // DXF: name unnamed symbols with AI
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -58,7 +59,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
         onCompareCreated(compare_id);
         onNavigate('compare');
       } else {
-        const { run_id } = await api.runs.create(files, pipeline);
+        const { run_id } = await api.runs.create(files, pipeline, { aiSymbols: pipeline === 'dxf' && aiSymbols });
         onRunCreated(run_id);
         onNavigate('extraction');
       }
@@ -114,6 +115,16 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
                   ? `${files.length} drawings — read together as one project (an older revision of a sheet is skipped automatically).`
                   : 'Tip: select every drawing of the job at once (Ctrl/Shift-click) so feeders can be measured on the site plan.'}
               </p>
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, marginBottom: 'var(--space-md)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={aiSymbols} onChange={(e) => setAiSymbols(e.target.checked)}
+                       data-testid="ai-symbols" style={{ marginTop: 3, minWidth: 18, minHeight: 18 }} />
+                <span>
+                  <strong>Recognise unnamed symbols with AI</strong> — for drawings whose light fittings and
+                  sockets are loose lines (no symbol names). The app counts every copy exactly; the AI only
+                  names each shape once, from the drawing's legend. About R 1–2 per drawing set; needs the
+                  Anthropic key. You can correct any name afterwards.
+                </span>
+              </label>
             </>
           )}
 

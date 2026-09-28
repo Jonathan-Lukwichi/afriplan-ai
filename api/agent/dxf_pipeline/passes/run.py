@@ -21,7 +21,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import ezdxf
 from pydantic import BaseModel, Field
@@ -34,8 +34,9 @@ from agent.dxf_pipeline.passes.assemble import (
     build_boq_from_recognition,
 )
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
-from agent.dxf_pipeline.passes.recognize import DxfRecognition, recognise
+from agent.dxf_pipeline.passes.recognize import DxfRecognition, _plain_text, recognise
 from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
+from agent.dxf_pipeline.passes.shapes import ShapeGroup, find_shape_groups
 from agent.dxf_pipeline.passes.site_routes import read_site_routes
 from agent.dxf_pipeline.passes.sld import SldFacts, read_sld
 from agent.dxf_pipeline.passes.spatial import assign_spatial
@@ -53,6 +54,7 @@ from agent.shared import (
 from agent.shared.legend import Legend, billed_canonical_items, coverage_gaps
 from agent.shared.persistence import persist_run
 from agent.shared.routes import RouteNetwork, equipment_key
+from agent.shared.symbol_catalogue import catalogue_item
 from core.rate_model import DEFAULT_PARAMS, build_rate
 
 log = logging.getLogger(__name__)
@@ -67,6 +69,16 @@ class DxfFileNote(BaseModel):
     error: str = ""
 
 
+class DxfAiSymbol(BaseModel):
+    """One repeated unnamed symbol shape and what it was named as (ADR-0007)."""
+    signature: str
+    item: str
+    named_by: str = "ai"             # ai | person
+    count: int = 0
+    sheets: List[str] = Field(default_factory=list)
+    image_png_b64: str = ""
+
+
 class DxfEstimatorRun(BaseModel):
     run_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -75,6 +87,8 @@ class DxfEstimatorRun(BaseModel):
     files: List[DxfFileNote] = Field(default_factory=list)
     site_plan_file: str = ""         # drawing the feeder routes were measured on
     routes_measured: int = 0         # feeders whose length came from the site plan
+    ai_symbols: List[DxfAiSymbol] = Field(default_factory=list)   # shapes named by AI / a person
+    ai_cost_zar: float = 0.0         # what naming new shapes cost this run
     converted_from_dwg: bool = False
     electrical_cable_length_m: float = 0.0
     symbol_count: int = 0
@@ -216,14 +230,19 @@ def run_dxf_project(
     project: Optional[ProjectMetadata] = None,
     contractor: Optional[ContractorProfile] = None,
     persist: bool = False,
+    name_shapes: Optional[ShapeNamer] = None,
 ) -> DxfEstimatorRun:
     """
+    `name_shapes` (optional, ADR-0007): names repeated unnamed symbol shapes — injected
+    by the caller (api/assist), so this pipeline never imports an LLM. Without it the
+    run is exactly the deterministic one.
+
     Run the DXF estimator over a whole drawing set (SLDs, layouts, site plan) as one
     project: boards and feeders from every SLD, billed once; feeder lengths and
     trench measured on the site plan; fittings and wiring from every layout. Each
     line's drawing_ref names the drawing it came from. Always returns a run object.
     """
-    if len(files) == 1:
+    if len(files) == 1 and name_shapes is None:
         return run_dxf_estimator(files[0][0], files[0][1], project=project,
                                  contractor=contractor, persist=persist)
     run_id = uuid.uuid4().hex[:12]
@@ -269,6 +288,14 @@ def run_dxf_project(
                          "SLD" if a.sld.found else "layout" if a.rec.symbols or a.rec.circuit_tags else "other")
     sld = _merge_sld([a.sld for _, _, a in analyses])
 
+    # ADR-0007: repeated unnamed symbols — geometry counts them, the injected namer names them.
+    ai_lines, ai_gaps, ai_symbols, ai_cost = ([], [], [], 0.0)
+    if name_shapes is not None:
+        ai_lines, ai_gaps, ai_symbols, ai_cost = _name_and_price_shapes(
+            [(doc, name) for doc, name, a in analyses if not a.sld.found], name_shapes,
+            _item_texts(analyses))
+    ai_items = {s.item for s in ai_symbols if catalogue_item(s.item)}
+
     boq = build_boq_from_recognition(DxfRecognition(), project_name=project_name, run_id=run_id,
                                      contractor=contractor, sld=sld, routes=routes)
     board_names = [b.name for b in sld.boards]
@@ -277,15 +304,17 @@ def run_dxf_project(
         part = build_boq_from_recognition(a.rec, project_name=project_name, run_id=run_id,
                                           contractor=contractor, known_boards=billed_boards)
         billed_boards += a.rec.db_refs()
-        _integrate_template_counts(part, doc, a.legend)
-        _add_legend_coverage_gaps(part, a.legend)
+        _integrate_template_counts(part, doc, a.legend, skip=ai_items)
         stem = Path(name).stem
+        part.line_items.extend(l for l in ai_lines if l.drawing_ref == stem)
+        _add_legend_coverage_gaps(part, a.legend)
         for ln in part.line_items:
             ln.drawing_ref = stem
         for g in part.gaps:
             g.drawing_ref = g.drawing_ref or stem
         boq.line_items.extend(part.line_items)
         boq.gaps.extend(part.gaps)
+    boq.gaps.extend(ai_gaps)
     for old, newer in superseded.items():
         boq.gaps.append(GapItem(
             section=BQSection.DISTRIBUTION,
@@ -319,6 +348,7 @@ def run_dxf_project(
         circuit_ids=sorted({c for r in recs for c in r.circuit_ids()}),
         db_refs=sorted({d for r in recs for d in r.db_refs()} | set(board_names)),
         files=notes, site_plan_file=site_plan,
+        ai_symbols=ai_symbols, ai_cost_zar=round(ai_cost, 2),
         routes_measured=sum(1 for fd in sld.feeders
                             if routes is not None and routes.route(fd.from_source, fd.to_db)),
         boq=boq, duration_s=round(time.perf_counter() - started, 3),
@@ -328,6 +358,80 @@ def run_dxf_project(
     if persist:
         persist_run(run, pipeline="dxf", run_id=run_id)
     return run
+
+
+ShapeNamer = Callable[[List[ShapeGroup], List[str]], Tuple[Dict[str, Tuple[str, str]], float]]
+_PRICE_MAPS = {"light": "LIGHT_PRICES", "socket": "SOCKET_PRICES", "switch": "SWITCH_PRICES", "db": "DB_PRICES"}
+
+
+def _item_texts(analyses) -> List[str]:
+    """Every line of text on the drawings that names an electrical item: the legend reader's
+    entries plus any text the legend vocabulary recognises (on Wedela the legend reader
+    missed '2x24W double vapor proof LED fluorescent light' — the most-drawn fitting)."""
+    from agent.shared.legend import classify_description
+    found = {e.description.strip() for _, _, a in analyses for e in a.legend.entries if e.description.strip()}
+    for doc, _name, _a in analyses:
+        for e in doc.modelspace().query("TEXT MTEXT"):
+            text = " ".join(_plain_text(e).split())
+            if 6 <= len(text) <= 120 and classify_description(text):
+                found.add(text)
+    return sorted(found)
+
+
+def _name_and_price_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
+    """Group every layout's loose symbols into shapes, have them named once, and turn the
+    named ones into priced lines per drawing: the COUNT is exact geometry, the NAME came
+    from the namer — INFERRED, with a gap asking a person to confirm it."""
+    from core import constants
+    per_sheet: List[ShapeGroup] = []
+    for doc, name in docs:
+        per_sheet += find_shape_groups(doc, Path(name).stem)
+    if not per_sheet:
+        return [], [], [], 0.0
+    unique: Dict[str, ShapeGroup] = {}
+    totals: Dict[str, int] = {}
+    sheets: Dict[str, List[str]] = {}
+    for g in per_sheet:
+        unique.setdefault(g.signature, g)
+        totals[g.signature] = totals.get(g.signature, 0) + g.count
+        sheets.setdefault(g.signature, []).append(g.sheet)
+    reps = [ShapeGroup(signature=s, count=totals[s], sheet=", ".join(sheets[s]), size=g.size,
+                       image_png_b64=g.image_png_b64) for s, g in unique.items()]
+    names, cost = name_shapes(reps, legend_lines)
+
+    symbols = [DxfAiSymbol(signature=s, item=names[s][0], named_by=names[s][1], count=totals[s],
+                           sheets=sheets[s], image_png_b64=unique[s].image_png_b64)
+               for s in unique if s in names]
+    qty: Dict[Tuple[str, str], int] = {}
+    for g in per_sheet:
+        item = names.get(g.signature, ("", ""))[0]
+        if catalogue_item(item):
+            qty[(g.sheet, item)] = qty.get((g.sheet, item), 0) + g.count
+    lines: List[BQLineItem] = []
+    for (sheet, item), n in sorted(qty.items()):
+        cat = catalogue_item(item)
+        material = getattr(constants, _PRICE_MAPS[cat.price_map]).get(cat.price_key, 0.0)
+        rate = build_rate(material_cost=material, install_labour=85.0, params=DEFAULT_PARAMS)
+        lines.append(BQLineItem(
+            section=cat.section, description=f"{item} — {sheet}", unit="No", qty=float(n),
+            unit_price_zar=round(rate.combined_rate, 2), source=ItemConfidence.INFERRED,
+            line_kind=LineKind.COMBINED, drawing_ref=sheet,
+            assumption="Symbol named from the drawing's legend by AI; every copy counted exactly by geometry.",
+            notes="Confirm the symbol name on the Take-off page.",
+        ))
+    gaps: List[GapItem] = []
+    for item in sorted({i for _, i in qty}):
+        n = sum(v for (s, i), v in qty.items() if i == item)
+        by = {names[s][1] for s in names if names[s][0] == item}
+        if by == {"person"}:
+            continue
+        gaps.append(GapItem(
+            section=catalogue_item(item).section, description=f"{n} symbols recognised as '{item}' by AI",
+            assumption="The count is exact (geometry); the name came from the AI reading the legend.",
+            suggested_action="Check the picture on the Take-off page and correct the name if it is wrong.",
+            severity="low", drawing_ref="AI symbol naming",
+        ))
+    return lines, gaps, symbols, cost
 
 
 def _add_route_gaps(boq: BillOfQuantities, routes: RouteNetwork, sld: SldFacts, sheet: str) -> None:
@@ -369,14 +473,14 @@ _SECTION_MATERIAL = {
 }
 
 
-def _integrate_template_counts(boq: BillOfQuantities, doc, legend: Legend) -> None:
+def _integrate_template_counts(boq: BillOfQuantities, doc, legend: Legend, skip=frozenset()) -> None:
     """
     Add a priced line for each legend symbol counted by template matching
     (mode 3). Marked INFERRED — the COUNT is deterministic geometry, the rate is
     a ballpark for the contractor to confirm. Once billed, these items drop out
     of the legend coverage gaps automatically.
     """
-    counts = count_by_template(doc, legend)
+    counts = {k: v for k, v in count_by_template(doc, legend).items() if k not in skip}
     if not counts:
         return
     section_of = {e.canonical_item: e.section for e in legend.entries}

@@ -34,10 +34,23 @@ from core.run_store import RunRecord, run_store
 ON_VERCEL = bool(os.environ.get("VERCEL"))
 
 
-def run_dxf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
-    """One drawing or a whole drawing set (SLDs + layouts + site plan) as one project."""
+def _shape_namer():
+    """ADR-0007: the optional AI step that names unnamed CAD symbols — built here, handed to
+    the DXF pipeline as a plain callable. None without an API key (the run stays free)."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return None
+    from agent.pdf_pipeline.llm import make_anthropic_client
+    from assist.symbol_namer import make_shape_namer
+    from db.symbol_names import load_symbol_names, save_symbol_name
+    return make_shape_namer(client=make_anthropic_client(), remembered=load_symbol_names(),
+                            on_named=lambda sig, item: save_symbol_name(sig, item, "ai"))
+
+
+def run_dxf_job(run_id: str, files: list[tuple[bytes, str]], ai_symbols: bool = False) -> None:
+    """One drawing or a whole drawing set (SLDs + layouts + site plan) as one project;
+    with `ai_symbols`, unnamed symbol shapes are named by the AI (ADR-0007)."""
     try:
-        result = run_dxf_project(files)
+        result = run_dxf_project(files, name_shapes=_shape_namer() if ai_symbols else None)
         record = run_store.get(run_id)
         record.result = result
         record.status = "passed" if result.success else "failed"
@@ -65,14 +78,15 @@ def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
         run_store.put(record)
 
 
-async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]]) -> str:
+async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]],
+                         ai_symbols: bool = False) -> str:
     run_id = uuid.uuid4().hex[:12]
     label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
     run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="running", input_file=label))
     if ON_VERCEL:
-        await run_in_threadpool(run_dxf_job, run_id, pairs)
+        await run_in_threadpool(run_dxf_job, run_id, pairs, ai_symbols)
     else:
-        background_tasks.add_task(run_in_threadpool, run_dxf_job, run_id, pairs)
+        background_tasks.add_task(run_in_threadpool, run_dxf_job, run_id, pairs, ai_symbols)
     return run_id
 
 

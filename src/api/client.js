@@ -29,13 +29,19 @@ export const api = {
 
   runs: {
     // `files`: one File or an array — a DXF/DWG set runs as one project, a PDF set as one run.
-    create: (files, pipeline = 'dxf') => {
+    create: (files, pipeline = 'dxf', { aiSymbols = false } = {}) => {
       const form = new FormData();
       (Array.isArray(files) ? files : [files]).forEach((f) => form.append('files', f));
       form.append('pipeline', pipeline);
+      if (aiSymbols) form.append('ai_symbols', 'true');
       return request('/api/runs', { method: 'POST', body: form });
     },
     get: (runId, signal) => request(`/api/runs/${runId}`, { signal }),
+  },
+
+  symbols: {
+    choices: () => request('/api/symbols/choices'),
+    name: (signature, item) => request(`/api/symbols/${encodeURIComponent(signature)}`, { method: 'PUT', body: { item } }),
   },
 
   compare: {
