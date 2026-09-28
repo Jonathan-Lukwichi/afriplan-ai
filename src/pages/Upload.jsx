@@ -111,7 +111,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
               />
               <p style={{ fontSize: 12.5, color: 'var(--ink-muted)', margin: '0 0 var(--space-md)' }}>
                 {files.length > 1
-                  ? `${files.length} drawings — read together as one project.`
+                  ? `${files.length} drawings — read together as one project (an older revision of a sheet is skipped automatically).`
                   : 'Tip: select every drawing of the job at once (Ctrl/Shift-click) so feeders can be measured on the site plan.'}
               </p>
             </>

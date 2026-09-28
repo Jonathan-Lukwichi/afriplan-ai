@@ -25,9 +25,9 @@ Needs **Docker Desktop** running (whale icon in the taskbar says "Engine running
    Add `-e ANTHROPIC_API_KEY=sk-ant-...` before `afriplan:test` to test the PDF engine too.
 
 3. **Open** http://127.0.0.1:8080 → *Sign in* → **Upload → DXF / DWG** → select all the
-   `.dwg` files in `data\projects\wedela\raw\Wedela Electrical` (except
-   `WD-PB-01-LIGHTING 100225`) → **Run DXF engine**. Expect the *Drawing set* panel with
-   "Feeder routes measured on WD-OL-001…", then **View Bill of Quantities**.
+   `.dwg` files in `data\projects\wedela\raw\Wedela Electrical` (Ctrl+A) → **Run DXF engine**.
+   Expect the *Drawing set* panel with "Feeder routes measured on WD-OL-001…" and the older
+   `WD-PB-01-LIGHTING 100225` marked *skipped — older revision*; then **View Bill of Quantities**.
 
 4. **Stop it:** `Ctrl+C` in that window (or `docker stop afriplan-test`).
 

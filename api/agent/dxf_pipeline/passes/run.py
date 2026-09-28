@@ -35,6 +35,7 @@ from agent.dxf_pipeline.passes.assemble import (
 )
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import DxfRecognition, recognise
+from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
 from agent.dxf_pipeline.passes.site_routes import read_site_routes
 from agent.dxf_pipeline.passes.sld import SldFacts, read_sld
 from agent.dxf_pipeline.passes.spatial import assign_spatial
@@ -233,7 +234,13 @@ def run_dxf_project(
 
     docs = []
     notes: List[DxfFileNote] = []
+    # Two revisions of one sheet would bill its contents twice: read only the newest.
+    _, superseded = pick_latest_revisions([name for _, name in files])
+    for name, newer in superseded.items():
+        notes.append(DxfFileNote(file_name=name, role=f"older revision — replaced by {newer}"))
     for data, name in files:
+        if name in superseded:
+            continue
         doc, converted, error = _load(data, name)
         notes.append(DxfFileNote(file_name=name, converted_from_dwg=converted, ok=doc is not None,
                                  error=error or ""))
@@ -254,6 +261,8 @@ def run_dxf_project(
             routes, site_plan = net, name
     analyses = [(doc, name, _analyse(doc, name, project)) for doc, name in docs]
     for note in notes:
+        if note.file_name in superseded:
+            continue
         a = next((x for _, n, x in analyses if n == note.file_name), None)
         if a is not None:
             note.role = ("site plan" if note.file_name == site_plan else
@@ -277,6 +286,14 @@ def run_dxf_project(
             g.drawing_ref = g.drawing_ref or stem
         boq.line_items.extend(part.line_items)
         boq.gaps.extend(part.gaps)
+    for old, newer in superseded.items():
+        boq.gaps.append(GapItem(
+            section=BQSection.DISTRIBUTION,
+            description=f"{old} is an older revision of {newer} — not read, so nothing is counted twice",
+            assumption=f"Priced from {newer} only.",
+            suggested_action="If the older sheet shows work the newer one does not, upload it on its own.",
+            severity="medium", drawing_ref=Path(old).stem,
+        ))
     if routes is not None:
         _add_route_gaps(boq, routes, sld, Path(site_plan).stem)
     elif sld.feeders:

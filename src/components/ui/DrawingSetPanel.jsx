@@ -26,8 +26,11 @@ export default function DrawingSetPanel({ result }) {
             {files.map((f) => (
               <tr key={f.file_name} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <td style={{ padding: '6px 8px', wordBreak: 'break-word' }}>{f.file_name}</td>
-                <td style={{ padding: '6px 8px', color: f.ok ? (ROLE_COLOR[f.role] || 'var(--ink)') : 'var(--rose)', whiteSpace: 'nowrap' }}>
-                  {f.ok ? (f.role || '—') : `could not read: ${f.error}`}
+                <td style={{
+                  padding: '6px 8px',
+                  color: !f.ok ? 'var(--rose)' : f.role?.startsWith('older revision') ? 'var(--amber)' : (ROLE_COLOR[f.role] || 'var(--ink)'),
+                }}>
+                  {f.ok ? (f.role?.startsWith('older revision') ? `skipped — ${f.role}` : (f.role || '—')) : `could not read: ${f.error}`}
                 </td>
               </tr>
             ))}

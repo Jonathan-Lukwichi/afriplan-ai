@@ -15,8 +15,8 @@ test('upload a DWG set and see feeders measured on the site plan', async ({ page
   const health = await request.get(`${API}/api/health`).catch(() => null);
   test.skip(!health || !health.ok(), 'backend not running');
 
-  // every current drawing (an older revision of a sheet is left out, as a user would)
-  const files = fs.readdirSync(DIR).filter((f) => f.toLowerCase().endsWith('.dwg') && !f.includes('100225'))
+  // the whole folder, older revision included — the app must skip it by itself
+  const files = fs.readdirSync(DIR).filter((f) => f.toLowerCase().endsWith('.dwg'))
     .map((f) => path.join(DIR, f));
   expect(files.length).toBeGreaterThan(10);
 
@@ -29,13 +29,14 @@ test('upload a DWG set and see feeders measured on the site plan', async ({ page
   await page.goto('/#upload');
 
   await page.getByTestId('dxf-files').setInputFiles(files);
-  await expect(page.getByText(`${files.length} drawings — read together as one project.`)).toBeVisible();
+  await expect(page.getByText(`${files.length} drawings — read together as one project`, { exact: false })).toBeVisible();
   await page.getByRole('button', { name: /Run DXF engine/ }).click();
 
   const panel = page.getByTestId('drawing-set-panel');
   await expect(panel).toBeVisible({ timeout: 240_000 });
   await expect(panel.getByText(/Feeder routes measured on WD-OL-001/)).toBeVisible();
   await expect(panel.getByText('site plan', { exact: true })).toBeVisible();
+  await expect(panel.getByText(/skipped — older revision — replaced by WD-PB-01-LIGHTING\s+100425/)).toBeVisible();
   await page.screenshot({ path: 'screenshots/dxf-set-result.png', fullPage: true });
 
   await page.getByRole('button', { name: /View Bill of Quantities/ }).click();

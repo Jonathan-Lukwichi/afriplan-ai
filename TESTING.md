@@ -19,9 +19,11 @@ not rolled into the summary, broken `#REF!` cells.
 
 ## Test 2 — the whole CAD set → priced BOQ (free, ~1–2 min)
 **Upload** → DXF / DWG → open `Wedela Electrical/`, select **all** the `.dwg` files
-(Ctrl+A; leave out the older `WD-PB-01-LIGHTING 100225`) → *Run DXF engine*.
+(Ctrl+A) → *Run DXF engine*.
 - **Take-off**: the **Drawing set** panel lists each drawing as SLD / layout / site plan and
   says *Feeder routes measured on WD-OL-001…* with the number of feeders priced on them.
+  The older `WD-PB-01-LIGHTING 100225` shows *skipped — older revision* (same sheet as the
+  `100425` issue; reading both would bill the pool lights twice) and the gap report says so.
 - **BoQ → Line items**: e.g. *SWA feeder MINI-SUB→KIOSK* priced on the measured route
   + 5 % + 1.5 m per end (its assumption says so); trench billed once where feeders share it. Feeders the site plan
   does not draw (DB-SGH, the pool pump boards) stay at an assumed 30 m — the **Gap report**
