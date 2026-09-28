@@ -1,0 +1,24 @@
+# Render Blueprint — one Docker web service: FastAPI serves the API and the built React app.
+# Render dashboard → New → Blueprint → pick this repo. Secrets marked `sync: false` are
+# asked for once in the dashboard and never stored in git. Guide: docs/deploy-render.md
+services:
+  - type: web
+    name: afriplan
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true                 # every push to main redeploys
+    plan: standard                   # 2 GB RAM: a 17-DWG set peaks ~1.1 GB (docs/deploy-render.md)
+    healthCheckPath: /api/health
+    disk:                            # keeps the SQLite database (runs, profile) across deploys
+      name: afriplan-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: ANTHROPIC_API_KEY       # PDF engine + Live Pricing replies. Leave empty = DWG/DXF only.
+        sync: false
+      - key: RESEND_API_KEY          # optional — "Email this BoQ"
+        sync: false
+      - key: NOTIFY_FROM_EMAIL       # optional — sender address for those emails
+        sync: false
