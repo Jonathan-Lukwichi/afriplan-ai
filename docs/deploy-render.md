@@ -67,7 +67,7 @@ After that, **every push to `main` redeploys automatically**.
 - **Disk.** Runs and the contractor profile are stored in SQLite on a 1 GB disk mounted at
   `/app/data` (~$0.25/month), so they survive restarts and deploys.
 - **Who can use it.** The login is a demo login — **anyone with the URL can use the app**,
-  and with `ANTHROPIC_API_KEY` set, every PDF run costs you ~R 1 per page. Share the URL
+  and with `ANTHROPIC_API_KEY` set, every PDF run costs you ~R 2.50 per page. Share the URL
   only with people you trust until real accounts exist.
 - **Not online:** client drawings, the Wedela bill and the fitted ratio model stay on your PC
   (the repo is public). So online, *Complete with derived items* is hidden, and you upload

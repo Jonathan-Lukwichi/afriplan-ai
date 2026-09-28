@@ -16,6 +16,8 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict
@@ -39,7 +41,7 @@ from agent.pdf_pipeline.prompts.pass_schemas import TOOL_FOR_SHEET_TYPE
 from agent.pdf_pipeline.stages.ingest import IngestedPage
 from agent.shared import BillOfQuantities, BQSection, ContractorProfile, GapItem
 from agent.shared.routes import equipment_key
-from core.config import OPUS_4_6, SONNET_4_5
+from core.config import ESCALATE_MODEL, EXTRACT_MODEL, PDF_PARALLEL_PAGES
 
 log = logging.getLogger(__name__)
 
@@ -98,65 +100,83 @@ VALIDATOR_BY_TOOL: Dict[str, type[BaseModel]] = {
 }
 
 
-def extract_facts(
-    llm: PdfLLM,
-    pages: List[IngestedPage],
-    classifications: List[PageClassification],
-) -> Tuple[PdfFacts, List[StageCost]]:
-    """Run Passes 1–3 across the classified pages → merged PdfFacts."""
-    facts = PdfFacts()
-    costs: List[StageCost] = []
-    by_index: Dict[int, IngestedPage] = {p.page_index: p for p in pages}
+@dataclass
+class _PageOutcome:
+    """What one page produced — read in parallel, merged afterwards in page order."""
+    tool_name: str = ""
+    tool_input: Optional[dict] = None
+    spine: Optional[PowerSpine] = None
+    gaps: List[GapItem] = field(default_factory=list)
+    costs: List[StageCost] = field(default_factory=list)
+    error: str = ""
 
-    for cls in classifications:
-        page = by_index.get(cls.page_index)
-        if page is None or cls.page_type == PageType.UNKNOWN:
-            continue
-        tool = TOOL_FOR_SHEET_TYPE.get(cls.page_type.value)
-        if tool is None:
-            continue
-        prompt = PROMPT_BY_PASS_TOOL[tool["name"]]
-        validator = VALIDATOR_BY_TOOL.get(tool["name"])
 
+def _read_page(llm: PdfLLM, cls: PageClassification, page: IngestedPage, tool: dict) -> _PageOutcome:
+    prompt = PROMPT_BY_PASS_TOOL[tool["name"]]
+    validator = VALIDATOR_BY_TOOL.get(tool["name"])
+    try:
         # The power-spine pass gets DB panel ratings wrong in a way that's
         # too costly to trust from a single sample (confirmed via repeated
         # real test runs: the same SLD page read 4 times gave 4 different
         # totals). Every other pass has been reliable single-shot, so only
         # this one pays the 3x-sampling cost.
         if cls.page_type == PageType.SLD:
-            try:
-                spine, gaps, call_costs = _extract_power_spine_voted(
-                    llm, page, cls.page_index, prompt, tool, validator,
-                )
-            except LLMError as e:
-                log.error("Power-spine extraction failed on page %d: %s", cls.page_index, e)
-                facts.takeoff.warnings.append(f"p{cls.page_index} {tool['name']}: {e}")
-                continue
-            costs.extend(call_costs)
-            _merge_spine(facts.spine, spine, page=cls.page_index, gaps=facts.extraction_gaps)
-            facts.extraction_gaps.extend(gaps)
-            continue
+            spine, gaps, costs = _extract_power_spine_voted(llm, page, cls.page_index, prompt, tool, validator)
+            return _PageOutcome(tool_name=tool["name"], spine=spine, gaps=gaps, costs=costs)
+        result = llm.call_with_tool(
+            model=EXTRACT_MODEL,
+            user_text=prompt,
+            page_image_b64=page.image_b64,
+            tools=[tool],
+            forced_tool_name=tool["name"],
+            stage_name=f"pass:{tool['name']}:p{cls.page_index}",
+            max_tokens=4096,
+            validator=validator,
+            escalate_to=ESCALATE_MODEL,
+            temperature=0.0,
+        )
+        return _PageOutcome(tool_name=tool["name"], tool_input=result.tool_input, costs=[result.cost])
+    except LLMError as e:
+        log.error("Pass extraction failed on page %d: %s", cls.page_index, e)
+        return _PageOutcome(tool_name=tool["name"], error=f"p{cls.page_index} {tool['name']}: {e}")
 
-        try:
-            result = llm.call_with_tool(
-                model=SONNET_4_5,
-                user_text=prompt,
-                page_image_b64=page.image_b64,
-                tools=[tool],
-                forced_tool_name=tool["name"],
-                stage_name=f"pass:{tool['name']}:p{cls.page_index}",
-                max_tokens=4096,
-                validator=validator,
-                escalate_to=OPUS_4_6,
-                temperature=0.0,
-            )
-        except LLMError as e:
-            log.error("Pass extraction failed on page %d: %s", cls.page_index, e)
-            facts.takeoff.warnings.append(f"p{cls.page_index} {tool['name']}: {e}")
-            continue
 
-        costs.append(result.cost)
-        _merge(facts, tool["name"], result.tool_input, page=cls.page_index)
+def extract_facts(
+    llm: PdfLLM,
+    pages: List[IngestedPage],
+    classifications: List[PageClassification],
+) -> Tuple[PdfFacts, List[StageCost]]:
+    """Run Passes 1–3 across the classified pages → merged PdfFacts.
+
+    Pages are read in parallel (PDF_PARALLEL_PAGES requests in flight) — the
+    wall-clock of a run is then set by the slowest page, not the sum of all
+    pages — and merged afterwards in page order, so the result is the same as a
+    one-by-one run."""
+    facts = PdfFacts()
+    costs: List[StageCost] = []
+    by_index: Dict[int, IngestedPage] = {p.page_index: p for p in pages}
+
+    jobs = []
+    for cls in classifications:
+        page = by_index.get(cls.page_index)
+        if page is None or cls.page_type == PageType.UNKNOWN:
+            continue
+        tool = TOOL_FOR_SHEET_TYPE.get(cls.page_type.value)
+        if tool is not None:
+            jobs.append((cls, page, tool))
+
+    with ThreadPoolExecutor(max_workers=PDF_PARALLEL_PAGES) as pool:
+        outcomes = list(pool.map(lambda j: _read_page(llm, *j), jobs))
+
+    for (cls, _page, _tool), out in zip(jobs, outcomes):
+        costs.extend(out.costs)
+        if out.error:
+            facts.takeoff.warnings.append(out.error)
+        elif out.spine is not None:
+            _merge_spine(facts.spine, out.spine, page=cls.page_index, gaps=facts.extraction_gaps)
+            facts.extraction_gaps.extend(out.gaps)
+        else:
+            _merge(facts, out.tool_name, out.tool_input, page=cls.page_index)
 
     facts.extraction_gaps.extend(_site_lighting_gaps(facts.takeoff))
     facts.extraction_gaps.extend(_check_spine_orphans(facts.spine))
@@ -382,23 +402,30 @@ def _extract_power_spine_voted(
     tool: dict,
     validator: Optional[type[BaseModel]],
 ) -> Tuple[PowerSpine, List[GapItem], List[StageCost]]:
-    samples: List[PowerSpine] = []
-    costs: List[StageCost] = []
-    for i in range(_SPINE_VOTE_SAMPLES):
-        result = llm.call_with_tool(
-            model=SONNET_4_5,
-            user_text=prompt,
-            page_image_b64=page.image_b64,
-            tools=[tool],
-            forced_tool_name=tool["name"],
-            stage_name=f"pass:{tool['name']}:p{page_index}:sample{i}",
-            max_tokens=4096,
-            validator=validator,
-            escalate_to=OPUS_4_6,
-            temperature=_SPINE_VOTE_TEMPERATURE,
-        )
-        costs.append(result.cost)
-        samples.append(parse_power_spine(result.tool_input))
+    def sample(i: int):
+        try:
+            return llm.call_with_tool(
+                model=EXTRACT_MODEL,
+                user_text=prompt,
+                page_image_b64=page.image_b64,
+                tools=[tool],
+                forced_tool_name=tool["name"],
+                stage_name=f"pass:{tool['name']}:p{page_index}:sample{i}",
+                max_tokens=4096,
+                validator=validator,
+                escalate_to=ESCALATE_MODEL,
+                temperature=_SPINE_VOTE_TEMPERATURE,   # ignored by models that reject it
+            )
+        except LLMError as e:                          # vote with the samples that arrived
+            log.warning("Power-spine sample %d on page %d failed: %s", i, page_index, e)
+            return None
+
+    with ThreadPoolExecutor(max_workers=_SPINE_VOTE_SAMPLES) as pool:
+        results = [r for r in pool.map(sample, range(_SPINE_VOTE_SAMPLES)) if r is not None]
+    if not results:
+        raise LLMError(f"every power-spine sample failed on page {page_index}")
+    costs: List[StageCost] = [r.cost for r in results]
+    samples: List[PowerSpine] = [parse_power_spine(r.tool_input) for r in results]
 
     merged, gaps = _vote_spine(samples, page_index)
     return merged, gaps, costs

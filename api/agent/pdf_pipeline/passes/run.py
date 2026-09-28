@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, Field
 
-from agent.pdf_pipeline.llm import PdfLLM, build_default_pdf_llm
+from agent.pdf_pipeline.llm import LLMError, PdfLLM, build_default_pdf_llm
 from agent.pdf_pipeline.models import PageClassification, PageType, StageCost
 from agent.pdf_pipeline.passes.facts import PdfFacts
 from agent.pdf_pipeline.passes.legend import build_pdf_legend
@@ -39,7 +39,9 @@ from agent.pdf_pipeline.prompts.tool_schemas import CLASSIFY_PAGE_TOOL
 from agent.pdf_pipeline.stages.ingest import IngestedPage, ingest
 from agent.shared import BillOfQuantities, ContractorProfile, ProjectMetadata
 from agent.shared.persistence import persist_run
-from core.config import HAIKU_4_5
+from concurrent.futures import ThreadPoolExecutor
+
+from core.config import CLASSIFY_MODEL, PDF_PARALLEL_PAGES
 
 log = logging.getLogger(__name__)
 
@@ -127,13 +129,27 @@ def classify_files(
             ))
             continue
 
+        def classify(p):
+            try:
+                return llm.call_with_tool(
+                    model=CLASSIFY_MODEL, user_text=CLASSIFY_PROMPT, page_image_b64=p.image_b64,
+                    tools=[CLASSIFY_PAGE_TOOL], forced_tool_name="classify_page",
+                    stage_name=f"classify:{fi.file_name}:p{p.page_index}", max_tokens=512,
+                )
+            except LLMError as e:          # one page's network failure must not sink the run
+                log.error("Classifying %s p%d failed: %s", fi.file_name, p.page_index, e)
+                return None
+
+        # every page at once (results kept in page order, so the run stays deterministic)
+        with ThreadPoolExecutor(max_workers=PDF_PARALLEL_PAGES) as pool:
+            results = list(pool.map(classify, fi.pages))
         per_page: List[PageClassification] = []
-        for p in fi.pages:
-            result = llm.call_with_tool(
-                model=HAIKU_4_5, user_text=CLASSIFY_PROMPT, page_image_b64=p.image_b64,
-                tools=[CLASSIFY_PAGE_TOOL], forced_tool_name="classify_page",
-                stage_name=f"classify:{fi.file_name}:p{p.page_index}", max_tokens=512,
-            )
+        for p, result in zip(fi.pages, results):
+            if result is None:
+                per_page.append(PageClassification(
+                    page_index=p.page_index, page_type=PageType.UNKNOWN, confidence=0.0,
+                    rationale="page could not be read (connection to the AI failed) — upload again"))
+                continue
             costs.append(result.cost)
             per_page.append(PageClassification(
                 page_index=p.page_index,

@@ -97,7 +97,7 @@ inside an optimisation loop · push to `main` / deploy without approval.
 ## Current state (update when it changes)
 - Reference project: **wedela** (7 billed buildings). Baselines (`reports/baselines/README.md`),
   project-level Reproduction Score (2026-09-27): **DXF 44.6 %** (45.3 % with completer),
-  **PDF 17.8 %** (the Wedela PDF set has no site plan, so its feeder lengths stay assumed).
+  **PDF 27.1 %** (Opus 5, pages read in parallel, ~5 min; the Wedela PDF set has no site plan, so its feeder lengths stay assumed).
 - A DWG/DXF **set** runs as one project (`run_dxf_project`): feeders from every SLD are
   measured on the electrical site plan (`agent/shared/routes.py` + each pipeline's
   `passes/site_routes.py`); the PDF pipeline measures vector site-plan PDFs the same way.

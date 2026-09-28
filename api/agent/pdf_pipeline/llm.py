@@ -123,7 +123,8 @@ class PdfLLM:
         else:
             anthropic = _get_anthropic()
             http_client = _build_tls_tolerant_http_client()
-            kwargs: Dict[str, Any] = {}
+            # pages are read in parallel: allow a few more backed-off retries on 429/5xx
+            kwargs: Dict[str, Any] = {"max_retries": 4}
             if api_key:
                 kwargs["api_key"] = api_key
             if http_client is not None:
@@ -179,7 +180,8 @@ class PdfLLM:
                     tools=tools,
                     forced_tool_name=forced_tool_name,
                     messages=messages,
-                    temperature=temperature,
+                    # current models (Opus 5 / Sonnet 5) reject `temperature` outright
+                    temperature=temperature if model.supports_temperature else None,
                 )
             except Exception as e:  # noqa: BLE001 — preserve error chain for caller
                 raise LLMError(f"Anthropic API call failed: {e}") from e
@@ -276,12 +278,11 @@ class PdfLLM:
         tools: List[Dict[str, Any]],
         forced_tool_name: Optional[str],
         messages: List[Dict[str, Any]],
-        temperature: float = 0.0,
+        temperature: Optional[float] = 0.0,
     ):
         kwargs: Dict[str, Any] = {
             "model": model_id,
             "max_tokens": max_tokens,
-            "temperature": temperature,
             "system": [
                 {
                     "type": "text",
@@ -292,6 +293,8 @@ class PdfLLM:
             "tools": tools,
             "messages": messages,
         }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         if forced_tool_name:
             kwargs["tool_choice"] = {"type": "tool", "name": forced_tool_name}
 

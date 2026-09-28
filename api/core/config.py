@@ -30,6 +30,7 @@ class ModelSpec:
     output_usd_per_mtok: float
     supports_vision: bool = True
     supports_tool_use: bool = True
+    supports_temperature: bool = True   # Opus 5 / Sonnet 5 reject `temperature` (400)
 
 
 # As of late 2025 / early 2026 — verified against Anthropic pricing
@@ -58,21 +59,42 @@ OPUS_4_6 = ModelSpec(
     output_usd_per_mtok=75.00,
 )
 
+# Current generation (2026-09). Pricing per the Anthropic model table.
+OPUS_5 = ModelSpec(
+    model_id="claude-opus-5",
+    display_name="Opus 5",
+    input_usd_per_mtok=5.00,
+    output_usd_per_mtok=25.00,
+    supports_temperature=False,
+)
+
+SONNET_5 = ModelSpec(
+    model_id="claude-sonnet-5",
+    display_name="Sonnet 5",
+    input_usd_per_mtok=2.00,
+    output_usd_per_mtok=10.00,
+    supports_temperature=False,
+)
+
 # Convenience map for telemetry
 MODEL_REGISTRY: Dict[str, ModelSpec] = {
-    HAIKU_4_5.model_id: HAIKU_4_5,
-    SONNET_4_5.model_id: SONNET_4_5,
-    OPUS_4_6.model_id: OPUS_4_6,
+    m.model_id: m for m in (HAIKU_4_5, SONNET_4_5, OPUS_4_6, OPUS_5, SONNET_5)
 }
 
 
 # Pipeline role → model. Only the PDF pipeline uses these; the DXF
-# pipeline never imports this section.
+# pipeline never imports this section. Reading a drawing page is the hard part,
+# so it gets the most capable model; classifying a page is easy and stays on Haiku.
+EXTRACT_MODEL = OPUS_5
+CLASSIFY_MODEL = HAIKU_4_5
+ESCALATE_MODEL = OPUS_5          # already the top model: escalation re-asks nothing new
 PDF_PIPELINE_MODELS = {
-    "classify": HAIKU_4_5,
-    "extract": SONNET_4_5,
-    "escalate": OPUS_4_6,
+    "classify": CLASSIFY_MODEL,
+    "extract": EXTRACT_MODEL,
+    "escalate": ESCALATE_MODEL,
 }
+# Pages are read in parallel; each worker is one request in flight.
+PDF_PARALLEL_PAGES = 6
 
 
 # ZAR / USD rate for cost reporting (rounded; refresh from XE quarterly)

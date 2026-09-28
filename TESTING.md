@@ -8,7 +8,7 @@ cd api; .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 800
 npm run dev
 ```
 Open **http://127.0.0.1:5180**, click *Sign in* (demo login, pre-filled).
-The PDF path needs `ANTHROPIC_API_KEY` in `api/.env` (≈ R 1 per page). DXF/DWG is free.
+The PDF path needs `ANTHROPIC_API_KEY` in `api/.env` (≈ R 2.50 per page with Claude Opus 5). DXF/DWG is free.
 Wedela test files live in `data/projects/wedela/raw/` (local only — client data).
 
 ## Test 1 — Audit any BOQ (instant, free)
@@ -33,7 +33,7 @@ One drawing alone still works (e.g. `WD-PB-01-SLD 100425.dwg`): then feeders are
 and the gap report asks for the site plan. Turn *Complete with derived items* on/off —
 wall boxes, chasing, conduit and wire appear as `inferred` lines.
 
-## Test 3 — PDF drawing set → priced BOQ (≈ 12 min, ≈ R 20)
+## Test 3 — PDF drawing set → priced BOQ (≈ 5 min, ≈ R 45 for the 18 Wedela pages)
 **Upload** → PDF → both Wedela PDFs → run. Check the per-file classification, coverage
 (site plan missing), legend, gap report; then BoQ as above.
 
