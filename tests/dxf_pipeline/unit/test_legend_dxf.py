@@ -9,8 +9,9 @@ import ezdxf
 import pytest
 
 from agent.dxf_pipeline.passes.legend import extract_legend, legend_block_counts
-from agent.dxf_pipeline.passes.run import _add_legend_coverage_gaps
-from agent.shared import BillOfQuantities, BQLineItem, BQSection
+from agent.dxf_pipeline.passes.run import _legend_coverage_gaps
+from agent.shared import BQSection
+from agent.shared.findings import Findings, ItemFinding
 
 
 def _doc_with_legend():
@@ -63,11 +64,10 @@ def test_exploded_legend_yields_no_false_block_counts():
 
 def test_legend_coverage_gaps_flag_uncounted_items():
     leg = extract_legend(_doc_with_legend())
-    boq = BillOfQuantities(pipeline="dxf", line_items=[
-        BQLineItem(section=BQSection.POWER_OUTLETS, description="16A Double Switched Socket — Office", qty=3),
+    found = Findings(items=[
+        ItemFinding(section=BQSection.POWER_OUTLETS, description="16A Double Switched Socket — Office", qty=3),
     ])
-    _add_legend_coverage_gaps(boq, leg)
-    gap_items = [g.description for g in boq.gaps]
+    gap_items = [g.description for g in _legend_coverage_gaps(found, leg)]
     # the socket is billed → no gap; the flood light + switch are not → gaps
     assert not any("16A Double Switched Socket" in g for g in gap_items)
     assert any("LED Floodlight" in g for g in gap_items)

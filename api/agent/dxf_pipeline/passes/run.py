@@ -27,12 +27,7 @@ import ezdxf
 from pydantic import BaseModel, Field
 
 from agent.dxf_pipeline.dwg import ensure_dxf_bytes
-from agent.dxf_pipeline.passes.assemble import (
-    _count_provenance,
-    _finalise_totals,
-    _number,
-    build_boq_from_recognition,
-)
+from agent.dxf_pipeline.passes.assemble import findings_from_recognition
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import DxfRecognition, _plain_text, recognise
 from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
@@ -43,19 +38,18 @@ from agent.dxf_pipeline.passes.spatial import assign_spatial
 from agent.dxf_pipeline.passes.template_count import count_by_template
 from agent.shared import (
     BillOfQuantities,
-    BQLineItem,
     BQSection,
     ContractorProfile,
     GapItem,
     ItemConfidence,
-    LineKind,
     ProjectMetadata,
 )
+from agent.shared.findings import Evidence, Findings, ItemFinding
 from agent.shared.legend import Legend, billed_canonical_items, coverage_gaps
 from agent.shared.persistence import persist_run
+from agent.shared.pricing import price_findings
 from agent.shared.routes import RouteNetwork, equipment_key
 from agent.shared.symbol_catalogue import catalogue_item
-from core.rate_model import DEFAULT_PARAMS, build_rate
 
 log = logging.getLogger(__name__)
 
@@ -96,6 +90,7 @@ class DxfEstimatorRun(BaseModel):
     circuit_ids: List[str] = Field(default_factory=list)
     db_refs: List[str] = Field(default_factory=list)
     legend: Optional[Legend] = None
+    findings: Optional[Findings] = None   # what was read, before pricing (ADR-0008)
     boq: Optional[BillOfQuantities] = None
     duration_s: float = 0.0
     success: bool = False
@@ -135,13 +130,11 @@ def run_dxf_estimator(
     if routes is None:
         own = read_site_routes(doc)          # the drawing may itself be the site plan
         routes = own if own.found else None
-    boq = build_boq_from_recognition(
-        a.rec, project_name=project_name, run_id=run_id, contractor=contractor, sld=a.sld,
-        routes=routes,
-    )
+    findings = findings_from_recognition(a.rec, sld=a.sld, routes=routes)
     # Mode 3 — count exploded-line-work legend symbols by template matching.
-    _integrate_template_counts(boq, doc, a.legend)
-    _add_legend_coverage_gaps(boq, a.legend)
+    findings.items += _template_findings(doc, a.legend)
+    findings.gaps += _legend_coverage_gaps(findings, a.legend)
+    boq = price_findings(findings, pipeline="dxf", project_name=project_name, run_id=run_id)
     rec, legend, spatial = a.rec, a.legend, a.spatial
 
     run = DxfEstimatorRun(
@@ -152,7 +145,7 @@ def run_dxf_estimator(
         room_count=len(spatial.rooms),
         circuit_ids=rec.circuit_ids(), db_refs=rec.db_refs(),
         legend=legend,
-        boq=boq,
+        findings=findings, boq=boq,
         duration_s=round(time.perf_counter() - started, 3),
         success=bool(boq.line_items),
         error=None if boq.line_items else "No electrical content recognised in the DXF",
@@ -289,34 +282,31 @@ def run_dxf_project(
     sld = _merge_sld([a.sld for _, _, a in analyses])
 
     # ADR-0007: repeated unnamed symbols — geometry counts them, the injected namer names them.
-    ai_lines, ai_gaps, ai_symbols, ai_cost = ([], [], [], 0.0)
+    ai_found, ai_gaps, ai_symbols, ai_cost = ([], [], [], 0.0)
     if name_shapes is not None:
-        ai_lines, ai_gaps, ai_symbols, ai_cost = _name_and_price_shapes(
+        ai_found, ai_gaps, ai_symbols, ai_cost = _name_shapes(
             [(doc, name) for doc, name, a in analyses if not a.sld.found], name_shapes,
             _item_texts(analyses))
     ai_items = {s.item for s in ai_symbols if catalogue_item(s.item)}
 
-    boq = build_boq_from_recognition(DxfRecognition(), project_name=project_name, run_id=run_id,
-                                     contractor=contractor, sld=sld, routes=routes)
+    findings = findings_from_recognition(DxfRecognition(), sld=sld, routes=routes)
     board_names = [b.name for b in sld.boards]
     billed_boards = list(board_names)          # grows: a board tagged on two layouts is billed once
     for doc, name, a in analyses:
-        part = build_boq_from_recognition(a.rec, project_name=project_name, run_id=run_id,
-                                          contractor=contractor, known_boards=billed_boards)
+        part = findings_from_recognition(a.rec, known_boards=billed_boards)
         billed_boards += a.rec.db_refs()
-        _integrate_template_counts(part, doc, a.legend, skip=ai_items)
+        part.items += _template_findings(doc, a.legend, skip=ai_items)
         stem = Path(name).stem
-        part.line_items.extend(l for l in ai_lines if l.drawing_ref == stem)
-        _add_legend_coverage_gaps(part, a.legend)
-        for ln in part.line_items:
-            ln.drawing_ref = stem
+        part.items += [f for f in ai_found if f.sheet == stem]
+        part.gaps += _legend_coverage_gaps(part, a.legend)
+        for f in (*part.boards, *part.items, *part.wires):
+            f.sheet = stem
         for g in part.gaps:
             g.drawing_ref = g.drawing_ref or stem
-        boq.line_items.extend(part.line_items)
-        boq.gaps.extend(part.gaps)
-    boq.gaps.extend(ai_gaps)
+        findings.extend(part)
+    findings.gaps += ai_gaps
     for old, newer in superseded.items():
-        boq.gaps.append(GapItem(
+        findings.gaps.append(GapItem(
             section=BQSection.DISTRIBUTION,
             description=f"{old} is an older revision of {newer} — not read, so nothing is counted twice",
             assumption=f"Priced from {newer} only.",
@@ -324,19 +314,15 @@ def run_dxf_project(
             severity="medium", drawing_ref=Path(old).stem,
         ))
     if routes is not None:
-        _add_route_gaps(boq, routes, sld, Path(site_plan).stem)
+        findings.gaps += _route_gaps(routes, sld, Path(site_plan).stem)
     elif sld.feeders:
-        boq.gaps.append(GapItem(
+        findings.gaps.append(GapItem(
             section=BQSection.SUBMAIN_CABLES, description="No site plan with cable routes in this drawing set",
             assumption="Feeder lengths assumed.",
             suggested_action="Upload the electrical site plan (routes + DB tags) to measure feeders.",
             severity="high", drawing_ref="DXF set",
         ))
-    for ln in boq.line_items:
-        ln.total_zar = round(ln.qty * ln.unit_price_zar, 2)
-    _number(boq.line_items)
-    _finalise_totals(boq, DEFAULT_PARAMS)
-    _count_provenance(boq)
+    boq = price_findings(findings, pipeline="dxf", project_name=project_name, run_id=run_id)
 
     recs = [a.rec for _, _, a in analyses]
     run = DxfEstimatorRun(
@@ -351,7 +337,7 @@ def run_dxf_project(
         ai_symbols=ai_symbols, ai_cost_zar=round(ai_cost, 2),
         routes_measured=sum(1 for fd in sld.feeders
                             if routes is not None and routes.route(fd.from_source, fd.to_db)),
-        boq=boq, duration_s=round(time.perf_counter() - started, 3),
+        findings=findings, boq=boq, duration_s=round(time.perf_counter() - started, 3),
         success=bool(boq.line_items),
         error=None if boq.line_items else "No electrical content recognised in the drawings",
     )
@@ -378,9 +364,9 @@ def _item_texts(analyses) -> List[str]:
     return sorted(found)
 
 
-def _name_and_price_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
+def _name_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
     """Group every layout's loose symbols into shapes, have them named once, and turn the
-    named ones into priced lines per drawing: the COUNT is exact geometry, the NAME came
+    named ones into item findings per drawing: the COUNT is exact geometry, the NAME came
     from the namer — INFERRED, with a gap asking a person to confirm it."""
     from core import constants
     per_sheet: List[ShapeGroup] = []
@@ -407,15 +393,14 @@ def _name_and_price_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str
         item = names.get(g.signature, ("", ""))[0]
         if catalogue_item(item):
             qty[(g.sheet, item)] = qty.get((g.sheet, item), 0) + g.count
-    lines: List[BQLineItem] = []
+    found: List[ItemFinding] = []
     for (sheet, item), n in sorted(qty.items()):
         cat = catalogue_item(item)
-        material = getattr(constants, _PRICE_MAPS[cat.price_map]).get(cat.price_key, 0.0)
-        rate = build_rate(material_cost=material, install_labour=85.0, params=DEFAULT_PARAMS)
-        lines.append(BQLineItem(
-            section=cat.section, description=f"{item} — {sheet}", unit="No", qty=float(n),
-            unit_price_zar=round(rate.combined_rate, 2), source=ItemConfidence.INFERRED,
-            line_kind=LineKind.COMBINED, drawing_ref=sheet,
+        found.append(ItemFinding(
+            description=f"{item} — {sheet}", section=cat.section, item=item, qty=float(n),
+            material_zar=getattr(constants, _PRICE_MAPS[cat.price_map]).get(cat.price_key, 0.0),
+            install_zar=85.0, sheet=sheet, evidence=Evidence.COUNTED,
+            confidence=ItemConfidence.INFERRED,
             assumption="Symbol named from the drawing's legend by AI; every copy counted exactly by geometry.",
             notes="Confirm the symbol name on the Take-off page.",
         ))
@@ -431,19 +416,20 @@ def _name_and_price_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str
             suggested_action="Check the picture on the Take-off page and correct the name if it is wrong.",
             severity="low", drawing_ref="AI symbol naming",
         ))
-    return lines, gaps, symbols, cost
+    return found, gaps, symbols, cost
 
 
-def _add_route_gaps(boq: BillOfQuantities, routes: RouteNetwork, sld: SldFacts, sheet: str) -> None:
+def _route_gaps(routes: RouteNetwork, sld: SldFacts, sheet: str) -> List[GapItem]:
     """What the site plan says that the SLDs don't — never silent."""
+    gaps: List[GapItem] = []
     for w in routes.warnings:
-        boq.gaps.append(GapItem(section=BQSection.SUBMAIN_CABLES, description=w,
+        gaps.append(GapItem(section=BQSection.SUBMAIN_CABLES, description=w,
                                 assumption="Route attribution as read.", severity="medium",
                                 suggested_action="Check the site plan.", drawing_ref=sheet))
     sld_source = {equipment_key(fd.to_db): equipment_key(fd.from_source) for fd in sld.feeders}
     for to, frm in sorted(routes.fed_from.items()):
         if to in sld_source and sld_source[to] != frm:
-            boq.gaps.append(GapItem(
+            gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=routes.names.get(to, to),
                 description=(f"Site plan says {routes.names.get(to, to)} is fed from "
                              f"{routes.names.get(frm, frm)}; the SLD says from {sld_source[to]}"),
@@ -456,13 +442,14 @@ def _add_route_gaps(boq: BillOfQuantities, routes: RouteNetwork, sld: SldFacts, 
         if (frm, to) not in priced and to not in sld_source:
             r = routes.route(frm, to)
             if r is not None:
-                boq.gaps.append(GapItem(
+                gaps.append(GapItem(
                     section=BQSection.SUBMAIN_CABLES, building_block=routes.names.get(to, to),
                     description=(f"Route {routes.names.get(frm, frm)}→{routes.names.get(to, to)} "
                                  f"measured {r.length_m:.0f} m on the site plan, but no SLD gives its cable"),
                     assumption="Not priced.", severity="high", drawing_ref=sheet,
                     suggested_action="Upload the SLD for this board so the cable can be priced.",
                 ))
+    return gaps
 
 
 _SECTION_MATERIAL = {
@@ -473,40 +460,32 @@ _SECTION_MATERIAL = {
 }
 
 
-def _integrate_template_counts(boq: BillOfQuantities, doc, legend: Legend, skip=frozenset()) -> None:
+def _template_findings(doc, legend: Legend, skip=frozenset()) -> List[ItemFinding]:
     """
-    Add a priced line for each legend symbol counted by template matching
-    (mode 3). Marked INFERRED — the COUNT is deterministic geometry, the rate is
-    a ballpark for the contractor to confirm. Once billed, these items drop out
-    of the legend coverage gaps automatically.
+    An item for each legend symbol counted by template matching (mode 3). INFERRED —
+    the COUNT is deterministic geometry, the rate is a ballpark for the contractor to
+    confirm. Once billed, these items drop out of the legend coverage gaps automatically.
     """
     counts = {k: v for k, v in count_by_template(doc, legend).items() if k not in skip}
-    if not counts:
-        return
     section_of = {e.canonical_item: e.section for e in legend.entries}
+    out: List[ItemFinding] = []
     for item, n in sorted(counts.items()):
         section = section_of.get(item, BQSection.FINAL_CABLES)
-        material = _SECTION_MATERIAL.get(section, 200.0)
-        rate = build_rate(material_cost=material, install_labour=85.0, params=DEFAULT_PARAMS)
-        boq.line_items.append(BQLineItem(
-            section=section, description=f"{item} (template-matched)", unit="No",
-            qty=float(n), unit_price_zar=round(rate.combined_rate, 2),
-            source=ItemConfidence.INFERRED, line_kind=LineKind.COMBINED,
-            drawing_ref="DXF template",
+        out.append(ItemFinding(
+            description=f"{item} (template-matched)", section=section, qty=float(n),
+            material_zar=_SECTION_MATERIAL.get(section, 200.0), install_zar=85.0,
+            sheet="DXF template", evidence=Evidence.COUNTED, confidence=ItemConfidence.INFERRED,
             notes="Counted by legend-glyph template matching — verify count & rate.",
         ))
-    for l in boq.line_items:
-        l.total_zar = round(l.qty * l.unit_price_zar, 2)
-    _number(boq.line_items)
-    _finalise_totals(boq, DEFAULT_PARAMS)
-    _count_provenance(boq)
+    return out
 
 
-def _add_legend_coverage_gaps(boq: BillOfQuantities, legend: Legend) -> None:
+def _legend_coverage_gaps(findings: Findings, legend: Legend) -> List[GapItem]:
     """
-    Emit a gap for every legend item not present in a priced line — turning a
-    silent miss (e.g. exploded-line-work downlights) into a visible
-    'declared but not counted'. Uses the shared LDSE coverage helper.
+    A gap for every legend item not present in a priced line — turning a silent miss
+    (e.g. exploded-line-work downlights) into a visible 'declared but not counted'.
+    Uses the shared LDSE coverage helper on the lines these findings price to.
     """
-    billed = billed_canonical_items(l.description for l in boq.line_items)
-    boq.gaps.extend(coverage_gaps(legend, billed))
+    lines = price_findings(Findings(boards=findings.boards, feeders=findings.feeders,
+                                    items=findings.items, wires=findings.wires), pipeline="dxf").line_items
+    return coverage_gaps(legend, billed_canonical_items(l.description for l in lines))
