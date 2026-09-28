@@ -19,6 +19,7 @@ from typing import Optional
 from fpdf import FPDF
 
 from agent.shared import BillOfQuantities, BQSection, ContractorProfile, ProjectMetadata
+from exports.labels import severity_label
 
 
 # Brand RGB tuples
@@ -389,7 +390,7 @@ def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
     pdf.add_page()
     pdf.set_font("times", "B", 18)
     pdf.set_text_color(*_INK)
-    pdf.cell(0, 10, "Gap Report", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 10, "Things to check", new_x="LMARGIN", new_y="NEXT")
     pdf.set_draw_color(*_INK)
     pdf.set_line_width(0.5)
     pdf.line(10, pdf.get_y() + 1, 200, pdf.get_y() + 1)
@@ -399,9 +400,9 @@ def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
     pdf.multi_cell(
         0, 5,
         _safe(
-            "Every quantity or reading below was assumed, estimated, or flagged as "
-            "uncertain during extraction — not measured directly off the drawing. "
-            "Verify these before the bill is used for tender."
+            "Everything below was guessed or could not be confirmed on the drawings. "
+            "Check the MUST CHECK items "
+            "before this bill is used for a tender."
         ),
         new_x="LMARGIN", new_y="NEXT",
     )
@@ -412,7 +413,7 @@ def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
         color = _SEVERITY_COLOR.get(gap.severity, _INK_MUTED)
         pdf.set_font("helvetica", "B", 8)
         pdf.set_text_color(*color)
-        pdf.cell(0, 5, _safe(f"[{gap.severity.upper()}] {gap.section.short_label}"),
+        pdf.cell(0, 5, _safe(f"[{severity_label(gap.severity)}] {gap.section.short_label}"),
                   new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("helvetica", "B", 9)
         pdf.set_text_color(*_INK)
@@ -420,11 +421,11 @@ def _draw_gap_report(pdf: _BoqPdf, boq: BillOfQuantities) -> None:
         if gap.assumption:
             pdf.set_font("helvetica", "", 9)
             pdf.set_text_color(*_INK_MUTED)
-            pdf.multi_cell(0, 5, _safe(f"Assumption: {gap.assumption}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.multi_cell(0, 5, _safe(f"What the app did: {gap.assumption}"), new_x="LMARGIN", new_y="NEXT")
         if gap.suggested_action:
             pdf.set_font("helvetica", "I", 9)
             pdf.set_text_color(*_INK_MUTED)
-            pdf.multi_cell(0, 5, _safe(f"Action: {gap.suggested_action}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.multi_cell(0, 5, _safe(f"What to do: {gap.suggested_action}"), new_x="LMARGIN", new_y="NEXT")
         pdf.ln(3)
 
 

@@ -3,6 +3,8 @@ import { api } from '../api/client';
 import PageHeader from '../components/ui/PageHeader';
 import MetricTile from '../components/ui/MetricTile';
 import FindingsTable from '../components/ui/FindingsTable';
+import Glossary from '../components/ui/Glossary';
+import { AUDIT_RULES } from '../lib/plainWords';
 
 const zar = (v) => `R ${Number(v || 0).toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`;
 
@@ -52,15 +54,17 @@ export default function Audit() {
         </span>
       </div>
 
+      <Glossary show={['audit', 'severity', 'terms']} />
+
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
       {result && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-            <MetricTile label="Bills found" value={result.bills.length} />
+            <MetricTile label="Bill sheets found" value={result.bills.length} />
             <MetricTile label="Priced lines" value={result.bills.reduce((n, b) => n + b.lines, 0).toLocaleString('en-ZA')} />
-            <MetricTile label="Findings" value={`${s.count} (${s.high} high)`} />
-            <MetricTile label="Value at risk" value={zar(s.value_at_risk_zar)} />
+            <MetricTile label="Problems found" value={`${s.count} (${s.high} must check)`} />
+            <MetricTile label="Money at risk" value={zar(s.value_at_risk_zar)} />
           </div>
 
           {s.by_rule.length > 0 && (
@@ -68,8 +72,8 @@ export default function Audit() {
               <h3 style={{ fontSize: 16, marginBottom: 10 }}>By rule</h3>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--space-lg)' }}>
                 {s.by_rule.map((r) => (
-                  <span key={r.rule} className="glass-card" style={{ padding: '6px 12px', fontSize: 13 }}>
-                    <strong>{r.rule}</strong> × {r.count} · {zar(r.value_at_risk_zar)}
+                  <span key={r.rule} className="glass-card" style={{ padding: '6px 12px', fontSize: 13 }} title={AUDIT_RULES[r.rule]?.meaning}>
+                    <strong>{AUDIT_RULES[r.rule]?.label || r.rule}</strong> × {r.count} · {zar(r.value_at_risk_zar)}
                   </span>
                 ))}
               </div>
@@ -84,7 +88,7 @@ export default function Audit() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--paper-2)', textAlign: 'left' }}>
-                  {['Bill', 'In summary', 'Lines', 'Stated total', 'Sum of lines', 'Error cells'].map((h) => (
+                  {['Bill sheet', 'In the summary?', 'Priced lines', 'Total shown on the sheet', 'Total of its lines', 'Broken formulas'].map((h) => (
                     <th key={h} style={{ padding: '8px 10px', borderBottom: '1px solid var(--hairline-2)' }}>{h}</th>
                   ))}
                 </tr>

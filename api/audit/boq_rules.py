@@ -201,7 +201,8 @@ def audit_reference(ref: ReferenceBoq, *, contingency_pct: float = 0.05) -> List
     out: List[AuditFinding] = []
     for b in ref.buildings:
         building_findings = _audit_building(b, rates, contingency_pct)
-        if b.in_summary or not (b.lines or b.total_excl_vat):
+        # No summary sheet at all (e.g. a single-bill workbook): nothing can be missing from it.
+        if b.in_summary or not ref.summary or not (b.lines or b.total_excl_vat):
             out += building_findings
             continue
         # An orphan sheet: one finding carrying its (estimated) value, instead of a

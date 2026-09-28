@@ -8,6 +8,7 @@ import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
 import EmptyState from '../components/ui/EmptyState';
 import Tabs from '../components/ui/Tabs';
 import FindingsTable from '../components/ui/FindingsTable';
+import Glossary from '../components/ui/Glossary';
 
 const inputStyle = {
   width: '100%', padding: 10, background: 'rgba(255,255,255,0.03)',
@@ -120,8 +121,8 @@ export default function Boq({ runId, onNavigate }) {
             <strong>Complete with derived items</strong> — wall boxes, chasing, conduit, wire, terminations.
             <span style={{ display: 'block', color: 'var(--ink-muted)', fontSize: 13, marginTop: 2 }}>
               Items never drawn as symbols, added from ratios fitted on a real priced project
-              ({ratioModel.project_sources?.join(', ')}). Each added line is tagged <em>inferred</em> and
-              listed in the gap report — verify before tendering.
+              ({ratioModel.project_sources?.join(', ')}). Each added line is marked <em>Worked out</em> and
+              listed under “Things to check” — verify before tendering.
             </span>
           </span>
         </label>
@@ -129,11 +130,12 @@ export default function Boq({ runId, onNavigate }) {
 
       {priced && (
         <>
+          <Glossary />
           <Tabs
             tabs={[
               { id: 'overview', label: 'Overview' },
               { id: 'items', label: 'Line items', count: priced.total_items },
-              { id: 'gaps', label: 'Gap report', count: priced.gaps?.length ?? 0 },
+              { id: 'gaps', label: 'Things to check', count: priced.gaps?.length ?? 0 },
               { id: 'audit', label: 'Audit', count: audit?.summary?.count },
               { id: 'export', label: 'Export & email' },
             ]}
@@ -179,7 +181,7 @@ export default function Boq({ runId, onNavigate }) {
               {priced.gaps?.length ? (
                 <GapReport gaps={priced.gaps} />
               ) : (
-                <p style={{ fontSize: 14, color: 'var(--ink-muted)' }}>No assumptions were flagged on this bill — every line item was extracted or inferred directly.</p>
+                <p style={{ fontSize: 14, color: 'var(--ink-muted)' }}>Nothing to check — every line was read from the drawings or worked out from them.</p>
               )}
             </div>
           )}

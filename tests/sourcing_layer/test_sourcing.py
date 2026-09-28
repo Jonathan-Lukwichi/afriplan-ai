@@ -75,6 +75,21 @@ def test_each_supplier_prices_every_item():
         assert all(q.unit_price_zar > 0 for q in quotes)
 
 
+def test_quotes_stay_near_the_items_own_price():
+    """A complete board or a heavy cable must not be 'quoted' at a generic catalogue price
+    (seen live: a R18k built-up board quoted at R2k, 95mm² SWA at R25/m)."""
+    boq = BillOfQuantities(pipeline="dxf", line_items=[
+        BQLineItem(section=BQSection.DISTRIBUTION, description="DB-AB1: 3ph 100A, 15kA, 31-way (0 spare)",
+                   unit="Sum", qty=1, unit_price_zar=18439.12),
+        BQLineItem(section=BQSection.SUBMAIN_CABLES, description="Supply 95mm² x4C SWA feeder MINI-SUB→KIOSK",
+                   unit="m", qty=224.3, unit_price_zar=2411.60),
+    ])
+    reqs = build_requests(boq)
+    for sup in default_mock_suppliers():
+        for req, q in zip(reqs, sup.quote(reqs)):
+            assert 0.6 * req.anchor_price_zar <= q.unit_price_zar <= 1.4 * req.anchor_price_zar, (sup.info.name, req.description)
+
+
 def test_suppliers_differ():
     reqs = build_requests(_boq())
     sups = default_mock_suppliers()

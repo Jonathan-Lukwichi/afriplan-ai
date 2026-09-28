@@ -76,6 +76,15 @@ def test_sheet_not_in_summary_and_error_cells():
     assert {"NOT_IN_SUMMARY", "ERROR_CELL"} <= set(_rules(audit_reference(ref)))
 
 
+def test_a_workbook_without_a_summary_sheet_has_nothing_missing_from_it():
+    """Seen live: auditing AfriPlan's own export (one bill sheet, no project summary)
+    flagged the whole bill as 'not rolled into the project summary'."""
+    only = RefBuilding(name="Bill of Quantities", sheet="Bill of Quantities", in_summary=False,
+                       lines=[_l("x", 1, 10.0, 10.0)])
+    f = audit_reference(ReferenceBoq(project="t", buildings=[only], summary={}))
+    assert "NOT_IN_SUMMARY" not in _rules(f)
+
+
 def test_pipeline_boq_is_audited_too():
     boq = BillOfQuantities(pipeline="pdf", line_items=[
         BQLineItem(section=BQSection.SUBMAIN_CABLES, description="Supply 50mm² x4C SWA feeder A→B",

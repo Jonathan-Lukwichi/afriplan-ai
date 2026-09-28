@@ -21,6 +21,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from agent.shared import BillOfQuantities, BQSection, ContractorProfile, ProjectMetadata
+from exports.labels import SOURCE_KEY, severity_label, source_label
 
 
 # Brand palette (matches the blueprint UI: blueprint blue + ink + paper)
@@ -278,15 +279,21 @@ def _section_number_for(section_value: str) -> int:
 
 def _build_boq_sheet(ws: Worksheet, boq: BillOfQuantities) -> None:
     ws.sheet_view.showGridLines = False
-    headers = ["Item", "Description", "Unit", "Qty", "Unit Price (R)", "Total (R)", "Source", "Notes"]
-    widths = {1: 10, 2: 56, 3: 8, 4: 10, 5: 16, 6: 18, 7: 14, 8: 30}
+    headers = ["Item", "Description", "Unit", "Qty", "Unit Price (R)", "Total (R)", "Where it comes from", "Notes"]
+    widths = {1: 10, 2: 56, 3: 8, 4: 10, 5: 16, 6: 18, 7: 20, 8: 40}
     for c, w in widths.items():
         ws.column_dimensions[get_column_letter(c)].width = w
 
-    # Title row
+    # Title row + a one-line key to the "Where it comes from" column
     ws.row_dimensions[1].height = 28
     ws.merge_cells("A1:H1")
     _heading(ws["A1"], "BILL OF QUANTITIES", size=14, color=_BLUEPRINT)
+    ws.merge_cells("A2:H2")
+    key = ws["A2"]
+    key.value = SOURCE_KEY
+    key.font = Font(name="Calibri", size=9, italic=True, color="6B7280")
+    key.alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[2].height = 30
 
     # Header row
     for col_idx, h in enumerate(headers, start=1):
@@ -318,8 +325,8 @@ def _build_boq_sheet(ws: Worksheet, boq: BillOfQuantities) -> None:
             ws.cell(row=row_cursor, column=4, value=it.qty)
             unit = ws.cell(row=row_cursor, column=5, value=it.unit_price_zar)
             total = ws.cell(row=row_cursor, column=6, value=it.total_zar)
-            ws.cell(row=row_cursor, column=7, value=it.source.value)
-            ws.cell(row=row_cursor, column=8, value=it.notes)
+            ws.cell(row=row_cursor, column=7, value=source_label(it.source.value))
+            ws.cell(row=row_cursor, column=8, value=" ".join(t for t in (it.assumption, it.notes) if t) or None)
 
             _money(unit)
             _money(total)
@@ -400,20 +407,20 @@ _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 def _build_gap_report(ws: Worksheet, boq: BillOfQuantities) -> None:
     ws.sheet_view.showGridLines = False
-    headers = ["Severity", "Section", "Description", "Assumption", "Suggested action"]
-    widths = {1: 10, 2: 30, 3: 44, 4: 40, 5: 40}
+    headers = ["How urgent", "Section", "What", "What the app did", "What to do"]
+    widths = {1: 14, 2: 30, 3: 44, 4: 40, 5: 40}
     for c, w in widths.items():
         ws.column_dimensions[get_column_letter(c)].width = w
 
     ws.row_dimensions[1].height = 28
     ws.merge_cells("A1:E1")
-    _heading(ws["A1"], "GAP REPORT", size=14, color=_BLUEPRINT)
+    _heading(ws["A1"], "THINGS TO CHECK", size=14, color=_BLUEPRINT)
 
     note = ws.cell(row=2, column=1)
     ws.merge_cells("A2:E2")
     note.value = (
-        "Every row below was assumed, estimated, or flagged as uncertain during "
-        "extraction — not measured directly off the drawing. Verify before tender."
+        "Everything below was guessed or could not be confirmed on the drawings. "
+        "Check the MUST CHECK rows before sending the quote."
     )
     note.font = Font(name="Calibri", size=9.5, italic=True, color="6B7280")
     note.alignment = Alignment(wrap_text=True)
@@ -428,7 +435,7 @@ def _build_gap_report(ws: Worksheet, boq: BillOfQuantities) -> None:
     row = 5
     gaps = sorted(boq.gaps, key=lambda g: _SEVERITY_ORDER.get(g.severity, 9))
     for gap in gaps:
-        sev = ws.cell(row=row, column=1, value=gap.severity.upper())
+        sev = ws.cell(row=row, column=1, value=severity_label(gap.severity))
         sev.font = Font(name="Calibri", size=10, bold=True, color=_SEVERITY_COLOR.get(gap.severity, "6B7280"))
         ws.cell(row=row, column=2, value=gap.section.short_label)
         desc = ws.cell(row=row, column=3, value=gap.description)
