@@ -51,6 +51,7 @@ from core.rate_model import (
     fitting_install_rate,
     routed_length,
     termination_install_rate,
+    trench_build_up,
 )
 
 
@@ -70,7 +71,7 @@ class AssembleConfig:
     retic_light_size: str = "1.5mm2"
     retic_power_size: str = "2.5mm2"
     default_point_install_labour: float = 85.0   # fallback fitting install (LABOUR_RATES per_point)
-    trench_rate_per_m: float = 180.0
+    trench_rate_per_m: float = round(trench_build_up().combined_rate, 2)   # built up: dig, sand, backfill, reinstate
     warning_tape_rate_per_m: float = 5.4
 
 
@@ -181,7 +182,7 @@ def _assemble_incoming(acc: _Acc, facts: PdfFacts, cfg: AssembleConfig, params: 
     if inc.kiosk_present:
         acc.lines.append(BQLineItem(
             section=BQSection.INCOMING, description="Mini-substation / LV kiosk supply & install",
-            unit="Sum", qty=1, unit_price_zar=constants.get_default_price("db", "kiosk") or 45000.0,
+            unit="Sum", qty=1, unit_price_zar=constants.DB_PRICES.get("kiosk_lv_outdoor", 45000.0),
             source=ItemConfidence.EXTRACTED, line_kind=LineKind.COMBINED, building_block="Bulk Supply",
         ))
     if inc.meter_count:

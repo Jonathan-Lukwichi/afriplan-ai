@@ -224,3 +224,42 @@ def test_every_earth_size_the_rule_can_choose_has_a_price():
         e = earth_size_for(cable)
         key = f"earth_wire_{int(e)}mm2" if float(e).is_integer() else f"earth_wire_{e}mm2"
         assert constants.CABLE_PRICES.get(key, 0) > 0, key
+
+
+# ─── Board build-up: what an SLD shows on big / motor-control boards ─────────
+
+def _db(**kw):
+    from core.rate_model import db_build_up
+    base = dict(ways=24, phases=3, main_breaker_a=100, circuits=[(20, 1)] * 20)
+    base.update(kw)
+    return db_build_up(**base).combined_rate
+
+
+def test_motor_starters_isolators_and_master_switch_are_priced():
+    plain = _db()
+    assert _db(motor_starters=4) > plain + 4 * 4000          # a DOL starter is thousands, not a breaker
+    assert _db(isolators=3) > plain
+    assert _db(master_switch=True) > plain
+
+
+def test_breakers_above_63a_are_priced_as_mccbs():
+    small = _db(circuits=[(63, 3)])
+    big = _db(circuits=[(160, 3)])
+    assert big - small > 3000
+
+
+def test_three_pole_ways_cost_more_than_single_pole():
+    assert _db(circuits=[(32, 3)] * 10) > _db(circuits=[(32, 1)] * 10) + 2000
+
+
+def test_large_boards_are_floor_standing_panels():
+    wall = _db(ways=48, main_breaker_a=160)
+    assert _db(ways=55, main_breaker_a=160) > wall + 8000        # more than 48 ways
+    assert _db(ways=48, main_breaker_a=300) > wall + 8000        # 200 A and up
+
+
+def test_trench_is_built_up_not_a_flat_guess():
+    from core.rate_model import trench_build_up
+    r = trench_build_up()
+    assert 400 <= r.combined_rate <= 900                          # SA market band for 450 x 650 with reinstatement
+    assert r.install_rate > 0 and r.supply_rate > 0               # labour (dig/backfill) and material (sand)

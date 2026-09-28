@@ -41,6 +41,11 @@ _ANON_HEADER = re.compile(
     re.I | re.S)
 # Incoming supply: 'EXISTING MINI SUB' + '95mm² 4CORE COPPER PVC PVC SWA PVC CABLE'
 _MINI_SUB = re.compile(r"MINI\s*-?\s*SUB", re.I)
+# Motor-control and 3-phase parts drawn on the board (pool pumps, fans…)
+_DOL = re.compile(r"^\s*DOL\b", re.I)
+_ISOLATOR = re.compile(r"^\s*ISO\s*\d+\s*$|ISOLATOR", re.I)
+_MASTER = re.compile(r"(MASTER|MAIN)\s+SWITCH", re.I)
+_FOUR_CORE = re.compile(r"\d+(?:\.\d+)?\s*mm.*?X\s*4\s*C\b", re.I | re.S)
 _SUPPLY_CABLE = re.compile(r"(?P<size>\d+(?:\.\d+)?)\s*mm.*?(?P<cores>\d)\s*CORE.*?SWA", re.I | re.S)
 
 
@@ -60,6 +65,10 @@ class SldBoard:
     circuits: List[Tuple[int, int]] = field(default_factory=list)   # (amps, poles)
     spares: int = 0
     source: str = ""                # sheet the board was read from
+    motor_starters: int = 0         # 'DOL' starters (pool pumps, fans)
+    isolators: int = 0              # 'ISO1'… local isolators on the board
+    master_switch: bool = False     # 'MASTER SWITCH' / 'MAIN SWITCH' disconnector
+    three_phase_ways: int = 0       # outgoing circuits wired in 4-core (x4C) cable
 
 
 @dataclass
@@ -100,6 +109,7 @@ def read_sld(doc: Drawing, sheet_name: str = "") -> SldFacts:
     breakers: List[Tuple[int, float, float]] = []
     spares: List[Tuple[float, float]] = []
     seen_feeders = set()
+    parts: List[Tuple[str, float, float]] = []     # motor-control / 3-phase markers
     mini_sub = False
     supply_cable = None
 
@@ -143,6 +153,14 @@ def read_sld(doc: Drawing, sheet_name: str = "") -> SldFacts:
             breakers.append((int(b.group(1)), x, y))
         elif text.upper() == "SPARE":
             spares.append((x, y))
+        elif _DOL.match(text):
+            parts.append(("dol", x, y))
+        elif _ISOLATOR.search(text):
+            parts.append(("iso", x, y))
+        elif _MASTER.search(text):
+            parts.append(("master", x, y))
+        elif _FOUR_CORE.search(text):
+            parts.append(("4c", x, y))
 
     facts.boards = list(boards.values())
     # The incoming supply: a mini-sub on the sheet, a SWA cable spec, and an unnamed
@@ -169,6 +187,16 @@ def read_sld(doc: Drawing, sheet_name: str = "") -> SldFacts:
             nearest(x, y).circuits.append((amps, 1))
         for x, y in spares:
             nearest(x, y).spares += 1
+        for kind, x, y in parts:
+            bd = nearest(x, y)
+            if kind == "dol":
+                bd.motor_starters += 1
+            elif kind == "iso":
+                bd.isolators += 1
+            elif kind == "master":
+                bd.master_switch = True
+            else:
+                bd.three_phase_ways += 1
     return facts
 
 

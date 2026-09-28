@@ -67,6 +67,24 @@ def test_unnamed_main_board_takes_the_sheet_name_and_its_mini_sub_supply():
     assert sld.boards[0].source == "WD-KIOSK-01-SLD 100425"
 
 
+def test_motor_control_parts_are_read_per_board():
+    """Pool pump boards: DOL starters, isolators, a master switch and 3-phase (4-core) circuits."""
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    t = lambda s, x, y: msp.add_text(s).set_placement((x, y))   # noqa: E731
+    t("DB-PFA  400V, 300A, 15kA, 50Hz, 3PH+N+E", 0, 1000)
+    for i in range(3):
+        t("32A", 100 * i, 800); t("DOL", 100 * i, 700); t("6mm2y\\H1.42857xX4C", 100 * i, 600)
+    t("20A", 300, 800); t("2.5mm2y\\H1.42857x", 300, 600)
+    t("ISO1", 0, 500); t("ISO2", 100, 500); t("MASTER SWITCH", 0, 1100)
+    t("DB-X  400V, 63A, 6kA, 50Hz, 1PH+N+E", 20000, 1000)
+    t("10A", 20000, 800)
+    boards = {b.name: b for b in read_sld(doc).boards}
+    pfa = boards["DB-PFA"]
+    assert (pfa.motor_starters, pfa.isolators, pfa.master_switch, pfa.three_phase_ways) == (3, 2, True, 3)
+    assert (boards["DB-X"].motor_starters, boards["DB-X"].three_phase_ways) == (0, 0)
+
+
 def test_named_boards_and_feeders_record_their_sheet():
     sld = read_sld(_sld_doc(), sheet_name="WD-AB-01-SLD")
     assert {b.source for b in sld.boards} == {"WD-AB-01-SLD"}

@@ -210,6 +210,21 @@ DB_PRICES: Dict[str, float] = {
     "mccb_160a_3p": 5500.0,
     "mccb_250a_3p": 8500.0,
     "mccb_400a_3p": 14000.0,
+
+    # Motor-control and large boards — market estimates (2026), verify with supplier quotes
+    "dol_starter_3p": 5500.0,              # DOL starter up to ~18.5 kW: contactor + overload + enclosure + push-buttons
+    "rotary_isolator_63a_3p": 900.0,       # panel-mounted rotary isolator
+    "db_panel_floor_standing": 16000.0,    # floor-standing panel (>48 ways or >=200 A): cubicle + busbar chamber
+    "kiosk_lv_outdoor": 45000.0,           # free-standing outdoor LV kiosk (metering + distribution compartments)
+    "kiosk_plinth_concrete": 6500.0,       # cast concrete plinth for the kiosk
+}
+
+
+# Civil works for cable routes — market estimates (2026), verify on site
+CIVIL_PRICES: Dict[str, float] = {
+    "bedding_sand_per_m3": 600.0,          # river sand delivered, for bedding + cover
+    "reinstatement_material_per_m": 120.0, # topsoil / grass / light-paving allowance per metre of trench
+    "compactor_hire_per_m": 25.0,          # plate-compactor hire spread per metre
 }
 
 

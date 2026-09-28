@@ -46,6 +46,7 @@ from core.rate_model import (
     db_build_up,
     earth_size_for,
     termination_install_rate,
+    trench_build_up,
 )
 
 
@@ -62,7 +63,7 @@ class DxfAssembleConfig:
     route_slack_pct: float = 5.0                   # snaking / sag on a route measured from the site plan
     route_end_allowance_m: float = 1.5             # per end: rise into the board + termination tail
     label_conflict_pct: float = 25.0               # designer's written lengths vs the scaled route
-    trench_rate_per_m: float = 180.0
+    trench_rate_per_m: float = round(trench_build_up().combined_rate, 2)   # built up: dig, sand, backfill, reinstate
     warning_tape_rate_per_m: float = 5.4
 
 
@@ -176,20 +177,50 @@ def _size_key(mm2: float) -> str:
     return f"{int(mm2)}mm2" if float(mm2).is_integer() else f"{mm2}mm2"
 
 
+def _board_circuits(b) -> list:
+    """(amps, poles) per way; the circuits wired in 4-core cable are 3-pole — the largest first."""
+    order = sorted(range(len(b.circuits)), key=lambda i: -b.circuits[i][0])
+    three = set(order[:b.three_phase_ways])
+    return [(a, 3 if i in three else p) for i, (a, p) in enumerate(b.circuits)]
+
+
 def _assemble_sld_boards(lines, sld: SldFacts, crew: CrewRates, params: RateParams) -> None:
     for b in sld.boards:
         rate = db_build_up(ways=len(b.circuits) + b.spares, phases=b.phases,
-                           main_breaker_a=b.main_breaker_a, circuits=b.circuits,
-                           crew=crew, params=params)
+                           main_breaker_a=b.main_breaker_a, circuits=_board_circuits(b),
+                           motor_starters=b.motor_starters, isolators=b.isolators,
+                           master_switch=b.master_switch, crew=crew, params=params)
+        extras = [f"{b.motor_starters} motor starters" if b.motor_starters else "",
+                  f"{b.isolators} isolators" if b.isolators else "",
+                  "master switch" if b.master_switch else "",
+                  f"{b.three_phase_ways} three-phase ways" if b.three_phase_ways else ""]
+        extras = [e for e in extras if e]
+        kiosk = b.name == "KIOSK"
+        # The main kiosk is ONE complete item: its board plus the outdoor free-standing
+        # kiosk that houses it (not drawn on the SLD — market-estimate, confirm).
+        price = rate.combined_rate + (constants.DB_PRICES.get("kiosk_lv_outdoor", 0.0) * params.material_markup
+                                      if kiosk else 0.0)
         lines.append(BQLineItem(
             section=BQSection.DISTRIBUTION,
-            description=(f"{b.name}: {b.phases}ph {b.main_breaker_a}A, {b.ka:g}kA, "
-                         f"{len(b.circuits) + b.spares}-way ({b.spares} spare)"),
-            unit="Sum", qty=1, unit_price_zar=round(rate.combined_rate, 2),
-            source=ItemConfidence.EXTRACTED, line_kind=LineKind.COMBINED,
+            description=((f"{b.name}: outdoor LV kiosk complete, " if kiosk else f"{b.name}: ")
+                         + f"{b.phases}ph {b.main_breaker_a}A, {b.ka:g}kA, "
+                         f"{len(b.circuits) + b.spares}-way ({b.spares} spare)"
+                         + (f", {', '.join(extras)}" if extras else "")),
+            unit="Sum", qty=1, unit_price_zar=round(price, 2),
+            source=ItemConfidence.INFERRED if kiosk else ItemConfidence.EXTRACTED, line_kind=LineKind.COMBINED,
             building_block=b.name, drawing_ref=b.source or "SLD (DXF)",
-            notes="Board, incomer and breakers read from the SLD; ELCB/SPD not priced unless shown.",
+            assumption=("Board read from the SLD; the outdoor kiosk housing is a market-estimate price."
+                        if kiosk else ""),
+            notes="Board, incomer, breakers, starters and isolators read from the SLD; ELCB/SPD not priced unless shown.",
         ))
+        if kiosk:
+            lines.append(BQLineItem(
+                section=BQSection.DISTRIBUTION, description="Supply and install concrete plinth (main LV enclosure base)", unit="Sum", qty=1,
+                unit_price_zar=round(constants.DB_PRICES.get("kiosk_plinth_concrete", 0.0), 2),
+                source=ItemConfidence.INFERRED, line_kind=LineKind.COMBINED,
+                building_block=b.name, drawing_ref=b.source or "SLD (DXF)",
+                assumption="A kiosk stands on a cast plinth (not drawn on the SLD); market-estimate price.",
+            ))
 
 
 def _feeder_order(feeders, routes: Optional[RouteNetwork] = None) -> list:

@@ -330,8 +330,19 @@ _MCB_1P = ((10, "mcb_10a_1p"), (16, "mcb_16a_1p"), (20, "mcb_20a_1p"), (32, "mcb
 _MCB_3P = ((20, "mcb_20a_3p"), (32, "mcb_32a_3p"), (40, "mcb_40a_3p"), (63, "mcb_63a_3p"),
            (100, "mcb_100a_3p"))
 DB_FLOOR_STANDING_FACTOR = 1.6
-# Install crew 1E + 1S: 4 h to fix and connect the board + 0.25 h per way.
+# Past 48 ways or from a 200 A incomer a board is a floor-standing panel, not a wall box.
+PANEL_MIN_WAYS, PANEL_MIN_INCOMER_A = 49, 200
+# Install crew 1E + 1S: 4 h to fix and connect the board + 0.25 h per way,
+# + 1.5 h per motor starter (wire, set overload, test), 0.5 h per isolator.
 _DB_INSTALL_BASE_H, _DB_INSTALL_PER_WAY_H = 4.0, 0.25
+_STARTER_H, _ISOLATOR_H = 1.5, 0.5
+
+
+def _breaker_price(amps: float, poles: int, P) -> float:
+    """MCB up to 63 A; above that an MCCB (3-pole) — SA practice."""
+    if amps > 63:
+        return _pick(_MCCB, amps, P)
+    return _pick(_MCB_3P if poles >= 3 else _MCB_1P, amps or 20, P)
 
 
 def _pick(table, value: float, prices) -> float:
@@ -351,6 +362,9 @@ def db_build_up(
     elcb: bool = False,
     surge: bool = False,
     floor_standing: bool = False,
+    motor_starters: int = 0,
+    isolators: int = 0,
+    master_switch: bool = False,
     crew: CrewRates = DEFAULT_CREW,
     params: RateParams = DEFAULT_PARAMS,
 ) -> BuiltUpRate:
@@ -358,25 +372,60 @@ def db_build_up(
     Built-up rate for one complete distribution board.
 
     circuits: iterable of (breaker_a, poles) for every NON-spare way.
+    motor_starters / isolators / master_switch: what a motor-control board's SLD shows
+    (DOL starters for pumps, local isolators, a main switch-disconnector).
     Deterministic: the same SLD facts always give the same price.
     """
     from core.constants import DB_PRICES as P   # local import: rate_model stays import-light
     circuits = list(circuits)
     ways = max(int(ways), len(circuits), 1)
-    enclosure = _pick(_DB_ENCLOSURES, ways, P) * (DB_FLOOR_STANDING_FACTOR if floor_standing else 1.0)
+    panel = floor_standing or ways >= PANEL_MIN_WAYS or (main_breaker_a or 0) >= PANEL_MIN_INCOMER_A
+    if panel:
+        enclosure = max(P.get("db_panel_floor_standing", 0.0),
+                        _pick(_DB_ENCLOSURES, ways, P) * DB_FLOOR_STANDING_FACTOR)
+    else:
+        enclosure = _pick(_DB_ENCLOSURES, ways, P)
     incomer = 0.0
     if main_breaker_a:
         incomer = (_pick(_MCCB, main_breaker_a, P) if main_breaker_a > 63 or (phases == 3 and main_breaker_a > 40)
                    else _pick(_MCB_3P if phases == 3 else _MCB_1P, main_breaker_a, P))
-    breakers = sum(_pick(_MCB_3P if poles >= 3 else _MCB_1P, amps or 20, P) for amps, poles in circuits)
+    breakers = sum(_breaker_price(amps, poles, P) for amps, poles in circuits)
     protection = 0.0
     if elcb:
         protection += P.get("elcb_63a_30ma_4p" if phases == 3 else "elcb_63a_30ma_2p", 0.0)
     if surge:
         protection += P.get("spd_type2_3p" if phases == 3 else "spd_type2_1p", 0.0)
-    material = enclosure + incomer + breakers + protection
-    hours = _DB_INSTALL_BASE_H + _DB_INSTALL_PER_WAY_H * ways
+    motors = motor_starters * P.get("dol_starter_3p", 0.0) + isolators * P.get("rotary_isolator_63a_3p", 0.0)
+    if master_switch:
+        motors += _pick(((100, "main_switch_100a_4p"), (160, "main_switch_160a_4p"), (250, "main_switch_250a_4p")),
+                        main_breaker_a or 100, P)
+    material = enclosure + incomer + breakers + protection + motors
+    hours = (_DB_INSTALL_BASE_H + _DB_INSTALL_PER_WAY_H * ways
+             + _STARTER_H * motor_starters + _ISOLATOR_H * isolators)
     labour = crew.hourly_cost(1, 1, 0) * hours
+    return build_rate(material_cost=material, install_labour=labour, params=params)
+
+
+# ─── Trench (underground cable routes) ───────────────────────────────────────
+# 450 mm wide x 650 mm deep, per metre: dig by hand, 75 mm sand bedding and cover,
+# backfill in layers and compact, reinstate the surface (topsoil/grass or paving
+# allowance). Productivities are SA site norms for soft-to-medium ground; hard rock,
+# road crossings and paving replacement are extra (see the gap report / confirm on site).
+_TRENCH_M3_PER_M = 0.45 * 0.65
+_DIG_M3_PER_H = 0.30             # one general worker, soft-to-medium ground
+_BACKFILL_M3_PER_H = 0.55        # backfill in layers + hand compaction
+_SAND_M3_PER_M = 0.45 * 0.15     # 75 mm under + 75 mm over the cables
+_REINSTATE_H_PER_M = 0.5         # topsoil / grass / light paving put back
+
+
+def trench_build_up(crew: CrewRates = DEFAULT_CREW, params: RateParams = DEFAULT_PARAMS) -> BuiltUpRate:
+    """Built-up rate per metre of cable trench (labour + bedding sand + reinstatement)."""
+    from core.constants import CIVIL_PRICES as C
+    hours = (_TRENCH_M3_PER_M / _DIG_M3_PER_H + _TRENCH_M3_PER_M / _BACKFILL_M3_PER_H
+             + _REINSTATE_H_PER_M)
+    # general workers + a semi-skilled supervisor for every four of them
+    labour = (crew.general_worker + 0.25 * crew.semi_skilled) * hours + C.get("compactor_hire_per_m", 0.0)
+    material = _SAND_M3_PER_M * C.get("bedding_sand_per_m3", 0.0) + C.get("reinstatement_material_per_m", 0.0)
     return build_rate(material_cost=material, install_labour=labour, params=params)
 
 
