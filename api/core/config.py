@@ -88,7 +88,8 @@ MODEL_REGISTRY: Dict[str, ModelSpec] = {
 EXTRACT_MODEL = OPUS_5
 CLASSIFY_MODEL = HAIKU_4_5
 ESCALATE_MODEL = OPUS_5          # already the top model: escalation re-asks nothing new
-MATCH_MODEL = SONNET_5           # combining (ADR-0008): which names from the two readers are the same thing
+MATCH_MODEL = OPUS_5             # combining (ADR-0008): which names from the two readers are the same thing;
+                                 # once per project, so accuracy matters more than cost
 PDF_PIPELINE_MODELS = {
     "classify": CLASSIFY_MODEL,
     "extract": EXTRACT_MODEL,
