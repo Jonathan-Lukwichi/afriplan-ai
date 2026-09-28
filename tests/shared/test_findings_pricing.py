@@ -74,6 +74,12 @@ def test_feeder_gives_cable_earth_terminations_and_trench():
     assert lines[0].line_kind == LineKind.SUPPLY and lines[0].source == ItemConfidence.INFERRED
 
 
+def test_feeder_earth_size_read_from_the_drawing_wins():
+    f = FeederFinding(from_board="A", to_board="B", cable_size_mm2=95, earth_size_mm2=70, length_m=10)
+    lines = price_findings(Findings(feeders=[f]), pipeline="pdf").line_items
+    assert any(l.description == "Supply 70mm² BCEW earth" for l in lines)
+
+
 def test_feeder_whose_trench_is_already_billed_gets_no_trench_line():
     f = FeederFinding(from_board="A", to_board="B", cable_size_mm2=16, length_m=50, trench_m=0)
     lines = price_findings(Findings(feeders=[f]), pipeline="dxf").line_items

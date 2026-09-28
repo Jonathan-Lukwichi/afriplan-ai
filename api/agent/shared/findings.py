@@ -68,6 +68,7 @@ class FeederFinding(_Finding):
     to_board: str
     cable_size_mm2: float = 0.0
     cable_cores: int = 4
+    earth_size_mm2: float = 0.0          # 0: the SANS rule for this cable size
     underground: bool = True
     length_m: float = 0.0
     trench_m: float = 0.0                # trench billed with THIS feeder (0: shared, billed upstream)

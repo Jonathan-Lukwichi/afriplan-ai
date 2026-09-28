@@ -212,3 +212,20 @@ def test_db_line_prices_incomer_breakers_and_protection():
     boq = build_boq_from_facts(PdfFacts(spine=PowerSpine(distribution_boards=[db])))
     line = next(l for l in boq.line_items if l.section == BQSection.DISTRIBUTION)
     assert line.unit_price_zar > 5 * constants.DB_PRICES["db_24way_surface"]
+
+
+# ─── Findings (ADR-0008): what was read, before any price ───────────
+
+def test_findings_say_who_read_them_and_how():
+    from agent.pdf_pipeline.passes.assemble import findings_from_facts
+    from agent.shared.findings import Evidence
+
+    f = findings_from_facts(_wedela_like_facts())
+    assert {b.name for b in f.boards} == {"DB-CR", "DB-AB1"}
+    assert all(x.reader == "pdf" for x in (*f.boards, *f.feeders, *f.items, *f.wires))
+    written, assumed = f.feeders
+    assert written.evidence == Evidence.SEEN and written.length_m == 35 and written.earth_size_mm2 == 70
+    assert assumed.evidence == Evidence.ASSUMED and assumed.length_m == DEFAULT_CONFIG.assumed_feeder_m
+    panel = next(i for i in f.items if i.item == "Recessed LED Panel")
+    assert panel.qty == 4 and panel.location == "Tuck Shop" and panel.evidence == Evidence.SEEN
+    assert all(w.evidence == Evidence.ASSUMED for w in f.wires)      # point-method allowance

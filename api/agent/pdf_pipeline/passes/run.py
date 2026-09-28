@@ -31,14 +31,17 @@ from agent.pdf_pipeline.llm import LLMError, PdfLLM, build_default_pdf_llm
 from agent.pdf_pipeline.models import PageClassification, PageType, StageCost
 from agent.pdf_pipeline.passes.facts import PdfFacts
 from agent.pdf_pipeline.passes.legend import build_pdf_legend
-from agent.pdf_pipeline.passes.orchestrator import build_bill, extract_facts
+from agent.pdf_pipeline.passes.assemble import findings_from_facts
+from agent.pdf_pipeline.passes.orchestrator import extract_facts
 from agent.pdf_pipeline.passes.site_routes import read_pdf_site_routes
 from agent.shared.legend import Legend, billed_canonical_items, coverage_gaps
 from agent.pdf_pipeline.prompts.page_prompts import CLASSIFY_PROMPT
 from agent.pdf_pipeline.prompts.tool_schemas import CLASSIFY_PAGE_TOOL
 from agent.pdf_pipeline.stages.ingest import IngestedPage, ingest
 from agent.shared import BillOfQuantities, ContractorProfile, ProjectMetadata
+from agent.shared.findings import Findings
 from agent.shared.persistence import persist_run
+from agent.shared.pricing import price_findings
 from concurrent.futures import ThreadPoolExecutor
 
 from core.config import CLASSIFY_MODEL, PDF_PARALLEL_PAGES
@@ -196,6 +199,7 @@ class EstimatorRun(BaseModel):
     page_count: int = 0
     facts: PdfFacts = Field(default_factory=PdfFacts)
     legend: Optional[Legend] = None
+    findings: Optional[Findings] = None   # what was read, before pricing (ADR-0008)
     boq: Optional[BillOfQuantities] = None
     site_plan_file: str = ""          # 'file p<n>' whose routes priced the feeders (issue 002)
     routes_measured: int = 0          # feeders whose length came from that site plan
@@ -253,8 +257,8 @@ def run_pdf_estimator(
     project_name = facts.context.project_name or project.project_name or "Untitled project"
     # Feeder routes measured on a vector site plan — geometry, not the LLM (R 0).
     routes, site_plan = read_pdf_site_routes(files)
-    boq = build_bill(facts, project_name=project_name, run_id=run_id, contractor=contractor,
-                     routes=routes)
+    findings = findings_from_facts(facts, routes=routes)
+    boq = price_findings(findings, pipeline="pdf", project_name=project_name, run_id=run_id)
 
     # LDSE — legend-first: read the drawing's legend, flag declared-but-uncounted items.
     legend = build_pdf_legend(facts, sheet_ref=project_name)
@@ -270,7 +274,7 @@ def run_pdf_estimator(
         page_count=len(all_pages),
         facts=facts,
         legend=legend,
-        boq=boq,
+        findings=findings, boq=boq,
         site_plan_file=site_plan,
         routes_measured=sum(1 for fd in facts.spine.feeders
                             if routes is not None and not fd.length_annotated

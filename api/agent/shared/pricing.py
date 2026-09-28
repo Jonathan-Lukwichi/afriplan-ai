@@ -142,7 +142,7 @@ def _feeder_lines(f: FeederFinding, crew, params, cfg: PricingConfig) -> List[BQ
     label = f"{f.cable_size_mm2:g}mm² x{f.cable_cores}C SWA feeder {f.from_board}→{f.to_board}"
     cable = build_rate(material_cost=constants.CABLE_PRICES.get(f"swa_{key}_4c", 0.0),
                        install_labour=cable_install_rate(key, crew) or 0.0, params=params)
-    e_mm2 = earth_size_for(f.cable_size_mm2)
+    e_mm2 = f.earth_size_mm2 or earth_size_for(f.cable_size_mm2)
     e_key = size_key(e_mm2)
     earth = build_rate(material_cost=constants.CABLE_PRICES.get(f"earth_wire_{e_key}", 0.0),
                        install_labour=bcew_install_rate(e_key, crew) or 0.0, params=params)
