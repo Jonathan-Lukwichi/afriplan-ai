@@ -158,8 +158,10 @@ class ParseReplyBody(BaseModel):
 
 @router.post("/rfq/parse/{run_id}")
 def parse_rfq_reply(run_id: str, body: ParseReplyBody):
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        raise HTTPException(400, "ANTHROPIC_API_KEY not configured - parsing a free-text reply needs the LLM")
+    from core.config import ai_available
+    if not ai_available():
+        raise HTTPException(400, "No AI key configured (ANTHROPIC_API_KEY or GEMINI_API_KEY) - "
+                                 "parsing a free-text reply needs the LLM")
 
     boq = _base_boq_for(run_id)
     all_reqs = build_requests(boq)

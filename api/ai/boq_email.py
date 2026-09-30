@@ -141,17 +141,12 @@ def generate_note(context: dict) -> Optional[str]:
     """Call Anthropic for the cover-note text. Returns None (never raises) if
     the API key is missing or the call fails — the caller falls back to a
     plain templated note."""
-    import os
-    if not os.getenv("ANTHROPIC_API_KEY"):
+    from core.config import HAIKU_4_5, ai_available
+    if not ai_available():
         return None
     try:
-        import anthropic
-        from core.config import HAIKU_4_5
-        http_client = _build_tls_tolerant_http_client()
-        kwargs = {}
-        if http_client is not None:
-            kwargs["http_client"] = http_client
-        client = anthropic.Anthropic(**kwargs)
+        from agent.pdf_pipeline.llm import make_ai_client     # Claude, or free Gemini
+        client = make_ai_client()
         resp = client.messages.create(
             model=HAIKU_4_5.model_id,
             max_tokens=500,

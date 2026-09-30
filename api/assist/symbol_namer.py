@@ -93,7 +93,8 @@ def name_shapes(groups: Sequence, legend_lines: Sequence[str], *, client, model:
         messages=[{"role": "user", "content": content}],
     )
     usage = getattr(response, "usage", None)
-    cost = estimate_cost_zar(getattr(usage, "input_tokens", 0) or 0, getattr(usage, "output_tokens", 0) or 0, model) \
+    cost = estimate_cost_zar(getattr(usage, "input_tokens", 0) or 0, getattr(usage, "output_tokens", 0) or 0,
+                             getattr(response, "priced_as", None) or model) \
         if usage is not None else 0.0
     block = next((b for b in response.content if getattr(b, "type", "") == "tool_use"), None)
     if block is None:

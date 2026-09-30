@@ -37,12 +37,13 @@ ON_VERCEL = bool(os.environ.get("VERCEL"))
 def _shape_namer():
     """ADR-0007: the optional AI step that names unnamed CAD symbols — built here, handed to
     the DXF pipeline as a plain callable. None without an API key (the run stays free)."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    from core.config import ai_available
+    if not ai_available():
         return None
-    from agent.pdf_pipeline.llm import make_anthropic_client
+    from agent.pdf_pipeline.llm import make_ai_client
     from assist.symbol_namer import make_shape_namer
     from db.symbol_names import load_symbol_names, save_symbol_name
-    return make_shape_namer(client=make_anthropic_client(), remembered=load_symbol_names(),
+    return make_shape_namer(client=make_ai_client(), remembered=load_symbol_names(),
                             on_named=lambda sig, item: save_symbol_name(sig, item, "ai"))
 
 

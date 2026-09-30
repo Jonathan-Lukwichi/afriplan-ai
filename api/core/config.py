@@ -13,6 +13,7 @@ Two main concerns:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Dict
 
@@ -97,6 +98,51 @@ PDF_PIPELINE_MODELS = {
 }
 # Pages are read in parallel; each worker is one request in flight.
 PDF_PARALLEL_PAGES = 6
+
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║ GOOGLE GEMINI — the free alternative (core/gemini_client.py)      ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+# Priced at R 0: Google's free tier (rate-limited). The IDs can be changed without code
+# via GEMINI_MODEL / GEMINI_FAST_MODEL in api/.env (e.g. a Pro model if your quota has one).
+
+GEMINI_MAIN = ModelSpec(
+    model_id=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    display_name="Gemini (main)",
+    input_usd_per_mtok=0.0,
+    output_usd_per_mtok=0.0,
+)
+GEMINI_FAST = ModelSpec(
+    model_id=os.environ.get("GEMINI_FAST_MODEL", "gemini-2.5-flash-lite"),
+    display_name="Gemini (fast)",
+    input_usd_per_mtok=0.0,
+    output_usd_per_mtok=0.0,
+)
+
+
+def gemini_model_for(model_id: str) -> ModelSpec:
+    """The Gemini model that does a Claude model's job: Haiku's easy jobs (sorting pages)
+    go to the fast model, everything else (reading drawings, naming, matching) to the main one."""
+    for spec in (GEMINI_MAIN, GEMINI_FAST):
+        if model_id == spec.model_id:
+            return spec
+    return GEMINI_FAST if model_id == HAIKU_4_5.model_id else GEMINI_MAIN
+
+
+def ai_provider() -> str:
+    """'claude' or 'gemini'. AI_PROVIDER in api/.env decides; otherwise Claude when its key is
+    set, else Gemini when its key is set. Read at call time (after api/.env is loaded)."""
+    chosen = os.environ.get("AI_PROVIDER", "").strip().lower()
+    if chosen in ("claude", "gemini"):
+        return chosen
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "claude"
+    return "gemini" if os.environ.get("GEMINI_API_KEY") else "claude"
+
+
+def ai_available() -> bool:
+    """Is there a key for the chosen provider?"""
+    return bool(os.environ.get("GEMINI_API_KEY" if ai_provider() == "gemini" else "ANTHROPIC_API_KEY"))
 
 
 # ZAR / USD rate for cost reporting (rounded; refresh from XE quarterly)

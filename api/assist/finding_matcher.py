@@ -79,7 +79,7 @@ def match_names(kind: str, dwg_names: Sequence[str], pdf_names: Sequence[str], *
     )
     usage = getattr(response, "usage", None)
     cost = estimate_cost_zar(getattr(usage, "input_tokens", 0) or 0, getattr(usage, "output_tokens", 0) or 0,
-                             model) if usage is not None else 0.0
+                             getattr(response, "priced_as", None) or model) if usage is not None else 0.0
     block = next((b for b in response.content if getattr(b, "type", "") == "tool_use"), None)
     if block is None:
         log.warning("match_names was not called; nothing matched")

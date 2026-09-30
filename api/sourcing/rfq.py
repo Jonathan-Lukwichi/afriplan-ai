@@ -140,12 +140,9 @@ class QuoteParser:
         self._escalate_to = escalate_to
 
     def _ensure_client(self) -> Any:
-        if self._client is None:
-            import anthropic  # type: ignore
-            kwargs: Dict[str, Any] = {}
-            if self._api_key:
-                kwargs["api_key"] = self._api_key
-            self._client = anthropic.Anthropic(**kwargs)
+        if self._client is None:              # Claude, or free Gemini (core.config.ai_provider)
+            from agent.pdf_pipeline.llm import make_ai_client
+            self._client = make_ai_client(api_key=self._api_key)
         return self._client
 
     def parse_reply(

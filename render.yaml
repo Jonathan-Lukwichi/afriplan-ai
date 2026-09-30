@@ -18,6 +18,10 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY       # PDF engine + Live Pricing replies. Leave empty = DWG/DXF only.
         sync: false
+      - key: GEMINI_API_KEY          # free alternative (Google AI Studio); used when it is the only key
+        sync: false
+      - key: AI_PROVIDER             # optional: "gemini" or "claude" when both keys are set
+        sync: false
       - key: RESEND_API_KEY          # optional — "Email this BoQ"
         sync: false
       - key: NOTIFY_FROM_EMAIL       # optional — sender address for those emails

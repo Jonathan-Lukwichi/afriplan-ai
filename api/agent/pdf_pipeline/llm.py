@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -26,6 +27,7 @@ from core.config import (
     OPUS_4_6,
     SONNET_4_5,
     ModelSpec,
+    ai_provider,
     estimate_cost_zar,
 )
 
@@ -120,6 +122,10 @@ class PdfLLM:
     ):
         if client is not None:
             self._client = client
+        elif ai_provider() == "gemini":
+            from core.gemini_client import GeminiClient
+            key = api_key if api_key and not api_key.startswith("sk-ant") else os.environ.get("GEMINI_API_KEY", "")
+            self._client = GeminiClient(api_key=key)    # never send a Claude key to Google
         else:
             anthropic = _get_anthropic()
             http_client = _build_tls_tolerant_http_client()
@@ -320,7 +326,7 @@ class PdfLLM:
         cost.cost_zar += estimate_cost_zar(
             input_tokens + cache_read + cache_write,
             output_tokens,
-            model,
+            getattr(response, "priced_as", None) or model,   # Gemini answers: priced on Gemini
         )
 
     def _extract_tool_block(self, response: Any, forced_tool_name: Optional[str]):
@@ -335,10 +341,14 @@ class PdfLLM:
 
 # ─── Convenience factories ────────────────────────────────────────────
 
-def make_anthropic_client(*, api_key: Optional[str] = None):
-    """An Anthropic client with the same TLS tolerance and retries as the PDF pipeline
-    (for other callers that talk to the API, e.g. api/assist)."""
+def make_ai_client(*, api_key: Optional[str] = None):
+    """A client for the chosen AI provider (Claude, or free Gemini — core.config.ai_provider)
+    with the same TLS tolerance and retries as the PDF pipeline, for other callers
+    (api/assist, Live Pricing). Both answer `client.messages.create(...)` the same way."""
     return PdfLLM(api_key=api_key, system_prompt="")._client
+
+
+make_anthropic_client = make_ai_client     # older name, kept for existing callers
 
 
 # ─── Convenience factory for the standard PDF-pipeline LLM ────────────
