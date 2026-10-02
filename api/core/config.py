@@ -107,14 +107,21 @@ PDF_PARALLEL_PAGES = 6
 # via GEMINI_MODEL / GEMINI_FAST_MODEL in api/.env (e.g. a Pro model if your quota has one).
 
 GEMINI_MAIN = ModelSpec(
-    model_id=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    model_id=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
     display_name="Gemini (main)",
     input_usd_per_mtok=0.0,
     output_usd_per_mtok=0.0,
 )
 GEMINI_FAST = ModelSpec(
-    model_id=os.environ.get("GEMINI_FAST_MODEL", "gemini-2.5-flash-lite"),
+    model_id=os.environ.get("GEMINI_FAST_MODEL", "gemini-3.5-flash-lite"),
     display_name="Gemini (fast)",
+    input_usd_per_mtok=0.0,
+    output_usd_per_mtok=0.0,
+)
+# When a model is busy (503) or retired (404), the call is repeated once on this one.
+GEMINI_FALLBACK = ModelSpec(
+    model_id=os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash"),
+    display_name="Gemini (fallback)",
     input_usd_per_mtok=0.0,
     output_usd_per_mtok=0.0,
 )

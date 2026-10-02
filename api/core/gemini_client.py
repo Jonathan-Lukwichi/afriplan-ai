@@ -23,7 +23,7 @@ import time
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
-from core.config import ModelSpec, gemini_model_for
+from core.config import GEMINI_FALLBACK, ModelSpec, gemini_model_for
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +58,16 @@ class GeminiClient:
         body = build_request(messages=messages, max_tokens=max_tokens, system=system, tools=tools,
                              tool_choice=tool_choice, temperature=temperature)
         try:
-            data = self._post(spec.model_id, body)
+            try:
+                data = self._post(spec.model_id, body)
+            except GeminiError as e:
+                busy_or_gone = any(f"error {c}" in str(e) for c in (404, 429, 503))
+                if not busy_or_gone or spec.model_id == GEMINI_FALLBACK.model_id:
+                    raise
+                log.warning("Gemini %s unavailable (%s) — using %s", spec.model_id, str(e)[:80],
+                            GEMINI_FALLBACK.model_id)
+                spec = GEMINI_FALLBACK
+                data = self._post(spec.model_id, body)
         except GeminiError as e:
             if tools and "schema" in str(e).lower():
                 log.warning("Gemini refused the JSON schema; retrying with a simplified schema")

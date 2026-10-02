@@ -84,6 +84,14 @@ def test_too_many_requests_is_waited_out(monkeypatch):
     assert resp.content[0].type == "tool_use" and len(http.sent) == 2
 
 
+def test_a_busy_or_retired_model_falls_back_to_the_steady_one(monkeypatch):
+    from core.config import GEMINI_FALLBACK
+    monkeypatch.setattr(gc.time, "sleep", lambda s: None)
+    http = _Http([(404, '{"error": {"message": "model is no longer available"}}'), _answer({"boards": []})])
+    resp = _call(GeminiClient(api_key="k", http_client=http))
+    assert GEMINI_FALLBACK.model_id in http.sent[1][0] and resp.model == GEMINI_FALLBACK.model_id
+
+
 def test_a_refused_schema_is_retried_with_the_simple_form():
     http = _Http([(400, '{"error": {"message": "Invalid JSON schema in parametersJsonSchema"}}'),
                   _answer({"boards": []})])
