@@ -1,7 +1,7 @@
 """
 LAYER 3 — EXECUTION: e-mail a run's BoQ (Excel + PDF) and evaluation to the owner.
 
-    python doe/execution/send_email.py runs/doe/<stamp>          # to OWNER_EMAIL in api/.env
+    python doe/execution/send_email.py "<project folder>/AfriPlan_Output"   # to OWNER_EMAIL in api/.env
 
 Uses, in order, whatever is set in api/.env:
   RESEND_API_KEY                       (free at resend.com; from NOTIFY_FROM_EMAIL)
@@ -28,6 +28,19 @@ _MIME = {".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.s
          ".pdf": "application/pdf"}
 
 
+def email_body(summary: dict) -> str:
+    """Plain-words e-mail text from a run's summary.json (doe/execution/project.py)."""
+    lines = [f"AfriPlan estimate — {summary['project']} — {summary['stamp']}", "",
+             f"Attached: the BoQ as Excel and PDF. {summary['lines']} lines, "
+             f"R {summary['subtotal_zar']:,.2f} excl. VAT, {summary['gaps']} things to check "
+             "(things_to_check.md in the output folder).", ""]
+    for label, s in (summary.get("scores") or {}).items():
+        lines.append(f"  {label}: {s['rs']:.1%} of the real bill reproduced "
+                     f"(found {s['coverage']:.0%}; {s['precision']:.0%} of what was priced belongs)")
+    lines += ["", "Run log:", *[f"  {entry}" for entry in summary.get("log", [])]]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir", type=Path)
@@ -45,7 +58,7 @@ def main() -> int:
 
     summary = json.loads((args.run_dir / "summary.json").read_text(encoding="utf-8"))
     subject = f"AfriPlan BoQ — {summary['project']} — {summary['stamp']}"
-    body = (args.run_dir / "email_body.txt").read_text(encoding="utf-8")
+    body = email_body(summary)
     files = [Path(summary["xlsx"]), Path(summary["pdf"])]
 
     if os.environ.get("RESEND_API_KEY"):

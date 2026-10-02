@@ -14,20 +14,22 @@ Turn an electrical drawing set (DWG/DXF and/or PDF) into a **priced Bill of Quan
 (Excel + PDF) that a South African contractor can tender with, and say honestly **how
 reliable it is**.
 
-## 2. Inputs
-| What | Where | Needed? |
-|---|---|---|
-| DWG/DXF drawings (SLDs, layouts, site plan) | `data/projects/<project>/raw/` | best source — free, exact |
-| PDF drawings | same folder | adds what CAD cannot show; costs AI unless re-used |
-| Real priced bill (only for reference projects) | same folder | only to evaluate |
-| Manifest (which file is which) | `data/projects/<project>/manifest.json` | yes |
+## 2. Input and output
+- **Input (the trigger):** the path of a project folder. Every `.dwg`, `.dxf` and `.pdf` under
+  it is used (sub-folders included); an older revision of the same sheet is set aside and
+  reported. Nothing about the project has to be configured.
+- **Output:** `<folder>\AfriPlan_Output\` — `<Project>_BoQ_<stamp>.xlsx` and `.pdf` (tender
+  documents), `things_to_check.md`, `summary.json`. Reference projects (with a real priced bill)
+  are also scored.
 
-## 3. The procedure (every run, in this order)
-1. **Check the inputs** — the raw files must match the manifest's checksums. If not: STOP.
-2. **Read the DWG set** — boards and breakers from the SLDs, cable routes and trench from
-   the site plan, fittings from the layouts. Re-use remembered AI symbol names (free).
-3. **Read the PDF set** — re-use the last saved PDF reading (R 0) unless the drawings changed
-   or a fresh read is asked for (then use the AI provider in `api/.env`; Gemini is free).
+## 3. The procedure (every run, in this order — skill `estimate-project`)
+1. **Prepare** — find the drawings, set old revisions aside, render each PDF page (whole,
+   zoomed quarters, legend / quantity table, text).
+2. **Read the CAD set** — boards and breakers from the SLDs, cable routes and trench from
+   the site plan, fittings from the layouts. Re-use remembered symbol names (free).
+3. **Read the PDF set** — the brain reads every page into a strict form (subscription, no API
+   bill); the designer's legend quantities are used when printed. Every form is checked;
+   a bad or missing one stops the run.
 4. **Combine** — pair each PDF page with its DWG sheet by the words both print; keep the
    stronger evidence: *measured > counted > written > seen > assumed*; keep what only one
    source saw; list every disagreement as a "thing to check". Never count a thing twice.
@@ -37,7 +39,8 @@ reliable it is**.
    line in plain words and the "Things to check" list.
 7. **Evaluate** (reference projects only) — score DWG alone, PDF alone and combined against
    the real bill with the frozen scorer.
-8. **Report** — e-mail the Excel + PDF and the evaluation to the owner.
+8. **Report** — tell the owner the totals and the most serious things to check; e-mail the
+   Excel + PDF when asked (needs mail credentials in `api/.env`).
 9. **Learn** — write what surprised us into `doe/playbook/LESSONS.md` (new drawing
    conventions, wrong matches, missing items). Never tune prices to one project.
 
@@ -70,7 +73,7 @@ reliable it is**.
 we never tuned on**. Today we have one project (Wedela), so no level is proven yet.
 
 ## 6. When to stop and ask the owner
-- Inputs don't match the manifest; a drawing can't be opened.
+- A drawing can't be opened; a page form is missing or rejected and can't be fixed by re-reading.
 - The AI provider has no key or no credit and a fresh PDF read was asked for.
 - A score drops compared with the last run of the same inputs (something broke).
 - More than 5 "high" things to check about boards or feeders (the supply is unclear).

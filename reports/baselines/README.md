@@ -29,6 +29,9 @@ The per-run reports linked below quote client figures and are kept locally (giti
 | 2026-09-28 | PDF + completer | project-level | **29.0 %** | 66.3 % | 96.2 % | 43.7 % | [pdf](2026-09-28-wedela-pdf.md) |
 | 2026-09-28 | **Combined** DWG + PDF (ADR-0008: DWG set R 0 with remembered AI names + saved PDF run `41c02f9505b0`; exact name matching — AI matcher not run, no API credit) | project-level | **47.2 %** | 63.3 % | 84.6 % | 74.6 % | [combined](2026-09-28-wedela-combined.md) |
 | 2026-09-28 | Combined + completer | project-level | **49.2 %** | 66.5 % | 85.5 % | 73.9 % | [combined](2026-09-28-wedela-combined.md) |
+| 2026-10-02 | PDF read by Gemini free tier (app Compare run `6068ea040cb5`, R 0) | project-level | **40.2 %** | 77.4 % | 86.4 % | 52.0 % | re-score, R 0 |
+| 2026-10-02 | PDF read by Claude Code subscription (DOE skill `estimate-project`, forms `eyes7bead0b9`, R 0) | project-level | **47.5 %** | 79.7 % | 88.7 % | 59.6 % | [pdf-sub](2026-10-02-wedela-pdf-subscription.md) |
+| 2026-10-02 | **Combined** DWG set + subscription-read PDF (`doe/execution/project.py finish`) | project-level | **55.8 %** | — | — | — | DOE run |
 
 PDF runs: 18 pages — `b0a84e5563bf` R 18.46 (09-23), `6d7094fe359b` R 19.31 (09-26). DXF: 17 drawings, R 0.
 
