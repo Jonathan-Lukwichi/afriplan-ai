@@ -108,7 +108,7 @@ _DESC_RULES: List[Tuple[re.Pattern[str], str, BQSection]] = [
     (re.compile(r"bulkhead", re.I),
         "Bulkhead Light", BQSection.LIGHTING),
     (re.compile(r"vapou?r\s*proof|weatherproof.*(light|fluor)|batten", re.I),
-        "Vapour-Proof Light", BQSection.LIGHTING),
+        "Vapour Proof Light", BQSection.LIGHTING),
     (re.compile(r"surface\s*mount.*(light|led)|ceiling\s*light|\bcl\b", re.I),
         "Surface LED Light", BQSection.LIGHTING),
     (re.compile(r"pendant", re.I),

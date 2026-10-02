@@ -21,16 +21,16 @@ def _g(sig, n=3):
 
 
 def test_each_picture_is_sent_numbered_with_the_legend_and_the_fixed_list():
-    client = _FakeClient([{"id": "S1", "item": "Vapour-Proof Light", "legend_line": "2x18W vapour proof"},
+    client = _FakeClient([{"id": "S1", "item": "Vapour Proof Light", "legend_line": "2x18W vapour proof"},
                           {"id": "S2", "item": "Not an electrical symbol", "legend_line": ""}])
     names, cost = name_shapes([_g("a"), _g("b")], ["2x18W vapour proof LED"], client=client)
-    assert names["a"].item == "Vapour-Proof Light" and names["b"].item == "Not an electrical symbol"
+    assert names["a"].item == "Vapour Proof Light" and names["b"].item == "Not an electrical symbol"
     assert cost > 0
     req = client.requests[0]
     assert req["tool_choice"] == {"type": "tool", "name": "name_symbols"}
     images = [c for c in req["messages"][0]["content"] if c["type"] == "image"]
     assert len(images) == 2
-    assert "Vapour-Proof Light" in NAME_SYMBOLS_TOOL["input_schema"]["properties"]["symbols"]["items"]["properties"]["item"]["enum"]
+    assert "Vapour Proof Light" in NAME_SYMBOLS_TOOL["input_schema"]["properties"]["symbols"]["items"]["properties"]["item"]["enum"]
 
 
 def test_an_answer_outside_the_list_is_ignored():

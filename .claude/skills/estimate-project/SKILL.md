@@ -33,15 +33,18 @@ header verbatim. Every "FED FROM … / incoming main cable …" box is a feeder 
 cores); `length_annotated` only if a length is printed on that run. Scanned pages are read the same way.
 
 **Layouts (`read_layout_takeoff`)** — if the legend has a QTY/QTYS column, those printed numbers
-are the designer's own count: use them for the whole sheet, and say so in `extraction_warnings`.
-Otherwise count every symbol room by room. Give a building's lighting sheet and plug sheet the
+are the designer's own count: use them for the whole sheet and set
+`counts_from_legend_schedule: true` (combining then trusts a higher printed quantity over a CAD
+count that missed copies). Otherwise count every symbol room by room (leave it false).
+Boxes exist for battens (`fluorescent_battens`), prismatic fittings, 1-lever 2-way switches and
+master switches; on SLDs, `motor_starters` (DOL boxes per board) and `master_switch`. Give a building's lighting sheet and plug sheet the
 SAME `room_name` (e.g. the building's name) so the merge keeps the higher count instead of adding
 them. External / site lights go in a room named "Site / external": solar post lanterns →
 `solar_post_lights`, tall flood-light posts (≥ 6 m) → `high_mast_poles`.
 
-**Never guess.** Missing → 0 / false / empty. An item the form has no field for (e.g. 5 ft
-fluorescent battens, DOL starters, geysers, A/C units) is written in `extraction_warnings`, not
-forced into a wrong field — unless it is the same kind of fitting (say which, in a warning).
+**Never guess.** Missing → 0 / false / empty. An item the form still has no field for (e.g.
+geysers, A/C units — their connection is billed via the isolator) is written in
+`extraction_warnings`, not forced into a wrong field.
 
 ## 3. Finish (deterministic)
 ```

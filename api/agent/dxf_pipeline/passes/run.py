@@ -49,7 +49,7 @@ from agent.shared.legend import Legend, billed_canonical_items, coverage_gaps
 from agent.shared.persistence import persist_run
 from agent.shared.pricing import price_findings
 from agent.shared.routes import RouteNetwork, equipment_key
-from agent.shared.symbol_catalogue import catalogue_item
+from agent.shared.symbol_catalogue import canonical_name, catalogue_item
 
 log = logging.getLogger(__name__)
 
@@ -395,6 +395,7 @@ def _name_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
     reps = [ShapeGroup(signature=s, count=totals[s], sheet=", ".join(sheets[s]), size=g.size,
                        image_png_b64=g.image_png_b64) for s, g in unique.items()]
     names, cost = name_shapes(reps, legend_lines)
+    names = {s: (canonical_name(item), by) for s, (item, by) in names.items()}   # older spellings
 
     symbols = [DxfAiSymbol(signature=s, item=names[s][0], named_by=names[s][1], count=totals[s],
                            sheets=sheets[s], image_png_b64=unique[s].image_png_b64)

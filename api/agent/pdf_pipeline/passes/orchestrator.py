@@ -26,6 +26,7 @@ from agent.pdf_pipeline.llm import LLMError, PdfLLM
 from agent.pdf_pipeline.models import PageClassification, PageType, StageCost
 from agent.pdf_pipeline.passes.assemble import build_boq_from_facts
 from agent.pdf_pipeline.passes.facts import (
+    _ROOM_INT_FIELDS,
     Feeder,
     LayoutTakeoff,
     PdfFacts,
@@ -303,14 +304,10 @@ def _merge_spine(dst: PowerSpine, src: PowerSpine, page: int = -1,
     dst.warnings.extend(src.warnings)
 
 
-_ROOM_COUNTS = (
-    "downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights", "emergency_lights",
-    "pole_lights", "solar_post_lights", "high_mast_poles", "double_sockets", "single_sockets",
-    "waterproof_sockets", "floor_sockets", "data_outlets", "switches_1lever", "switches_2lever",
-    "switches_3lever", "isolators", "day_night_switches",
-)
+_ROOM_COUNTS = _ROOM_INT_FIELDS                 # every count box on the form
 _SITE_LIGHTS = ("pole_lights", "solar_post_lights", "high_mast_poles")
-_LIGHT_COUNTS = _ROOM_COUNTS[:9]
+_LIGHT_COUNTS = ("downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights",
+                 "emergency_lights", "fluorescent_battens", "prismatic_lights", *_SITE_LIGHTS)
 
 
 def _room_key(r) -> Tuple[str, str]:
@@ -341,6 +338,7 @@ def _merge_takeoff(dst: LayoutTakeoff, src: LayoutTakeoff, page: int = -1,
         old.area_m2 = old.area_m2 or room.area_m2
         old.circuit_tags += [t for t in room.circuit_tags if t not in old.circuit_tags]
         old.confidence = max(old.confidence, room.confidence)
+        old.counts_from_legend_schedule = old.counts_from_legend_schedule or room.counts_from_legend_schedule
         old.source_pages.append(page)
     dst.legend.update(src.legend)
     dst.warnings.extend(src.warnings)

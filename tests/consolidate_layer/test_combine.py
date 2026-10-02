@@ -202,3 +202,31 @@ def test_words_in_brackets_describe_the_equipment_and_do_not_stop_an_exact_match
     c = combine(cad, pdf)
     assert [b.reader for b in c.findings.boards] == ["dxf"]
     assert [f.reader for f in c.findings.feeders] == ["dxf"]
+
+
+# ─── a designer's printed schedule vs the CAD count (2026-10-02) ─────
+
+def _scheduled(name, qty, sheet="Set p0"):
+    return ItemFinding(description=f"{name} x", item=name, reader="pdf", qty=qty, sheet=sheet,
+                       section=BQSection.LIGHTING, evidence=Evidence.WRITTEN)
+
+
+def test_a_higher_printed_schedule_beats_a_cad_count_that_missed_copies():
+    cad = _cad(items=[_item("Vapour Proof Light", "dxf", 44, "WD-AB-01-LIGHTING")])
+    pdf = _pdf(items=[_scheduled("Vapour Proof Light", 67)])
+    c = combine(cad, pdf)
+    assert [(i.reader, i.qty) for i in c.findings.items] == [("pdf", 67)]
+    assert any("44" in g.description and "67" in g.description for g in c.findings.all_gaps())
+
+
+def test_a_lower_printed_schedule_does_not_beat_the_cad_count():
+    cad = _cad(items=[_item("Vapour Proof Light", "dxf", 66, "WD-AB-01-LIGHTING")])
+    pdf = _pdf(items=[_scheduled("Vapour Proof Light", 57)])
+    c = combine(cad, pdf)
+    assert [(i.reader, i.qty) for i in c.findings.items] == [("dxf", 66)]
+
+
+def test_a_count_merely_seen_on_a_picture_never_beats_the_cad_count():
+    cad = _cad(items=[_item("LED Downlight", "dxf", 10, "WD-AB-01-LIGHTING")])
+    pdf = _pdf(items=[_item("LED Downlight", "pdf", 30, "Set p0")])         # evidence SEEN
+    assert [i.reader for i in combine(cad, pdf).findings.items] == ["dxf"]

@@ -229,3 +229,67 @@ def test_findings_say_who_read_them_and_how():
     panel = next(i for i in f.items if i.item == "Recessed LED Panel")
     assert panel.qty == 4 and panel.location == "Tuck Shop" and panel.evidence == Evidence.SEEN
     assert all(w.evidence == Evidence.ASSUMED for w in f.wires)      # point-method allowance
+
+
+# ─── Form boxes added 2026-10-02 (items drawn on real sets that had no box) ──
+
+def test_new_room_boxes_are_read_and_priced():
+    from agent.pdf_pipeline.passes.facts import parse_layout_takeoff
+    from agent.pdf_pipeline.prompts.pass_schemas import READ_LAYOUT_TAKEOFF_TOOL
+    from core import constants
+
+    props = READ_LAYOUT_TAKEOFF_TOOL["input_schema"]["properties"]["rooms"]["items"]["properties"]
+    for box in ("fluorescent_battens", "prismatic_lights", "switches_1lever_2way", "master_switches"):
+        assert box in props
+    takeoff = parse_layout_takeoff({"rooms": [{"room_name": "Hall", "confidence": 0.9, "fluorescent_battens": 23,
+                                               "prismatic_lights": 5, "switches_1lever_2way": 2, "master_switches": 1}]})
+    facts = PdfFacts(takeoff=takeoff)
+    boq = build_boq_from_facts(facts)
+    by = {l.description: l for l in boq.line_items}
+    batten = next(l for d, l in by.items() if "5ft" in d)
+    assert batten.qty == 23 and batten.section == BQSection.LIGHTING
+    assert batten.unit_price_zar > constants.LIGHT_PRICES["fluorescent_50w_5ft"]   # material + install
+    assert any("prismatic" in d.lower() and l.qty == 5 for d, l in by.items())
+    assert any("2-way" in d and l.qty == 2 for d, l in by.items())
+    assert any("master switch" in d.lower() and l.qty == 1 for d, l in by.items())
+    assert room_points(facts) == 28                     # battens and prismatics are light points
+
+
+def room_points(facts):
+    return facts.takeoff.rooms[0].light_points()
+
+
+def test_board_motor_starters_and_master_switch_are_read_and_priced():
+    from agent.pdf_pipeline.passes.facts import parse_power_spine
+    from agent.pdf_pipeline.prompts.pass_schemas import READ_POWER_SPINE_TOOL
+
+    board_props = READ_POWER_SPINE_TOOL["input_schema"]["properties"]["distribution_boards"]["items"]["properties"]
+    assert "motor_starters" in board_props and "master_switch" in board_props
+    spine = lambda n, ms: parse_power_spine({"distribution_boards": [{  # noqa: E731
+        "name": "DB-PPS1", "main_breaker_a": 100, "confidence": 0.9, "motor_starters": n, "master_switch": ms,
+        "circuits": [{"circuit_id": f"P{i}", "breaker_a": 32, "breaker_poles": 3} for i in range(4)]}], "feeders": []})
+    plain = build_boq_from_facts(PdfFacts(spine=spine(0, False))).line_items[0]
+    full = build_boq_from_facts(PdfFacts(spine=spine(4, True))).line_items[0]
+    assert full.unit_price_zar > plain.unit_price_zar
+    assert "4 motor starters" in full.description and "master switch" in full.description
+
+
+def test_new_boxes_merge_across_sheets_like_the_others():
+    from agent.pdf_pipeline.passes.orchestrator import _merge_takeoff
+    from agent.pdf_pipeline.passes.facts import LayoutTakeoff, TakeoffRoom
+    dst = LayoutTakeoff()
+    _merge_takeoff(dst, LayoutTakeoff(rooms=[TakeoffRoom(room_name="Hall", fluorescent_battens=23)]), page=2)
+    _merge_takeoff(dst, LayoutTakeoff(rooms=[TakeoffRoom(room_name="Hall", fluorescent_battens=20)]), page=3)
+    assert len(dst.rooms) == 1 and dst.rooms[0].fluorescent_battens == 23
+
+
+def test_counts_from_the_printed_legend_schedule_are_written_evidence():
+    from agent.pdf_pipeline.passes.assemble import findings_from_facts
+    from agent.pdf_pipeline.passes.facts import parse_layout_takeoff
+    from agent.shared.findings import Evidence
+    takeoff = parse_layout_takeoff({"rooms": [
+        {"room_name": "Block A", "confidence": 0.9, "vapour_proof": 67, "counts_from_legend_schedule": True},
+        {"room_name": "Office", "confidence": 0.9, "downlights": 4}]})
+    items = findings_from_facts(PdfFacts(takeoff=takeoff)).items
+    assert {i.item: i.evidence for i in items} == {"Vapour Proof Light": Evidence.WRITTEN,
+                                                   "LED Downlight": Evidence.SEEN}
