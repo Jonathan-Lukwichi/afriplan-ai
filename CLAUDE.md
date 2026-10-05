@@ -13,6 +13,21 @@ human-priced reference project and audits bills and drawing sets for what is mis
 The earlier Streamlit app is retired — do not add Streamlit code.
 Author: Hervé / Jonathan Lukwichi (JLWanalytics). Commercial product in development.
 
+There are **two ways to produce a BoQ**:
+1. **Web app** — React (http://127.0.0.1:5180) + FastAPI (http://127.0.0.1:8000/docs). For
+   contractors and demos; its PDF reader is the paid Claude API or free Gemini.
+2. **DOE workflow in VS Code / Claude Code** (`doe/` + skill `estimate-project`) — any project
+   folder in, a priced BoQ (Excel + PDF) out in `<folder>/AfriPlan_Output`. Claude Code reads the
+   PDF pages on the **subscription** (no API bill); Python prepares, validates, combines and prices.
+   Best scores so far.
+
+## Start of every session — ASK FIRST
+Before any other work, ask the user (AskUserQuestion) which they want this session:
+- **Web app** → start backend + frontend (commands below), confirm both answer, give the links.
+- **DOE workflow** → ask for the project folder, then run the `estimate-project` skill.
+- **Develop the code** → normal engineering work on this repo.
+Skip the question only if the user's first message already makes the choice clear.
+
 ## Read first
 - `context.md` — the glossary. Use its exact terms in conversation, plans and code.
 - `docs/architecture.md` — the whole system on one page.
@@ -35,6 +50,7 @@ Author: Hervé / Jonathan Lukwichi (JLWanalytics). Commercial product in develop
 | React pages (Landing, Login, wizard, Pricing, **Audit a BoQ**) · design system · API client | `src/pages/` · `src/components/ui/` · `src/api/client.js` |
 | Reference projects: manifest committed; raw files + parsed bill LOCAL ONLY | `data/projects/<p>/` |
 | CLIs (verify data, build reference, evaluate, audit, baseline, symbol dataset) | `scripts/` |
+| **DOE workflow** — playbook (rules, lessons) · brain (how to read pages) · execution (`project.py`) | `doe/playbook/` · `doe/brain/` · `doe/execution/` |
 | Baseline index (per-run reports local — client figures) | `reports/baselines/` |
 
 ## Run, build, test
@@ -43,6 +59,9 @@ Author: Hervé / Jonathan Lukwichi (JLWanalytics). Commercial product in develop
 cd api; .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
 # Frontend
 npm run dev                                          # http://127.0.0.1:5180
+# DOE workflow (Claude Code reads the pages between the two steps — see skill estimate-project)
+api\.venv\Scripts\python.exe doe\execution\project.py prepare "<project folder>"
+api\.venv\Scripts\python.exe doe\execution\project.py finish  "<project folder>" [--reference wedela]
 # Verify (all must pass before a commit)
 api\.venv\Scripts\python.exe -m pytest -q -p no:warnings   # ~390 tests, no network (pytest.ini: pythonpath=api)
 npm run build
@@ -110,6 +129,10 @@ inside an optimisation loop · push to `main` / deploy without approval.
   (`agent/shared/pricing.py`). `api/consolidate/combine.py` merges the two readers' findings
   (PDF pages paired with CAD sheets by shared words, `agent/shared/sheets.py`); names Python cannot
   pair go to the injected AI matcher `api/assist/finding_matcher.py`. Wedela combined **47.2 %**.
+- **DOE workflow** (2026-10-02, `doe/execution/project.py` + skill `estimate-project`): PDF pages
+  read by Claude Code on the subscription → Wedela PDF **47.5 %** (Claude API 27.1 %, Gemini free
+  40.2 %); combined with the DWG set **55.8 % — the best so far**. Forms are saved per page so every
+  result can be reproduced; a missing or invalid form stops `finish`.
 - Biggest levers next: building attribution (008), a second reference project (014),
   tag→symbol attribution on site plans (leader lines), site-lighting double counts across
   PDF sheets (flagged, not yet merged).
