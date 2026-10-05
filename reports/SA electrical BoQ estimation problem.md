@@ -1,5 +1,11 @@
 # Unpaid take-offs squeeze South Africa's electrical contractors
 
+> **Superseded for the deck (5 Oct 2026):** every claim used in the user-guide deck was re-verified
+> against primary and peer-reviewed sources (Scite, Stats SA, CIDB, National Treasury, vendor pages) in
+> [`docs/research/evidence-register.md`](../docs/research/evidence-register.md). Some figures below — the
+> Irish "1 in 5 / 1 % per bid", the 93 % Grade 1–4 share, ECA(SA) member counts, unverified vendor prices
+> and the Morena & Amoah ranks — did not survive that check and are not used in the deck.
+
 South African electrical contractors win work by pricing a Bill of Quantities (BoQ) under a short legal deadline. They do it on margins too thin to absorb mistakes, using tools that were not built for SA electrical work. On consultant-led jobs the consulting electrical engineer usually writes the electrical BoQ. On drawings-only tenders, design-and-build and small private work, the contractor must measure the whole job from the drawings, and even when a BoQ is supplied, contractors re-read the drawings to check it. Public tenders stay open for as little as **14–30 days**. The only independent cost data comes from Ireland: each bid costs about **1% of project value** and contractors win about **1 in 5**. SA construction as a whole earned a **4.8% profit margin in 2024**, so one mispriced or missed item can wipe out a job's profit. The market is shifting towards small firms: **about 93% of the roughly 130,000 CIDB-registered contractors are Grade 1–4** (tender limit around R6m), and small and micro firms now earn **32% of construction income**. These are the firms least able to employ a dedicated estimator. The tools on offer fall into four groups: generic PDF take-off, US electrical estimators, AI symbol counters, and SA tender-pricing apps. None was found that reads SA electrical drawings (PDF and DWG), prices them at SA rates and checks a QS- or engineer-issued BoQ. The evidence has three blind spots. No study measures SA electrical take-off hours, SA tender hit rates or manual take-off error rates. Every "AI saves 70–90%" figure comes from a vendor.
 
 ## Engineers write the bill, contractors re-measure it in 14–30 days
