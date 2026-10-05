@@ -29,14 +29,20 @@ export const api = {
 
   runs: {
     // `files`: one File or an array — a DXF/DWG set runs as one project, a PDF set as one run.
-    create: (files, pipeline = 'dxf', { aiSymbols = false } = {}) => {
+    // `aiProvider`: 'claude' | 'gemini' reads a PDF run; empty = the server's default.
+    create: (files, pipeline = 'dxf', { aiSymbols = false, aiProvider = '' } = {}) => {
       const form = new FormData();
       (Array.isArray(files) ? files : [files]).forEach((f) => form.append('files', f));
       form.append('pipeline', pipeline);
       if (aiSymbols) form.append('ai_symbols', 'true');
+      if (aiProvider) form.append('ai_provider', aiProvider);
       return request('/api/runs', { method: 'POST', body: form });
     },
     get: (runId, signal) => request(`/api/runs/${runId}`, { signal }),
+  },
+
+  ai: {
+    providers: (signal) => request('/api/ai/providers', { signal }),
   },
 
   symbols: {
@@ -45,10 +51,11 @@ export const api = {
   },
 
   compare: {
-    create: (dxfFiles, pdfFiles) => {
+    create: (dxfFiles, pdfFiles, { aiProvider = '' } = {}) => {
       const form = new FormData();
       (Array.isArray(dxfFiles) ? dxfFiles : [dxfFiles]).forEach((f) => form.append('dxf_files', f));
       pdfFiles.forEach((f) => form.append('pdf_files', f));
+      if (aiProvider) form.append('ai_provider', aiProvider);
       return request('/api/compare', { method: 'POST', body: form });
     },
     get: (compareId, signal) => request(`/api/compare/${compareId}`, { signal }),

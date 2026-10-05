@@ -119,12 +119,13 @@ class PdfLLM:
         api_key: Optional[str] = None,
         system_prompt: str,
         client: Any = None,
+        provider: Optional[str] = None,     # "claude" | "gemini": the user's pick; None = server default
     ):
         # Set by the caller to hear what the provider is doing (e.g. "busy, waiting 41 s")
         self.on_note: Optional[Callable[[str], None]] = None
         if client is not None:
             self._client = client
-        elif ai_provider() == "gemini":
+        elif (provider or ai_provider()) == "gemini":
             from core.gemini_client import GeminiClient
             key = api_key if api_key and not api_key.startswith("sk-ant") else os.environ.get("GEMINI_API_KEY", "")
             self._client = GeminiClient(api_key=key, on_wait=self._note)    # never send a Claude key to Google
@@ -359,9 +360,9 @@ make_anthropic_client = make_ai_client     # older name, kept for existing calle
 
 # ─── Convenience factory for the standard PDF-pipeline LLM ────────────
 
-def build_default_pdf_llm(*, api_key: Optional[str] = None) -> PdfLLM:
+def build_default_pdf_llm(*, api_key: Optional[str] = None, provider: Optional[str] = None) -> PdfLLM:
     from agent.pdf_pipeline.prompts.system_prompt import SYSTEM_PROMPT
-    return PdfLLM(api_key=api_key, system_prompt=SYSTEM_PROMPT)
+    return PdfLLM(api_key=api_key, system_prompt=SYSTEM_PROMPT, provider=provider)
 
 
 # Re-export models so callers don't need two imports

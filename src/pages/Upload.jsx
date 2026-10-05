@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import PageHeader from '../components/ui/PageHeader';
 
@@ -32,6 +32,12 @@ const PIPELINE_INFO = {
   },
 };
 
+// The AI reader of a PDF run. Only providers whose key the server holds are offered.
+const AI_READERS = {
+  claude: { label: 'Claude (Anthropic)', hint: 'Paid, fast, the most accurate reader.' },
+  gemini: { label: 'Gemini (Google)', hint: 'Free tier, slower: it waits when Google says busy.' },
+};
+
 const NEXT_STEPS = [
   { label: 'Take-off', desc: 'Every symbol is counted and matched to a legend.' },
   { label: 'BoQ & quotation', desc: 'Counted items become a priced, SANS-checked bill.' },
@@ -44,6 +50,16 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
   const [dxfFiles, setDxfFiles] = useState([]); // both: the DXF/DWG set
   const [pdfFiles, setPdfFiles] = useState([]); // both: one-or-more PDFs
   const [aiSymbols, setAiSymbols] = useState(false);   // DXF: name unnamed symbols with AI
+  const [readers, setReaders] = useState([]);          // AI providers with a key on the server
+  const [aiProvider, setAiProvider] = useState('');
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    api.ai.providers(ctrl.signal)
+      .then(({ available, default: dflt }) => { setReaders(available); setAiProvider(dflt || ''); })
+      .catch(() => {});            // older server: no choice shown, the server default reads
+    return () => ctrl.abort();
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -55,11 +71,14 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
     setError(null);
     try {
       if (pipeline === 'both') {
-        const { compare_id } = await api.compare.create(dxfFiles, pdfFiles);
+        const { compare_id } = await api.compare.create(dxfFiles, pdfFiles, { aiProvider });
         onCompareCreated(compare_id);
         onNavigate('compare');
       } else {
-        const { run_id } = await api.runs.create(files, pipeline, { aiSymbols: pipeline === 'dxf' && aiSymbols });
+        const { run_id } = await api.runs.create(files, pipeline, {
+          aiSymbols: pipeline === 'dxf' && aiSymbols,
+          aiProvider: pipeline === 'pdf' ? aiProvider : '',
+        });
         onRunCreated(run_id);
         onNavigate('extraction');
       }
@@ -157,6 +176,19 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
                 style={fileInputStyle}
               />
             </div>
+          )}
+
+          {pipeline !== 'dxf' && readers.length > 0 && (
+            <fieldset data-testid="ai-reader" style={{ border: 'none', padding: 0, margin: '0 0 var(--space-md)' }}>
+              <legend style={{ fontSize: 13, color: 'var(--ink-muted)', marginBottom: 6 }}>AI reader for the PDF pages</legend>
+              {readers.map((id) => (
+                <label key={id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+                  <input type="radio" name="ai-reader" value={id} checked={aiProvider === id}
+                         onChange={() => setAiProvider(id)} style={{ marginTop: 3, minWidth: 18, minHeight: 18 }} />
+                  <span><strong>{AI_READERS[id]?.label || id}</strong> — {AI_READERS[id]?.hint}</span>
+                </label>
+              ))}
+            </fieldset>
           )}
 
           {error && <p style={{ color: 'var(--rose)', fontSize: 14 }}>{error}</p>}
