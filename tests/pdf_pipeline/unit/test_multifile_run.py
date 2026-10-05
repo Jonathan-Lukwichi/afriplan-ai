@@ -102,6 +102,57 @@ def test_run_estimator_no_pages_fails_gracefully(mock_llm):
     assert "no pages" in (run.error or "").lower()
 
 
+class _RefusingClient:
+    """An AI provider that refuses every request — e.g. Gemini's free daily limit used up."""
+
+    def __init__(self):
+        self.messages = self
+
+    def create(self, **_):
+        raise RuntimeError("Gemini's free daily limit is used up for gemini-2.5-flash")
+
+
+@pytest.mark.parametrize("manual_types", [None, {"sld.pdf": "sld", "layout.pdf": "lighting_layout"}],
+                         ids=["pages-to-classify", "pages-already-tagged"])
+def test_when_the_ai_refuses_every_page_the_run_says_why(manual_types):
+    from agent.pdf_pipeline.llm import PdfLLM
+    files = [(_pdf(["SLD"]), "sld.pdf"), (_pdf(["Layout"]), "layout.pdf")]
+    run = run_pdf_estimator(files, llm=PdfLLM(system_prompt="T", client=_RefusingClient()),
+                            manual_types=manual_types)
+    assert run.success is False
+    assert "daily limit is used up" in run.error          # the real reason reaches the screen
+    assert "2 of 2 pages" in run.error
+
+
+def test_the_run_reports_its_progress_page_by_page(mock_llm):
+    events = []
+    files = [(_pdf(["SLD"]), "sld.pdf"), (_pdf(["Layout", "Layout 2"]), "layout.pdf")]
+    llm = mock_llm(tool_responses={
+        "classify_page": {"page_type": "lighting_layout", "confidence": 0.9, "rationale": "x"},
+        "read_layout_takeoff": LAYOUT,
+    })
+    run = run_pdf_estimator(files, llm=llm, on_progress=lambda **p: events.append(p))
+    assert run.success
+    classify = [e for e in events if e["stage"] == "classify"]
+    read = [e for e in events if e["stage"] == "read"]
+    assert classify[0]["done"] == 0 and classify[-1]["done"] == classify[-1]["total"] == 3
+    assert read[0]["done"] == 0 and read[-1]["done"] == read[-1]["total"] == 3
+    assert events[-1]["stage"] == "price"
+    assert all(e["message"] for e in events)               # every step says, in words, what it does
+
+
+def test_ai_waiting_notes_reach_the_progress(mock_llm):
+    events = []
+    llm = mock_llm()
+    files = [(_pdf(["SLD"]), "sld.pdf")]
+
+    def busy(_kwargs):                                     # the provider says "busy, waiting"
+        llm.on_note("Gemini busy (free tier) - waiting 41 s")
+    llm._client.messages._on_call = busy
+    run_pdf_estimator(files, llm=llm, on_progress=lambda **p: events.append(p))
+    assert any("waiting 41 s" in (e.get("note") or "") for e in events)
+
+
 def test_run_estimator_is_deterministic_given_same_facts(mock_llm):
     files = [(_pdf(["SLD"]), "sld.pdf")]
     responses = {"read_power_spine": POWER_SPINE}

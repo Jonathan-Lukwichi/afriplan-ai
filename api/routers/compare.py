@@ -23,6 +23,7 @@ from fastapi.responses import Response
 from agent.comparison import compare_runs, export_comparison_to_pdf
 from core.compare_store import CompareRecord, compare_store
 from core.run_jobs import ON_VERCEL, run_dxf_job, run_pdf_job
+from core.run_progress import get_progress
 from core.run_store import RunRecord, run_store
 
 router = APIRouter(prefix="/api/compare", tags=["compare"])
@@ -105,6 +106,7 @@ def get_comparison(compare_id: str):
         "pdf_run_id": record.pdf_run_id,
         "status": record.status,
         "error": record.error,
+        "pdf_progress": get_progress(record.pdf_run_id) if record.status == "running" else None,
         "result": record.result.model_dump(mode="json") if record.result is not None else None,
     }
 

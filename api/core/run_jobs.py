@@ -29,6 +29,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from agent.dxf_pipeline.passes.run import run_dxf_project
 from agent.pdf_pipeline.passes.run import run_pdf_estimator
+from core.run_progress import clear_progress, set_progress
 from core.run_store import RunRecord, run_store
 
 ON_VERCEL = bool(os.environ.get("VERCEL"))
@@ -65,8 +66,9 @@ def run_dxf_job(run_id: str, files: list[tuple[bytes, str]], ai_symbols: bool = 
 
 
 def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
+    set_progress(run_id, stage="start", done=0, total=0, message="Opening the drawings")
     try:
-        result = run_pdf_estimator(files)
+        result = run_pdf_estimator(files, on_progress=lambda **p: set_progress(run_id, **p))
         record = run_store.get(run_id)
         record.result = result
         record.status = "passed" if result.success else "failed"
@@ -77,6 +79,8 @@ def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
         record.status = "failed"
         record.error = str(e)
         run_store.put(record)
+    finally:
+        clear_progress(run_id)
 
 
 async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]],

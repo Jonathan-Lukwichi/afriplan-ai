@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import ComparisonPanel from '../components/ui/ComparisonPanel';
 import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
+import RunProgress from '../components/ui/RunProgress';
 
 /* Polls the keyed comparison cache (core/compare_store.py) every 2s until
    both underlying runs resolve and compare_runs has fired. */
@@ -46,9 +47,15 @@ export default function Compare({ compareId, onNavigate }) {
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}
 
       {record?.status === 'running' && (
-        <span className="afp-tag-running" style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
-          Running both engines…
-        </span>
+        <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
+          <span className="afp-tag-running" style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+            Running both engines…
+          </span>
+          <div style={{ fontSize: 13, color: 'var(--ink-muted)', marginTop: 10 }}>
+            PDF engine (the CAD engine is usually done in 1–2 minutes):
+          </div>
+          <RunProgress progress={record.pdf_progress} />
+        </div>
       )}
 
       {record?.status === 'failed' && (

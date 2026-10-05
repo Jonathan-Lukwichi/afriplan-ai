@@ -20,6 +20,7 @@ from typing import List
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
 from core.run_jobs import launch_dxf_run, launch_pdf_run
+from core.run_progress import get_progress
 from core.run_store import run_store
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
@@ -63,5 +64,6 @@ def get_run(run_id: str):
         "status": record.status,
         "input_file": record.input_file,
         "error": record.error,
+        "progress": get_progress(record.run_id) if record.status == "running" else None,
         "result": record.result.model_dump(mode="json") if record.result is not None else None,
     }

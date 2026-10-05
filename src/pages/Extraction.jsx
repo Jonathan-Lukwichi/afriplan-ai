@@ -66,6 +66,7 @@ export default function Extraction({ runId, onNavigate }) {
           inputFile={run.input_file}
           error={run.error}
           summary={summary}
+          progress={run.progress}
         />
       )}
 

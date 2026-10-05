@@ -77,6 +77,13 @@ class RunStore:
                  result_json, sourced_boq_json, record.error),
             )
 
+    def fail_interrupted(self, reason: str) -> int:
+        """Jobs run inside this process: at start-up, any run still 'running' died with the
+        previous process. Mark them failed with the reason instead of leaving them spinning."""
+        with self._lock, get_connection() as conn:
+            cur = conn.execute("UPDATE runs SET status = 'failed', error = ? WHERE status = 'running'", (reason,))
+            return cur.rowcount or 0
+
     def get(self, run_id: str) -> Optional[RunRecord]:
         with self._lock, get_connection() as conn:
             row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()

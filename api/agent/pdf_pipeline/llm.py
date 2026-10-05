@@ -17,7 +17,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ValidationError
 
@@ -120,12 +120,14 @@ class PdfLLM:
         system_prompt: str,
         client: Any = None,
     ):
+        # Set by the caller to hear what the provider is doing (e.g. "busy, waiting 41 s")
+        self.on_note: Optional[Callable[[str], None]] = None
         if client is not None:
             self._client = client
         elif ai_provider() == "gemini":
             from core.gemini_client import GeminiClient
             key = api_key if api_key and not api_key.startswith("sk-ant") else os.environ.get("GEMINI_API_KEY", "")
-            self._client = GeminiClient(api_key=key)    # never send a Claude key to Google
+            self._client = GeminiClient(api_key=key, on_wait=self._note)    # never send a Claude key to Google
         else:
             anthropic = _get_anthropic()
             http_client = _build_tls_tolerant_http_client()
@@ -137,6 +139,10 @@ class PdfLLM:
                 kwargs["http_client"] = http_client
             self._client = anthropic.Anthropic(**kwargs)
         self._system_prompt = system_prompt
+
+    def _note(self, message: str) -> None:
+        if self.on_note is not None:
+            self.on_note(message)
 
     # ── public API ────────────────────────────────────────────────────
 
@@ -190,7 +196,7 @@ class PdfLLM:
                     temperature=temperature if model.supports_temperature else None,
                 )
             except Exception as e:  # noqa: BLE001 — preserve error chain for caller
-                raise LLMError(f"Anthropic API call failed: {e}") from e
+                raise LLMError(f"AI call failed: {e}") from e
 
             self._accumulate_cost(cost, response, model)
             cost.retry_count = attempt

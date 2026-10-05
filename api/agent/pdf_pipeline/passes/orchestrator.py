@@ -18,7 +18,7 @@ import re
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
@@ -146,6 +146,8 @@ def extract_facts(
     llm: PdfLLM,
     pages: List[IngestedPage],
     classifications: List[PageClassification],
+    on_pages: Optional[Callable[[int], None]] = None,
+    on_page_done: Optional[Callable[[], None]] = None,
 ) -> Tuple[PdfFacts, List[StageCost]]:
     """Run Passes 1–3 across the classified pages → merged PdfFacts.
 
@@ -166,8 +168,17 @@ def extract_facts(
         if tool is not None:
             jobs.append((cls, page, tool))
 
+    if on_pages is not None:
+        on_pages(len(jobs))                        # how many pages the AI will read
+
+    def read(job):
+        out = _read_page(llm, *job)
+        if on_page_done is not None:
+            on_page_done()
+        return out
+
     with ThreadPoolExecutor(max_workers=PDF_PARALLEL_PAGES) as pool:
-        outcomes = list(pool.map(lambda j: _read_page(llm, *j), jobs))
+        outcomes = list(pool.map(read, jobs))
 
     for (cls, _page, _tool), out in zip(jobs, outcomes):
         costs.extend(out.costs)
@@ -400,6 +411,8 @@ def _extract_power_spine_voted(
     tool: dict,
     validator: Optional[type[BaseModel]],
 ) -> Tuple[PowerSpine, List[GapItem], List[StageCost]]:
+    failures: List[str] = []
+
     def sample(i: int):
         try:
             return llm.call_with_tool(
@@ -416,12 +429,13 @@ def _extract_power_spine_voted(
             )
         except LLMError as e:                          # vote with the samples that arrived
             log.warning("Power-spine sample %d on page %d failed: %s", i, page_index, e)
+            failures.append(str(e))
             return None
 
     with ThreadPoolExecutor(max_workers=_SPINE_VOTE_SAMPLES) as pool:
         results = [r for r in pool.map(sample, range(_SPINE_VOTE_SAMPLES)) if r is not None]
-    if not results:
-        raise LLMError(f"every power-spine sample failed on page {page_index}")
+    if not results:                                    # keep the cause, not just the fact
+        raise LLMError(f"every power-spine sample failed on page {page_index}: {failures[-1]}")
     costs: List[StageCost] = [r.cost for r in results]
     samples: List[PowerSpine] = [parse_power_spine(r.tool_input) for r in results]
 

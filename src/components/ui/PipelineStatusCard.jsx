@@ -13,7 +13,9 @@ const LABEL = {
   failed: 'Failed',
 };
 
-export default function PipelineStatusCard({ pipeline, status, inputFile, error, summary }) {
+import RunProgress from './RunProgress';
+
+export default function PipelineStatusCard({ pipeline, status, inputFile, error, summary, progress }) {
   return (
     <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -25,6 +27,8 @@ export default function PipelineStatusCard({ pipeline, status, inputFile, error,
         </span>
       </div>
       <div style={{ fontSize: 14, color: 'var(--ink-2)', marginBottom: summary || error ? 10 : 0 }}>{inputFile}</div>
+
+      {status === 'running' && <RunProgress progress={progress} />}
 
       {status === 'failed' && error && (
         <p style={{ fontSize: 13, color: 'var(--rose)', margin: 0 }}>{error}</p>

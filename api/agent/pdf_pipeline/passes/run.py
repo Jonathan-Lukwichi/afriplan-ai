@@ -19,11 +19,13 @@ deterministic given the facts.
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Sequence, Tuple
+import threading
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -50,6 +52,67 @@ log = logging.getLogger(__name__)
 
 # Below this classification confidence, a file is flagged for a manual tag.
 CLASSIFY_CONFIDENCE_FLOOR = 0.6
+
+_UNREAD = "page could not be read by the AI:"                 # classification rationale prefix
+_PAGE_ERROR = re.compile(r"^p(\d+) \S+: (.*)$", re.S)        # extraction warning "p<i> <tool>: <error>"
+_WRAPPERS = re.compile(r"^(AI call failed: |every power-spine sample failed on page \d+: )+")
+
+
+def _ai_failures(page_classes: List[PageClassification], warnings: List[str]) -> Dict[int, str]:
+    """{page index: why the AI could not read it} — from classification and extraction."""
+    out: Dict[int, str] = {}
+    for c in page_classes:
+        if c.rationale.startswith(_UNREAD):
+            out[c.page_index] = c.rationale[len(_UNREAD):].strip()
+    for w in warnings:
+        m = _PAGE_ERROR.match(w)
+        if m:
+            out.setdefault(int(m.group(1)), m.group(2))
+    return {i: _WRAPPERS.sub("", why).strip() for i, why in out.items()}
+
+
+def _no_bill_reason(failures: Dict[int, str], page_count: int) -> str:
+    if not failures:
+        return "No billable items extracted from the drawings"
+    why = next(iter(failures.values()))
+    return f"The AI could not read {len(failures)} of {page_count} pages: {why[:500]}"
+
+
+class _Progress:
+    """Turns pipeline steps into progress reports: stage, done/total, a sentence, and the
+    provider's latest wait note. Thread-safe: pages finish in parallel."""
+
+    _WORDS = {"classify": "Sorting the pages: {done} of {total} identified by the AI",
+              "read": "Reading the drawings: {done} of {total} pages read by the AI",
+              "price": "Measuring the site plan and pricing the bill"}
+
+    def __init__(self, report: Optional[Callable[..., None]]):
+        self._report, self._lock = report, threading.Lock()
+        self.stage, self.done, self.total = "", 0, 0
+
+    def _send(self, **extra) -> None:
+        if self._report is not None:
+            self._report(stage=self.stage, done=self.done, total=self.total,
+                         message=self._WORDS[self.stage].format(done=self.done, total=self.total), **extra)
+
+    def begin(self, stage: str, total: int = 0) -> None:
+        with self._lock:
+            self.stage, self.done, self.total = stage, 0, total
+            self._send()
+
+    def set_total(self, total: int) -> None:
+        with self._lock:
+            self.total = total
+            self._send()
+
+    def tick(self) -> None:
+        with self._lock:
+            self.done += 1
+            self._send()
+
+    def note(self, text: str) -> None:
+        with self._lock:
+            self._send(note=text)
 
 
 # ─── Multi-file ingest ───────────────────────────────────────────────
@@ -131,6 +194,7 @@ def classify_files(
     file_ingests: List[FileIngest],
     *,
     manual_types: Optional[Dict[str, str]] = None,
+    on_page_done: Optional[Callable[[], None]] = None,
 ) -> Tuple[List[PageClassification], List[FileClassification], List[StageCost]]:
     """
     Classify every page. A file the caller tagged in `manual_types` forces all
@@ -166,17 +230,20 @@ def classify_files(
                 )
             except LLMError as e:          # one page's network failure must not sink the run
                 log.error("Classifying %s p%d failed: %s", fi.file_name, p.page_index, e)
-                return None
+                return e
+            finally:
+                if on_page_done is not None:
+                    on_page_done()
 
         # every page at once (results kept in page order, so the run stays deterministic)
         with ThreadPoolExecutor(max_workers=PDF_PARALLEL_PAGES) as pool:
             results = list(pool.map(classify, fi.pages))
         per_page: List[PageClassification] = []
         for p, result in zip(fi.pages, results):
-            if result is None:
+            if isinstance(result, LLMError):
                 per_page.append(PageClassification(
                     page_index=p.page_index, page_type=PageType.UNKNOWN, confidence=0.0,
-                    rationale="page could not be read (connection to the AI failed) — upload again"))
+                    rationale=f"{_UNREAD} {result}"))
                 continue
             costs.append(result.cost)
             per_page.append(PageClassification(
@@ -250,10 +317,12 @@ def run_pdf_estimator(
     contractor: Optional[ContractorProfile] = None,
     manual_types: Optional[Dict[str, str]] = None,
     persist: bool = False,
+    on_progress: Optional[Callable[..., None]] = None,
 ) -> EstimatorRun:
     """
     Run the v2 PDF estimator over a set of drawings. Always returns an
-    EstimatorRun (even on failure, with success=False).
+    EstimatorRun (even on failure, with success=False). `on_progress(stage=, done=,
+    total=, message=, note=)` hears every step and every AI wait, for the screen.
     """
     run_id = uuid.uuid4().hex[:12]
     project = project or ProjectMetadata()
@@ -269,11 +338,18 @@ def run_pdf_estimator(
 
     if llm is None:
         llm = build_default_pdf_llm(api_key=api_key)
+    progress = _Progress(on_progress)
+    llm.on_note = progress.note
 
+    manual_types = manual_types or {}
+    progress.begin("classify", total=sum(len(fi.pages) for fi in file_ingests if fi.file_name not in manual_types))
     page_classes, file_classes, classify_costs = classify_files(
-        llm, file_ingests, manual_types=manual_types
+        llm, file_ingests, manual_types=manual_types, on_page_done=progress.tick
     )
-    facts, pass_costs = extract_facts(llm, all_pages, page_classes)
+    progress.begin("read")
+    facts, pass_costs = extract_facts(llm, all_pages, page_classes,
+                                      on_pages=progress.set_total, on_page_done=progress.tick)
+    progress.begin("price")
 
     # Seed any caller-supplied project metadata that the drawings didn't carry
     if project.project_name and not facts.context.project_name:
@@ -310,7 +386,8 @@ def run_pdf_estimator(
         cost_zar=round(sum(c.cost_zar for c in all_costs), 4),
         duration_s=round(time.perf_counter() - started, 3),
         success=bool(boq.line_items),
-        error=None if boq.line_items else "No billable items extracted from the drawings",
+        error=None if boq.line_items else _no_bill_reason(
+            _ai_failures(page_classes, facts.takeoff.warnings), len(all_pages)),
     )
     if persist:
         persist_run(run, pipeline="pdf", run_id=run_id)

@@ -84,6 +84,56 @@ def test_too_many_requests_is_waited_out(monkeypatch):
     assert resp.content[0].type == "tool_use" and len(http.sent) == 2
 
 
+def _daily_quota_429(model: str):
+    """Google's real shape: the per-day quotaId comes after a long message and a help link
+    (past the first 600 characters), and a retryDelay is offered even though waiting is useless."""
+    return (429, json.dumps({"error": {
+        "code": 429, "status": "RESOURCE_EXHAUSTED",
+        "message": "You exceeded your current quota, please check your plan and billing details. " * 4
+                   + f"* Quota exceeded for metric: generativelanguage.googleapis.com/"
+                     f"generate_content_free_tier_requests, limit: 20, model: {model}",
+        "details": [
+            {"@type": "type.googleapis.com/google.rpc.Help",
+             "links": [{"description": "Learn more about Gemini API quotas",
+                        "url": "https://ai.google.dev/gemini-api/docs/rate-limits"}]},
+            {"@type": "type.googleapis.com/google.rpc.QuotaFailure", "violations": [{
+                "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",
+                "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                "quotaDimensions": {"model": model, "location": "global"}, "quotaValue": "20"}]},
+            {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "41s"}]}}))
+
+
+def test_a_used_up_daily_quota_fails_at_once_with_a_plain_reason(monkeypatch):
+    from core.config import GEMINI_FALLBACK
+    slept = []
+    monkeypatch.setattr(gc.time, "sleep", slept.append)
+    http = _Http([_daily_quota_429(GEMINI_MAIN.model_id), _daily_quota_429(GEMINI_FALLBACK.model_id)])
+    with pytest.raises(gc.GeminiError, match="daily") as err:
+        _call(GeminiClient(api_key="k", http_client=http))
+    assert slept == []                                  # no waiting on a limit that resets tomorrow
+    assert len(http.sent) == 2                          # the main model once, the fallback once
+    assert "AI_PROVIDER=claude" in str(err.value)       # says what to do instead
+
+
+def test_a_model_out_of_daily_quota_is_not_asked_again(monkeypatch):
+    from core.config import GEMINI_FALLBACK
+    monkeypatch.setattr(gc.time, "sleep", lambda s: None)
+    http = _Http([_daily_quota_429(GEMINI_MAIN.model_id), _daily_quota_429(GEMINI_FALLBACK.model_id)])
+    client = GeminiClient(api_key="k", http_client=http)
+    for _ in range(3):                                  # e.g. the next pages of the same run
+        with pytest.raises(gc.GeminiError, match="daily"):
+            _call(client)
+    assert len(http.sent) == 2
+
+
+def test_a_wait_is_announced_so_the_screen_can_show_it(monkeypatch):
+    monkeypatch.setattr(gc.time, "sleep", lambda s: None)
+    notes = []
+    http = _Http([(429, '{"error": {"details": [{"retryDelay": "41s"}]}}'), _answer({"boards": []})])
+    _call(GeminiClient(api_key="k", http_client=http, on_wait=notes.append))
+    assert len(notes) == 1 and "42 s" in notes[0] and "busy" in notes[0]
+
+
 def test_a_busy_or_retired_model_falls_back_to_the_steady_one(monkeypatch):
     from core.config import GEMINI_FALLBACK
     monkeypatch.setattr(gc.time, "sleep", lambda s: None)
