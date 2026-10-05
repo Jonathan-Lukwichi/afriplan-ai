@@ -24,14 +24,31 @@ from __future__ import annotations
 import os
 import uuid
 
-from fastapi import BackgroundTasks
+from typing import Optional
+
+from fastapi import BackgroundTasks, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from agent.dxf_pipeline.passes.run import run_dxf_project
+from agent.pdf_pipeline.llm import build_default_pdf_llm
 from agent.pdf_pipeline.passes.run import run_pdf_estimator
+from core.config import ai_providers_ready
+from core.run_progress import clear_progress, set_progress
 from core.run_store import RunRecord, run_store
 
 ON_VERCEL = bool(os.environ.get("VERCEL"))
+
+
+def checked_ai_provider(choice: str) -> Optional[str]:
+    """The user's AI reader for a PDF run: "" means the server default (None); a pick must be a
+    provider whose key this server holds, so a wrong choice fails at upload, not mid-run."""
+    choice = (choice or "").strip().lower()
+    if not choice:
+        return None
+    if choice not in ai_providers_ready():
+        raise HTTPException(400, f"AI provider '{choice}' is not available on this server "
+                                 f"(available: {', '.join(ai_providers_ready()) or 'none'})")
+    return choice
 
 
 def _shape_namer():
@@ -64,9 +81,11 @@ def run_dxf_job(run_id: str, files: list[tuple[bytes, str]], ai_symbols: bool = 
         run_store.put(record)
 
 
-def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
+def run_pdf_job(run_id: str, files: list[tuple[bytes, str]], provider: Optional[str] = None) -> None:
+    set_progress(run_id, stage="start", done=0, total=0, message="Opening the drawings")
     try:
-        result = run_pdf_estimator(files)
+        picked = {"llm": build_default_pdf_llm(provider=provider)} if provider else {}
+        result = run_pdf_estimator(files, on_progress=lambda **p: set_progress(run_id, **p), **picked)
         record = run_store.get(run_id)
         record.result = result
         record.status = "passed" if result.success else "failed"
@@ -77,6 +96,8 @@ def run_pdf_job(run_id: str, files: list[tuple[bytes, str]]) -> None:
         record.status = "failed"
         record.error = str(e)
         run_store.put(record)
+    finally:
+        clear_progress(run_id)
 
 
 async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]],
@@ -91,12 +112,13 @@ async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[by
     return run_id
 
 
-async def launch_pdf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]]) -> str:
+async def launch_pdf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]],
+                         provider: Optional[str] = None) -> str:
     run_id = uuid.uuid4().hex[:12]
     label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
     run_store.put(RunRecord(run_id=run_id, pipeline="pdf", status="running", input_file=label))
     if ON_VERCEL:
-        await run_in_threadpool(run_pdf_job, run_id, pairs)
+        await run_in_threadpool(run_pdf_job, run_id, pairs, provider)
     else:
-        background_tasks.add_task(run_in_threadpool, run_pdf_job, run_id, pairs)
+        background_tasks.add_task(run_in_threadpool, run_pdf_job, run_id, pairs, provider)
     return run_id

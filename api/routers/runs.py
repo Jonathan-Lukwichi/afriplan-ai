@@ -19,7 +19,8 @@ from typing import List
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
-from core.run_jobs import launch_dxf_run, launch_pdf_run
+from core.run_jobs import checked_ai_provider, launch_dxf_run, launch_pdf_run
+from core.run_progress import get_progress
 from core.run_store import run_store
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
@@ -31,11 +32,13 @@ async def create_run(
     files: List[UploadFile] = File(...),
     pipeline: str = Form("dxf"),
     ai_symbols: bool = Form(False),     # DXF: name unnamed symbol shapes with AI (ADR-0007)
+    ai_provider: str = Form(""),        # PDF: "claude" | "gemini" — the user's pick; "" = server default
 ):
     if pipeline not in ("dxf", "pdf"):
         raise HTTPException(400, f"pipeline '{pipeline}' not supported")
     if not files:
         raise HTTPException(400, "no files uploaded")
+    provider = checked_ai_provider(ai_provider) if pipeline == "pdf" else None
 
     if pipeline == "dxf":
         # one drawing, or the whole set (SLDs + layouts + site plan) run as one project
@@ -43,7 +46,7 @@ async def create_run(
         run_id = await launch_dxf_run(background_tasks, pairs, ai_symbols=ai_symbols)
     else:
         pairs = [(await f.read(), f.filename or "input.pdf") for f in files]
-        run_id = await launch_pdf_run(background_tasks, pairs)
+        run_id = await launch_pdf_run(background_tasks, pairs, provider)
 
     # Off Vercel this is always "running" (the job is still in the
     # threadpool queue). On Vercel the job has already been awaited above,
@@ -63,5 +66,6 @@ def get_run(run_id: str):
         "status": record.status,
         "input_file": record.input_file,
         "error": record.error,
+        "progress": get_progress(record.run_id) if record.status == "running" else None,
         "result": record.result.model_dump(mode="json") if record.result is not None else None,
     }

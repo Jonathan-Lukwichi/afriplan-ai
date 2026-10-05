@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  ChevronLeft, FileText, GitCompare, Home, Layers, LogOut, Menu, ShieldCheck, Upload as UploadIcon, Wallet, X, Zap,
+  ChevronLeft, FileText, Home, Layers, LogOut, Menu, ShieldCheck, Upload as UploadIcon, Wallet, X, Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { page: 'welcome', label: 'Welcome', step: '01', icon: Home },
   { page: 'upload', label: 'Upload', step: '02', icon: UploadIcon },
   { page: 'extraction', label: 'Take-off', step: '03', icon: Layers },
-  { page: 'compare', label: 'Compare', step: '04', icon: GitCompare },
-  { page: 'boq', label: 'BoQ', step: '05', icon: FileText },
-  { page: 'pricing', label: 'Pricing', step: '06', icon: Wallet },
-  { page: 'audit', label: 'Audit a BoQ', step: '07', icon: ShieldCheck },
+  // No Compare entry: "Both, compare" on Upload opens that page with its result.
+  { page: 'boq', label: 'BoQ', step: '04', icon: FileText },
+  { page: 'pricing', label: 'Pricing', step: '05', icon: Wallet },
+  { page: 'audit', label: 'Audit a BoQ', step: '06', icon: ShieldCheck },
 ];
 
 const STORAGE_KEY = 'afriplan.sidebarOpen';

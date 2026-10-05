@@ -25,7 +25,7 @@ from typing import Callable, Dict, List, Literal, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from agent.shared import BQSection, GapItem
-from agent.shared.findings import KIOSK_ALLOWANCE, BoardFinding, FeederFinding, Findings, ItemFinding
+from agent.shared.findings import KIOSK_ALLOWANCE, BoardFinding, Evidence, FeederFinding, Findings, ItemFinding
 from agent.shared.routes import equipment_key as _equipment_key
 from agent.shared.sheets import pair_sheets
 
@@ -268,6 +268,7 @@ def _combine_items(cad: List[ItemFinding], pdf: List[ItemFinding], boards: List[
     has_main_kiosk = any(b.main_kiosk and b.reader == "dxf" for b in boards)
     kept: List[ItemFinding] = list(cad)
     pdf_qty: Dict[Tuple[str, str], float] = defaultdict(float)
+    pdf_items: Dict[Tuple[str, str], List[ItemFinding]] = defaultdict(list)
     for p in pdf:
         if p.item == KIOSK_ALLOWANCE and has_main_kiosk:
             out.decisions.append(Decision(kind="item", what=p.description, kept="dxf",
@@ -277,11 +278,30 @@ def _combine_items(cad: List[ItemFinding], pdf: List[ItemFinding], boards: List[
         name = alias.get(p.item, p.item)
         if sheet is not None and name and name in on_sheet[sheet]:
             pdf_qty[(sheet, name)] += p.qty
+            pdf_items[(sheet, name)].append(p)
             continue
         kept.append(p)
     for (sheet, name), pq in sorted(pdf_qty.items()):
         found = on_sheet[sheet][name]
         cq = sum(i.qty for i in found)
+        scheduled = all(p.evidence == Evidence.WRITTEN for p in pdf_items[(sheet, name)])
+        if scheduled and pq > cq:
+            # Symbol recognition can miss copies (exploded or unknown blocks) but never invents
+            # them; a HIGHER quantity printed in the designer's own schedule means the count
+            # missed some. A lower one may be out of date, so the count stands then.
+            kept = [i for i in kept if not any(i is f for f in found)]
+            kept += pdf_items[(sheet, name)]
+            out.decisions.append(Decision(kind="item", what=f"{name} on {sheet}", kept="pdf",
+                                          reason=f"The designer's schedule prints {pq:g}; the DWG count "
+                                                 f"found only {cq:g} symbols."))
+            pdf_items[(sheet, name)][0].gaps.append(GapItem(
+                section=found[0].section, building_block=found[0].building,
+                description=f"{name} on {sheet}: the legend schedule says {pq:g}, the DWG count found {cq:g}",
+                assumption="Priced on the designer's schedule (the count missed some symbols).",
+                suggested_action="Check that sheet: some symbols may be drawn as loose lines or other blocks.",
+                severity="medium", drawing_ref=sheet,
+            ))
+            continue
         out.decisions.append(Decision(kind="item", what=f"{name} on {sheet}", kept="dxf",
                                       reason=f"Every symbol counted on the DWG ({cq:g}); the PDF showed {pq:g}."))
         if abs(cq - pq) >= 2 and abs(cq - pq) > tol * max(cq, pq):

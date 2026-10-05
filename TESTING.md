@@ -1,12 +1,10 @@
 # How to test AfriPlan (product walkthrough)
 
-## Start the app (two terminals)
-```powershell
-# 1. Backend — http://127.0.0.1:8000
-cd api; .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
-# 2. Frontend — http://127.0.0.1:5180
-npm run dev
+## Start the app
+```bash
+python scripts/dev.py start     # macOS/Linux: python3 — backend :8000 + frontend :5180
 ```
+(First time on a machine: `python scripts/dev.py setup`. To start the servers by hand, see README.)
 Open **http://127.0.0.1:5180**, click *Sign in* (demo login, pre-filled).
 The PDF path needs `ANTHROPIC_API_KEY` in `api/.env` (≈ R 2.50 per page with Claude Opus 5). DXF/DWG is free.
 Wedela test files live in `data/projects/wedela/raw/` (local only — client data).
@@ -43,8 +41,14 @@ from the 4 mock suppliers and apply one.
 
 ## Automated checks
 ```powershell
+# Windows (PowerShell)
 api\.venv\Scripts\python.exe -m pytest -q -p no:warnings     # backend + evaluation + audit
 $env:VITE_API_BASE_URL="http://127.0.0.1:8000"; npm run build; npx playwright test   # browser
+```
+```bash
+# macOS / Linux
+api/.venv/bin/python -m pytest -q -p no:warnings
+VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build && npx playwright test
 ```
 
 ## Known gaps (see `issues/`)

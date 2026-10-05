@@ -18,7 +18,7 @@ import re
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
@@ -26,6 +26,7 @@ from agent.pdf_pipeline.llm import LLMError, PdfLLM
 from agent.pdf_pipeline.models import PageClassification, PageType, StageCost
 from agent.pdf_pipeline.passes.assemble import build_boq_from_facts
 from agent.pdf_pipeline.passes.facts import (
+    _ROOM_INT_FIELDS,
     Feeder,
     LayoutTakeoff,
     PdfFacts,
@@ -145,6 +146,8 @@ def extract_facts(
     llm: PdfLLM,
     pages: List[IngestedPage],
     classifications: List[PageClassification],
+    on_pages: Optional[Callable[[int], None]] = None,
+    on_page_done: Optional[Callable[[], None]] = None,
 ) -> Tuple[PdfFacts, List[StageCost]]:
     """Run Passes 1–3 across the classified pages → merged PdfFacts.
 
@@ -165,8 +168,17 @@ def extract_facts(
         if tool is not None:
             jobs.append((cls, page, tool))
 
+    if on_pages is not None:
+        on_pages(len(jobs))                        # how many pages the AI will read
+
+    def read(job):
+        out = _read_page(llm, *job)
+        if on_page_done is not None:
+            on_page_done()
+        return out
+
     with ThreadPoolExecutor(max_workers=PDF_PARALLEL_PAGES) as pool:
-        outcomes = list(pool.map(lambda j: _read_page(llm, *j), jobs))
+        outcomes = list(pool.map(read, jobs))
 
     for (cls, _page, _tool), out in zip(jobs, outcomes):
         costs.extend(out.costs)
@@ -303,14 +315,10 @@ def _merge_spine(dst: PowerSpine, src: PowerSpine, page: int = -1,
     dst.warnings.extend(src.warnings)
 
 
-_ROOM_COUNTS = (
-    "downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights", "emergency_lights",
-    "pole_lights", "solar_post_lights", "high_mast_poles", "double_sockets", "single_sockets",
-    "waterproof_sockets", "floor_sockets", "data_outlets", "switches_1lever", "switches_2lever",
-    "switches_3lever", "isolators", "day_night_switches",
-)
+_ROOM_COUNTS = _ROOM_INT_FIELDS                 # every count box on the form
 _SITE_LIGHTS = ("pole_lights", "solar_post_lights", "high_mast_poles")
-_LIGHT_COUNTS = _ROOM_COUNTS[:9]
+_LIGHT_COUNTS = ("downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights",
+                 "emergency_lights", "fluorescent_battens", "prismatic_lights", *_SITE_LIGHTS)
 
 
 def _room_key(r) -> Tuple[str, str]:
@@ -341,6 +349,7 @@ def _merge_takeoff(dst: LayoutTakeoff, src: LayoutTakeoff, page: int = -1,
         old.area_m2 = old.area_m2 or room.area_m2
         old.circuit_tags += [t for t in room.circuit_tags if t not in old.circuit_tags]
         old.confidence = max(old.confidence, room.confidence)
+        old.counts_from_legend_schedule = old.counts_from_legend_schedule or room.counts_from_legend_schedule
         old.source_pages.append(page)
     dst.legend.update(src.legend)
     dst.warnings.extend(src.warnings)
@@ -402,6 +411,8 @@ def _extract_power_spine_voted(
     tool: dict,
     validator: Optional[type[BaseModel]],
 ) -> Tuple[PowerSpine, List[GapItem], List[StageCost]]:
+    failures: List[str] = []
+
     def sample(i: int):
         try:
             return llm.call_with_tool(
@@ -418,12 +429,13 @@ def _extract_power_spine_voted(
             )
         except LLMError as e:                          # vote with the samples that arrived
             log.warning("Power-spine sample %d on page %d failed: %s", i, page_index, e)
+            failures.append(str(e))
             return None
 
     with ThreadPoolExecutor(max_workers=_SPINE_VOTE_SAMPLES) as pool:
         results = [r for r in pool.map(sample, range(_SPINE_VOTE_SAMPLES)) if r is not None]
-    if not results:
-        raise LLMError(f"every power-spine sample failed on page {page_index}")
+    if not results:                                    # keep the cause, not just the fact
+        raise LLMError(f"every power-spine sample failed on page {page_index}: {failures[-1]}")
     costs: List[StageCost] = [r.cost for r in results]
     samples: List[PowerSpine] = [parse_power_spine(r.tool_input) for r in results]
 

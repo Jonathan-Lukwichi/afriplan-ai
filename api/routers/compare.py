@@ -16,13 +16,14 @@ import asyncio
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
 from agent.comparison import compare_runs, export_comparison_to_pdf
 from core.compare_store import CompareRecord, compare_store
-from core.run_jobs import ON_VERCEL, run_dxf_job, run_pdf_job
+from core.run_jobs import ON_VERCEL, checked_ai_provider, run_dxf_job, run_pdf_job
+from core.run_progress import get_progress
 from core.run_store import RunRecord, run_store
 
 router = APIRouter(prefix="/api/compare", tags=["compare"])
@@ -31,10 +32,11 @@ router = APIRouter(prefix="/api/compare", tags=["compare"])
 async def _run_both_then_compare(
     compare_id: str, dxf_run_id: str, pdf_run_id: str,
     dxf_pairs: list[tuple[bytes, str]], pdf_pairs: list[tuple[bytes, str]],
+    provider: Optional[str] = None,
 ) -> None:
     await asyncio.gather(
         run_in_threadpool(run_dxf_job, dxf_run_id, dxf_pairs),
-        run_in_threadpool(run_pdf_job, pdf_run_id, pdf_pairs),
+        run_in_threadpool(run_pdf_job, pdf_run_id, pdf_pairs, provider),
     )
 
     dxf_record = run_store.get(dxf_run_id)
@@ -61,7 +63,9 @@ async def create_comparison(
     pdf_files: List[UploadFile] = File(...),
     dxf_files: Optional[List[UploadFile]] = File(None),
     dxf_file: Optional[UploadFile] = File(None),      # older clients: a single drawing
+    ai_provider: str = Form(""),                      # the PDF run's AI reader; "" = server default
 ):
+    provider = checked_ai_provider(ai_provider)
     dxf_uploads = list(dxf_files or []) + ([dxf_file] if dxf_file is not None else [])
     if not dxf_uploads:
         raise HTTPException(400, "no DXF/DWG drawing uploaded")
@@ -82,10 +86,10 @@ async def create_comparison(
         compare_id=compare_id, dxf_run_id=dxf_run_id, pdf_run_id=pdf_run_id, status="running",
     ))
     if ON_VERCEL:
-        await _run_both_then_compare(compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs)
+        await _run_both_then_compare(compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs, provider)
     else:
         background_tasks.add_task(
-            _run_both_then_compare, compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs,
+            _run_both_then_compare, compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs, provider,
         )
 
     # See runs.py's create_run: report the real status, since on Vercel the
@@ -105,6 +109,7 @@ def get_comparison(compare_id: str):
         "pdf_run_id": record.pdf_run_id,
         "status": record.status,
         "error": record.error,
+        "pdf_progress": get_progress(record.pdf_run_id) if record.status == "running" else None,
         "result": record.result.model_dump(mode="json") if record.result is not None else None,
     }
 

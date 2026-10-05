@@ -10,7 +10,9 @@ model must answer through the forced tool (function calling, mode ANY), and Pyth
 the answer against the schema and asks again when it is wrong.
 
 Free-tier limits are small (a few requests a minute), so requests are throttled and a
-"too many requests" answer is waited out and retried.
+"too many requests" answer is waited out and retried — except a used-up DAILY quota, which
+fails at once with a plain reason (waiting cannot help until it resets) and is remembered,
+so the rest of the run does not ask that model again.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import re
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from core.config import GEMINI_FALLBACK, ModelSpec, gemini_model_for
 
@@ -35,17 +37,37 @@ class GeminiError(RuntimeError):
     pass
 
 
+class GeminiQuotaError(GeminiError):
+    """The free daily quota of a model is used up — retrying today is pointless."""
+
+
+def _is_daily_quota(error_text: str) -> bool:
+    return "PerDay" in error_text
+
+
+def _daily_quota_message(model_id: str, error_text: str = "") -> str:
+    m = re.search(r'"quotaValue":\s*"(\d+)"', error_text)
+    limit = f"{m.group(1)} requests a day" if m else "a small number of requests a day"
+    return (f"Gemini's free daily limit is used up for {model_id} (the free tier allows {limit}; "
+            "a drawing set needs several requests per page). It resets at midnight US Pacific time "
+            "(about 09:00-10:00 in South Africa). To read PDFs now: set AI_PROVIDER=claude in api/.env "
+            "(paid API), or use the DOE workflow in Claude Code (subscription).")
+
+
 class GeminiClient:
     """Drop-in for `anthropic.Anthropic` where only `messages.create` is used."""
 
     def __init__(self, *, api_key: str, http_client: Any = None, max_concurrent: int = 2,
-                 max_retries: int = 6, timeout_s: float = 300.0):
+                 max_retries: int = 6, timeout_s: float = 300.0,
+                 on_wait: Optional[Callable[[str], None]] = None):
         if not api_key:
             raise GeminiError("GEMINI_API_KEY is not set")
         self._key = api_key
         self._http = http_client or _default_http(timeout_s)
         self._gate = threading.Semaphore(max(1, max_concurrent))
         self._retries = max_retries
+        self._on_wait = on_wait                     # tells the screen why nothing moves for a while
+        self._out_of_quota: Dict[str, str] = {}     # model id -> reason, for the rest of this client's life
         self.messages = self            # so callers can write client.messages.create(...)
 
     # ── the one method callers use ────────────────────────────────────
@@ -61,7 +83,7 @@ class GeminiClient:
             try:
                 data = self._post(spec.model_id, body)
             except GeminiError as e:
-                busy_or_gone = any(f"error {c}" in str(e) for c in (404, 429, 503))
+                busy_or_gone = isinstance(e, GeminiQuotaError) or any(f"error {c}" in str(e) for c in (404, 429, 503))
                 if not busy_or_gone or spec.model_id == GEMINI_FALLBACK.model_id:
                     raise
                 log.warning("Gemini %s unavailable (%s) — using %s", spec.model_id, str(e)[:80],
@@ -81,6 +103,8 @@ class GeminiClient:
     # ── transport ─────────────────────────────────────────────────────
 
     def _post(self, model_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        if model_id in self._out_of_quota:
+            raise GeminiQuotaError(self._out_of_quota[model_id])
         url = API_URL.format(model=model_id)
         delay = 5.0
         for attempt in range(self._retries + 1):
@@ -89,11 +113,19 @@ class GeminiClient:
                                                                 "content-type": "application/json"})
             if resp.status_code == 200:
                 return resp.json()
-            text = resp.text[:600]
+            full = resp.text or ""                  # the quota id and retryDelay sit past char 600
+            text = full[:600]
+            if resp.status_code == 429 and _is_daily_quota(full):
+                self._out_of_quota[model_id] = _daily_quota_message(model_id, full)
+                log.warning("Gemini %s: free daily quota used up — not retrying", model_id)
+                raise GeminiQuotaError(self._out_of_quota[model_id])
             if resp.status_code in _RETRY_STATUS and attempt < self._retries:
-                wait = _retry_delay(text) or delay
+                wait = min(_retry_delay(full) or delay, 60.0)
                 log.info("Gemini %s (attempt %d) — waiting %.0fs", resp.status_code, attempt + 1, wait)
-                time.sleep(min(wait, 60.0))
+                if self._on_wait is not None:
+                    self._on_wait(f"Gemini busy (free tier limit per minute) - waiting {wait:.0f} s, "
+                                  f"attempt {attempt + 1} of {self._retries}")
+                time.sleep(wait)
                 delay = min(delay * 2, 60.0)
                 continue
             raise GeminiError(f"Gemini API error {resp.status_code}: {text}")

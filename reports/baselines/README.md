@@ -32,6 +32,7 @@ The per-run reports linked below quote client figures and are kept locally (giti
 | 2026-10-02 | PDF read by Gemini free tier (app Compare run `6068ea040cb5`, R 0) | project-level | **40.2 %** | 77.4 % | 86.4 % | 52.0 % | re-score, R 0 |
 | 2026-10-02 | PDF read by Claude Code subscription (DOE skill `estimate-project`, forms `eyes7bead0b9`, R 0) | project-level | **47.5 %** | 79.7 % | 88.7 % | 59.6 % | [pdf-sub](2026-10-02-wedela-pdf-subscription.md) |
 | 2026-10-02 | **Combined** DWG set + subscription-read PDF (`doe/execution/project.py finish`) | project-level | **55.8 %** | — | — | — | DOE run |
+| 2026-10-02 | Combined, + form boxes (battens, prismatic, 2-way & master switches, motor starters), bill wording ("Vapour Proof"), printed-schedule rule | project-level | **58.5 %** | — | — | — | DOE run (CAD alone 48.7 %, PDF alone 50.6 %) |
 
 PDF runs: 18 pages — `b0a84e5563bf` R 18.46 (09-23), `6d7094fe359b` R 19.31 (09-26). DXF: 17 drawings, R 0.
 

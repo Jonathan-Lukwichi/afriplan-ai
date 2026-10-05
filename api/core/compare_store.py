@@ -46,6 +46,13 @@ class CompareStore:
                 (record.compare_id, record.dxf_run_id, record.pdf_run_id, record.status, result_json, record.error),
             )
 
+    def fail_interrupted(self, reason: str) -> int:
+        """Same rule as RunStore.fail_interrupted: at start-up a 'running' comparison is dead."""
+        with self._lock, get_connection() as conn:
+            cur = conn.execute("UPDATE comparisons SET status = 'failed', error = ? WHERE status = 'running'",
+                               (reason,))
+            return cur.rowcount or 0
+
     def get(self, compare_id: str) -> Optional[CompareRecord]:
         with self._lock, get_connection() as conn:
             row = conn.execute("SELECT * FROM comparisons WHERE compare_id = ?", (compare_id,)).fetchone()

@@ -17,7 +17,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ValidationError
 
@@ -119,13 +119,16 @@ class PdfLLM:
         api_key: Optional[str] = None,
         system_prompt: str,
         client: Any = None,
+        provider: Optional[str] = None,     # "claude" | "gemini": the user's pick; None = server default
     ):
+        # Set by the caller to hear what the provider is doing (e.g. "busy, waiting 41 s")
+        self.on_note: Optional[Callable[[str], None]] = None
         if client is not None:
             self._client = client
-        elif ai_provider() == "gemini":
+        elif (provider or ai_provider()) == "gemini":
             from core.gemini_client import GeminiClient
             key = api_key if api_key and not api_key.startswith("sk-ant") else os.environ.get("GEMINI_API_KEY", "")
-            self._client = GeminiClient(api_key=key)    # never send a Claude key to Google
+            self._client = GeminiClient(api_key=key, on_wait=self._note)    # never send a Claude key to Google
         else:
             anthropic = _get_anthropic()
             http_client = _build_tls_tolerant_http_client()
@@ -137,6 +140,10 @@ class PdfLLM:
                 kwargs["http_client"] = http_client
             self._client = anthropic.Anthropic(**kwargs)
         self._system_prompt = system_prompt
+
+    def _note(self, message: str) -> None:
+        if self.on_note is not None:
+            self.on_note(message)
 
     # ── public API ────────────────────────────────────────────────────
 
@@ -190,7 +197,7 @@ class PdfLLM:
                     temperature=temperature if model.supports_temperature else None,
                 )
             except Exception as e:  # noqa: BLE001 — preserve error chain for caller
-                raise LLMError(f"Anthropic API call failed: {e}") from e
+                raise LLMError(f"AI call failed: {e}") from e
 
             self._accumulate_cost(cost, response, model)
             cost.retry_count = attempt
@@ -353,9 +360,9 @@ make_anthropic_client = make_ai_client     # older name, kept for existing calle
 
 # ─── Convenience factory for the standard PDF-pipeline LLM ────────────
 
-def build_default_pdf_llm(*, api_key: Optional[str] = None) -> PdfLLM:
+def build_default_pdf_llm(*, api_key: Optional[str] = None, provider: Optional[str] = None) -> PdfLLM:
     from agent.pdf_pipeline.prompts.system_prompt import SYSTEM_PROMPT
-    return PdfLLM(api_key=api_key, system_prompt=SYSTEM_PROMPT)
+    return PdfLLM(api_key=api_key, system_prompt=SYSTEM_PROMPT, provider=provider)
 
 
 # Re-export models so callers don't need two imports

@@ -83,9 +83,11 @@ _FITTING_SPECS: Dict[str, Tuple[str, str, Optional[str], BQSection, str, str]] =
     "downlights":        ("light", "downlight_led_6w",     "downlight_6w",       BQSection.LIGHTING, "6W LED downlight", "LED Downlight"),
     "panel_lights":      ("light", "recessed_led_600x1200","recessed_600x1200",  BQSection.LIGHTING, "600x1200 recessed 3x18W LED panel", "Recessed LED Panel"),
     "bulkheads":         ("light", "bulkhead_24w",         "bulkhead_24w",       BQSection.LIGHTING, "24W bulkhead light", "Bulkhead Light"),
-    "vapour_proof":      ("light", "vapor_proof_2x24w",    "vapor_proof_2x24w",  BQSection.LIGHTING, "2x24W vapour-proof LED", "Vapour-Proof Light"),
+    "vapour_proof":      ("light", "vapor_proof_2x24w",    "vapor_proof_2x24w",  BQSection.LIGHTING, "2x24W vapour proof LED", "Vapour Proof Light"),
     "floodlights":       ("light", "flood_light_30w",      "flood_30w",          BQSection.LIGHTING, "30W LED floodlight", "LED Floodlight"),
     "emergency_lights":  ("light", "emergency_light_led",  None,                 BQSection.LIGHTING, "LED emergency light", "Emergency Light"),
+    "fluorescent_battens": ("light", "fluorescent_50w_5ft", None,                BQSection.LIGHTING, "50W 5ft single fluorescent / LED batten", "Fluorescent Batten"),
+    "prismatic_lights":  ("light", "prismatic_2x18w",      None,                 BQSection.LIGHTING, "2x18W double prismatic LED fitting", "Prismatic Light"),
     "pole_lights":       ("light", "pole_light_60w",       None,                 BQSection.LIGHTING, "60W outdoor pole light", "Pole Light"),
     "solar_post_lights": ("light", "solar_post_light_100w", None,                BQSection.LIGHTING, "100W LED solar post lantern (complete with pole)", "Solar Post Light"),
     "high_mast_poles":   ("light", "high_mast_2x600w_10m", None,                 BQSection.LIGHTING, "2x600W LED flood light on 10m high-mast post", "High-Mast Light"),
@@ -97,8 +99,10 @@ _FITTING_SPECS: Dict[str, Tuple[str, str, Optional[str], BQSection, str, str]] =
     "switches_1lever":   ("switch","switch_1lever_1way",   None,                 BQSection.POWER_OUTLETS, "1-lever 1-way switch", "1-Lever Switch"),
     "switches_2lever":   ("switch","switch_2lever_1way",   None,                 BQSection.POWER_OUTLETS, "2-lever 1-way switch", "2-Lever Switch"),
     "switches_3lever":   ("switch","switch_3lever_1way",   None,                 BQSection.POWER_OUTLETS, "3-lever 1-way switch", "3-Lever Switch"),
+    "switches_1lever_2way": ("switch","switch_1lever_2way", None,                BQSection.POWER_OUTLETS, "1-lever 2-way switch", "1-Lever 2-Way Switch"),
     "isolators":         ("switch","isolator_30a",         None,                 BQSection.POWER_OUTLETS, "30A isolator switch", "Isolator Switch"),
     "day_night_switches":("switch","day_night_switch",     None,                 BQSection.POWER_OUTLETS, "Day/night switch", "Day/Night Switch"),
+    "master_switches":   ("switch","master_switch",        None,                 BQSection.POWER_OUTLETS, "Master switch", "Master Switch"),
 }
 
 _PRICE_MAPS = {
@@ -183,6 +187,7 @@ def _boards(out: Findings, facts: PdfFacts) -> None:
             circuits=[(c.breaker_a, c.breaker_poles) for c in db.circuits if not c.is_spare],
             spares=sum(1 for c in db.circuits if c.is_spare),
             elcb=db.elcb_present, surge=db.surge_protection,
+            motor_starters=db.motor_starters, master_switch=db.master_switch,
             floor_standing=db.enclosure_mount == "floor_standing",
             building=db.name or db.location or "Distribution", sheet="SLD", evidence=Evidence.SEEN,
         ))
@@ -297,7 +302,8 @@ def _takeoff(out: Findings, facts: PdfFacts, cfg: AssembleConfig, crew: CrewRate
                 install_zar=(fitting_install_rate(install_key, crew) if install_key else None)
                 or cfg.default_point_install_labour,
                 free_issue=is_free, building=bldg, location=room.room_name, sheet=sheet,
-                evidence=Evidence.SEEN, notes="Free-issued by client — install only." if is_free else "",
+                # the designer's printed schedule is written on the drawing; a count is seen
+                evidence=Evidence.WRITTEN if room.counts_from_legend_schedule else Evidence.SEEN, notes="Free-issued by client — install only." if is_free else "",
             ))
         _wiring(out, room, cfg, bldg, sheet)
 

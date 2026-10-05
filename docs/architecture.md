@@ -52,7 +52,7 @@ sufficiency report and the partial-BOQ policy. See ADR-0003/0004.
 
 ## Reproducible baseline
 ```powershell
-$py = "api\.venv\Scripts\python.exe"
+$py = "api\.venv\Scripts\python.exe"   # macOS/Linux: py=api/.venv/bin/python, then $py instead of & $py
 & $py scripts/verify_data.py wedela
 & $py scripts/build_reference.py wedela
 & $py scripts/run_baseline.py --project wedela --pipeline dxf --out reports/baselines/<date>-wedela-dxf.md

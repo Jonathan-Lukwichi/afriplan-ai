@@ -195,6 +195,10 @@ _SPINE_DB = {
         },
         "elcb_present":     {"type": "boolean"},
         "surge_protection": {"type": "boolean"},
+        "motor_starters":   {"type": "integer", "minimum": 0,
+                             "description": "Number of motor starters drawn on this board (e.g. 'DOL' boxes). 0 if none."},
+        "master_switch":    {"type": "boolean",
+                             "description": "TRUE if a master switch / switch-disconnector is drawn on the board."},
         "circuits":         {"type": "array", "items": _SPINE_CIRCUIT_ROW},
         "confidence":       _CONFIDENCE,
         "source_snippet": {
@@ -261,6 +265,10 @@ _ROOM_FITTINGS = {
     "vapour_proof":      {"type": "integer", "minimum": 0},
     "floodlights":       {"type": "integer", "minimum": 0},
     "emergency_lights":  {"type": "integer", "minimum": 0},
+    "fluorescent_battens": {"type": "integer", "minimum": 0,
+                            "description": "Surface fluorescent / LED batten fittings, e.g. '50W 5ft 1-light white fluorescent'."},
+    "prismatic_lights":  {"type": "integer", "minimum": 0,
+                          "description": "Prismatic-diffuser fittings, e.g. '2x18W double prismatic LED fluorescent'."},
     "pole_lights":       {"type": "integer", "minimum": 0},
     # Site / external lighting (often on a site or external-works layout)
     "solar_post_lights": {"type": "integer", "minimum": 0,
@@ -277,8 +285,10 @@ _ROOM_FITTINGS = {
     "switches_1lever":   {"type": "integer", "minimum": 0},
     "switches_2lever":   {"type": "integer", "minimum": 0},
     "switches_3lever":   {"type": "integer", "minimum": 0},
+    "switches_1lever_2way": {"type": "integer", "minimum": 0, "description": "1-lever 2-way switches."},
     "isolators":         {"type": "integer", "minimum": 0},
     "day_night_switches":{"type": "integer", "minimum": 0},
+    "master_switches":   {"type": "integer", "minimum": 0, "description": "Master / lighting master switches."},
 }
 
 _TAKEOFF_ROOM = {
@@ -301,6 +311,11 @@ _TAKEOFF_ROOM = {
             "description": "Circuit labels visible in the room, e.g. ['L2-1','S4','ISO1'].",
         },
         **_ROOM_FITTINGS,
+        "counts_from_legend_schedule": {
+            "type": "boolean",
+            "description": "TRUE when these counts were read from a quantity (QTY) column printed in "
+                           "the drawing's legend - the designer's own schedule - not counted symbol by symbol.",
+        },
         "confidence": _CONFIDENCE,
     },
     "required": ["room_name", "confidence"],

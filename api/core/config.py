@@ -152,6 +152,14 @@ def ai_available() -> bool:
     return bool(os.environ.get("GEMINI_API_KEY" if ai_provider() == "gemini" else "ANTHROPIC_API_KEY"))
 
 
+_PROVIDER_KEYS = {"claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY"}
+
+
+def ai_providers_ready() -> list:
+    """The providers a user may pick for a run: those whose key the server holds."""
+    return [p for p, key in _PROVIDER_KEYS.items() if os.environ.get(key)]
+
+
 # ZAR / USD rate for cost reporting (rounded; refresh from XE quarterly)
 ZAR_PER_USD: float = 18.50
 

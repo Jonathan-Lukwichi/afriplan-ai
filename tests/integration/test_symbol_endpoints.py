@@ -9,7 +9,7 @@ client = TestClient(app)
 
 def test_choices_are_the_fixed_catalogue():
     choices = client.get("/api/symbols/choices").json()["choices"]
-    assert "Vapour-Proof Light" in choices and "Not an electrical symbol" in choices
+    assert "Vapour Proof Light" in choices and "Not an electrical symbol" in choices
 
 
 def test_a_person_names_a_shape_and_the_ai_cannot_overwrite_it():

@@ -32,7 +32,7 @@ def _boq(pipeline: str, run_id: str) -> BillOfQuantities:
 
 
 def test_compare_orchestration_runs_concurrently_and_computes_result(monkeypatch):
-    def fake_run_pdf_estimator(files):
+    def fake_run_pdf_estimator(files, on_progress=None):
         return EstimatorRun(
             run_id="pdf-test", timestamp=datetime.utcnow(), project_name="Integration Test",
             boq=_boq("pdf", "pdf-test"), cost_zar=1.5, duration_s=0.01, success=True,

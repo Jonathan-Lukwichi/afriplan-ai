@@ -287,9 +287,12 @@ def finish(folder: Path, *, name: str = "", reference: str = "", pdf_reader: str
     # 6 — optional evaluation against a reference project's real bill
     scores = {}
     if reference:
-        scores = _evaluate(reference, boq, dxf.boq if dxf else None,
-                           price_findings(pdf_findings, pipeline="pdf", project_name=project) if pdfs else None)
+        scores, cards = _evaluate(reference, boq, dxf.boq if dxf else None,
+                                  price_findings(pdf_findings, pipeline="pdf", project_name=project) if pdfs else None)
         say("6. Evaluation vs the real bill: " + "; ".join(f"{k} {v['rs']:.1%}" for k, v in scores.items()))
+        write_accuracy_report(cards, project=project, reference=reference, stamp=stamp, out=out,
+                              archive=ROOT / "reports" / "accuracy")
+        say("   Accuracy report: accuracy_report.md / .json (copy in reports/accuracy/, kept out of git)")
 
     (out / "summary.json").write_text(json.dumps({
         "project": project, "stamp": stamp, "xlsx": str(xlsx), "pdf": str(pdfp),
@@ -314,7 +317,7 @@ def _evaluate(reference: str, combined, cad_boq, pdf_boq) -> dict:
     from evaluation.reference import load_reference
     os.chdir(ROOT)
     manifest, ref, model = load_manifest(reference), load_reference(reference), load_ratio_model(reference)
-    out = {}
+    out, cards = {}, {}
     for label, boq, attribute, source in (
             ("CAD alone", cad_boq, lambda b: rb._attribute_dxf(b, manifest), "dwg"),
             ("PDF alone", pdf_boq, lambda b: rb._attribute_pdf(b, ref), "pdf"),
@@ -322,11 +325,30 @@ def _evaluate(reference: str, combined, cad_boq, pdf_boq) -> dict:
         if boq is None:
             continue
         _, p = rb.score_runs(attribute(boq), ref, manifest, source, label, completed=False, model=model)
+        cards[label] = p
         out[label] = {"rs": p.reproduction_score, "coverage": p.coverage, "precision": p.precision,
                       "qty": p.qty_accuracy, "rate": p.rate_accuracy,
                       "total_off": abs(p.predicted_value - p.reference_value) / p.reference_value
                       if p.reference_value else None}
-    return out
+    return out, cards
+
+
+def write_accuracy_report(cards: dict, *, project: str, reference: str, stamp: str, out: Path,
+                          archive: Path) -> list:
+    """accuracy_report.md + .json in the run's output folder, and a dated copy in `archive`.
+    Both quote the reference bill (client data) — reports/accuracy/ is gitignored."""
+    from evaluation.accuracy_report import build_accuracy_report, render_accuracy_markdown
+    delivered = "Combined (delivered)" if "Combined (delivered)" in cards else next(iter(cards))
+    rep = build_accuracy_report(cards, project=project, run=f"{stamp} vs {reference}", delivered=delivered)
+    md, js = render_accuracy_markdown(rep), json.dumps(rep, indent=1)
+    archive.mkdir(parents=True, exist_ok=True)
+    written = []
+    for folder, base in ((out, "accuracy_report"), (archive, f"{stamp}-{reference}-doe-accuracy")):
+        for suffix, text in ((".md", md), (".json", js)):
+            path = folder / f"{base}{suffix}"
+            path.write_text(text, encoding="utf-8")
+            written.append(path)
+    return written
 
 
 def main() -> int:

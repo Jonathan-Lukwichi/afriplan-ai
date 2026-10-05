@@ -11,7 +11,7 @@ Needs **Docker Desktop** running (whale icon in the taskbar says "Engine running
 
 1. **Build the image** (first time ~25 min — it compiles the DWG converter; later builds are quick):
    ```powershell
-   cd C:\Users\BIBINBUSINESS\OneDrive\Desktop\afriplan-web
+   cd <your clone of the repo>
    docker build -t afriplan:test .
    ```
    *This PC only:* Avast's Web Shield intercepts HTTPS, so the plain build fails with
@@ -44,7 +44,12 @@ Needs **Docker Desktop** running (whale icon in the taskbar says "Engine running
 6. Render asks for the secret values (they are never stored in git):
    | Key | What to put |
    |---|---|
-   | `ANTHROPIC_API_KEY` | your Anthropic key — enables the **PDF** engine and Live-Pricing replies. Leave empty for DWG/DXF-only. |
+   | `ANTHROPIC_API_KEY` | your Anthropic key — enables the **PDF** engine (paid, fast) and Live-Pricing replies. |
+   | `GEMINI_API_KEY` | your free Google AI Studio key — the free, slower PDF reader. |
+   | `AI_PROVIDER` | optional: `claude` or `gemini` — which one is pre-selected when both keys are set. |
+
+   Set **both** keys and the Upload page lets each user pick the PDF reader (Claude or Gemini)
+   per run; set one and that one is used; set none and only DWG/DXF works.
    | `RESEND_API_KEY` | optional — only for "Email this BoQ" |
    | `NOTIFY_FROM_EMAIL` | optional — sender address for those emails |
 7. Click **Apply** / **Create**. The first build takes ~20–30 min (it compiles LibreDWG);

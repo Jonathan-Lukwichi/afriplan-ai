@@ -42,6 +42,8 @@ class SpineDB(BaseModel):
     enclosure_mount: str = "unknown"
     elcb_present: bool = False
     surge_protection: bool = False
+    motor_starters: int = 0          # DOL / star-delta starters drawn on the board
+    master_switch: bool = False      # a master switch / switch-disconnector on the board
     circuits: List[SpineCircuit] = Field(default_factory=list)
     confidence: float = 0.0
     # Verbatim text the model read the rating from (e.g. "DB-AB1  400V, 100A,
@@ -100,6 +102,8 @@ class TakeoffRoom(BaseModel):
     vapour_proof: int = 0
     floodlights: int = 0
     emergency_lights: int = 0
+    fluorescent_battens: int = 0    # surface fluorescent / LED battens (e.g. 50W 5ft single)
+    prismatic_lights: int = 0       # prismatic-diffuser fittings (e.g. 2x18W double prismatic)
     pole_lights: int = 0
     solar_post_lights: int = 0      # self-powered: billed per post, no reticulation wire
     high_mast_poles: int = 0        # fed by their own feeder: billed per post, no reticulation
@@ -113,18 +117,22 @@ class TakeoffRoom(BaseModel):
     switches_1lever: int = 0
     switches_2lever: int = 0
     switches_3lever: int = 0
+    switches_1lever_2way: int = 0
     isolators: int = 0
     day_night_switches: int = 0
+    master_switches: int = 0
 
+    counts_from_legend_schedule: bool = False   # counts read from the legend's printed QTY column
     confidence: float = 0.0
     source_pages: List[int] = Field(default_factory=list)   # sheets this room was read on (merge, issue 011)
 
     _LIGHT_FIELDS = ("downlights", "panel_lights", "bulkheads", "vapour_proof",
-                     "floodlights", "emergency_lights", "pole_lights")
+                     "floodlights", "emergency_lights", "fluorescent_battens", "prismatic_lights",
+                     "pole_lights")
     _OUTLET_FIELDS = ("double_sockets", "single_sockets", "waterproof_sockets",
                       "floor_sockets", "data_outlets")
     _SWITCH_FIELDS = ("switches_1lever", "switches_2lever", "switches_3lever",
-                      "isolators", "day_night_switches")
+                      "switches_1lever_2way", "isolators", "day_night_switches", "master_switches")
 
     def light_points(self) -> int:
         return sum(getattr(self, f) for f in self._LIGHT_FIELDS)
@@ -257,6 +265,8 @@ def parse_power_spine(tool_input: Dict[str, Any]) -> PowerSpine:
             enclosure_mount=_s(db, "enclosure_mount", "unknown"),
             elcb_present=_b(db, "elcb_present"),
             surge_protection=_b(db, "surge_protection"),
+            motor_starters=_i(db, "motor_starters"),
+            master_switch=_b(db, "master_switch"),
             circuits=[_parse_circuit(c) for c in db.get("circuits", []) or []],
             confidence=_f(db, "confidence"),
             source_snippet=_s(db, "source_snippet"),
@@ -297,10 +307,12 @@ def parse_power_spine(tool_input: Dict[str, Any]) -> PowerSpine:
 
 _ROOM_INT_FIELDS = (
     "downlights", "panel_lights", "bulkheads", "vapour_proof", "floodlights",
-    "emergency_lights", "pole_lights", "solar_post_lights", "high_mast_poles",
+    "emergency_lights", "fluorescent_battens", "prismatic_lights",
+    "pole_lights", "solar_post_lights", "high_mast_poles",
     "double_sockets", "single_sockets",
     "waterproof_sockets", "floor_sockets", "data_outlets", "switches_1lever",
-    "switches_2lever", "switches_3lever", "isolators", "day_night_switches",
+    "switches_2lever", "switches_3lever", "switches_1lever_2way", "isolators",
+    "day_night_switches", "master_switches",
 )
 
 
@@ -315,6 +327,7 @@ def parse_layout_takeoff(tool_input: Dict[str, Any]) -> LayoutTakeoff:
             ceiling_height_m=_f(r, "ceiling_height_m"),
             circuit_tags=[str(x) for x in r.get("circuit_tags", []) or []],
             confidence=_f(r, "confidence"),
+            counts_from_legend_schedule=_b(r, "counts_from_legend_schedule"),
             **{f: _i(r, f) for f in _ROOM_INT_FIELDS},
         )
         rooms.append(room)
