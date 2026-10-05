@@ -138,7 +138,12 @@ inside an optimisation loop · push to `main` / deploy without approval.
 - **DOE workflow** (2026-10-02, `doe/execution/project.py` + skill `estimate-project`): PDF pages
   read by Claude Code on the subscription → Wedela PDF **47.5 %** (Claude API 27.1 %, Gemini free
   40.2 %); combined with the DWG set **55.8 % — the best so far**. Forms are saved per page so every
-  result can be reproduced; a missing or invalid form stops `finish`.
+  result can be reproduced; a missing or invalid form stops `finish`. With the 2026-10-02 form
+  boxes: **58.5 %** (CAD alone 48.7 %, PDF alone 50.6 %).
+- **Accuracy report** (`docs/accuracy-metrics.md`): `finish --reference <p>` writes
+  `accuracy_report.md/.json` — every reader's metrics and the missing points split by item, cause
+  and kind of fix (`evaluation/gaps.py`); dated copies in `reports/accuracy/` (gitignored). Wedela's
+  biggest gaps: feeder cable sizes, boards counted twice, derived material not produced, trench length.
 - Biggest levers next: building attribution (008), a second reference project (014),
   tag→symbol attribution on site plans (leader lines), site-lighting double counts across
   PDF sheets (flagged, not yet merged).

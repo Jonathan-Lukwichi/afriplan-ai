@@ -20,6 +20,8 @@ data/projects/*/reference_boq.json
 data/projects/*/ratio_model.json
 reports/baselines/*-wedela-*.md
 reports/audits/wedela-*.md
+reports/accuracy/*
+!reports/accuracy/README.md
 runs/
 # Local conversation logs (session-logger) — may quote client details
 sessions/
