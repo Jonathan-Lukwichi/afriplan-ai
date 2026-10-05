@@ -74,7 +74,7 @@ def setup() -> int:
           if ensure_env_file(ROOT) else "  api/.env already exists — left unchanged")
     print("3/3 Frontend packages (node_modules)")
     _run([_npm(), "install", "--no-fund", "--no-audit"])
-    print(f"\nReady. Start the app with:  {Path(sys.executable).name} scripts/dev.py start")
+    print(f"\nReady. Start the app with:  {'python' if os.name == 'nt' else 'python3'} scripts/dev.py start")
     return 0
 
 
