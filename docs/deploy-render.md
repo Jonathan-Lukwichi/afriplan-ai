@@ -11,7 +11,7 @@ Needs **Docker Desktop** running (whale icon in the taskbar says "Engine running
 
 1. **Build the image** (first time ~25 min — it compiles the DWG converter; later builds are quick):
    ```powershell
-   cd C:\Users\BIBINBUSINESS\OneDrive\Desktop\afriplan-web
+   cd <your clone of the repo>
    docker build -t afriplan:test .
    ```
    *This PC only:* Avast's Web Shield intercepts HTTPS, so the plain build fails with

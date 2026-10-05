@@ -13,9 +13,9 @@ CNN more trustworthy. Ratios need ≥ 3 buildings for a LOO error; a CNN needs 5
    priced BOQ `.xlsx`). Skip `.bak`, `.dwl`, `.dwl2`, `plot.log`. Never commit raw/.
 2. **Manifest.** Extend `scripts/verify_data.py` with this project's drawing-code →
    building map (like `WEDELA_CODES`) and building list, then:
-   `python scripts/verify_data.py <project> --write` → review every role/building/
-   `superseded` flag by hand → `python scripts/verify_data.py <project>` prints OK.
-3. **Parse the bill:** `python scripts/build_reference.py <project>`. Check the
+   `$PY scripts/verify_data.py <project> --write` → review every role/building/
+   `superseded` flag by hand → `$PY scripts/verify_data.py <project>` prints OK.
+3. **Parse the bill:** `$PY scripts/build_reference.py <project>`. Check the
    printed summary total equals the workbook's. Then list unclassified lines:
    ```python
    from evaluation.reference import load_reference

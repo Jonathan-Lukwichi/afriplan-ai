@@ -10,17 +10,17 @@ what the uploaded drawings can and cannot support.
 
 ## Audit a reference (human-priced) bill
 ```bash
-python scripts/audit_boq.py --project wedela --out reports/audits/wedela-reference-audit.md
+$PY scripts/audit_boq.py --project wedela --out reports/audits/wedela-reference-audit.md
 ```
 
 ## Audit a pipeline bill
 ```bash
-python scripts/audit_boq.py --project wedela --boq <boq-or-run.json> --building "Storage"
+$PY scripts/audit_boq.py --project wedela --boq <boq-or-run.json> --building "Storage"
 ```
 
 ## Drawing sufficiency (complete vs partial BOQ)
 ```bash
-python scripts/audit_boq.py --project wedela --sufficiency --out reports/audits/wedela-drawing-sufficiency.md
+$PY scripts/audit_boq.py --project wedela --sufficiency --out reports/audits/wedela-drawing-sufficiency.md
 ```
 "Coverage ceiling" = the share of the bill's value the available drawing types can
 reproduce. "Request next" = which drawing unlocks the most value.

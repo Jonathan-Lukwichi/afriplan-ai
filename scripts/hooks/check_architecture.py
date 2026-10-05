@@ -17,6 +17,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def pytest_python(root: Path) -> str:
+    """The project venv's Python (it has pytest) when set up, else whatever ran this hook."""
+    for venv in (root / "api" / ".venv" / "Scripts" / "python.exe", root / "api" / ".venv" / "bin" / "python"):
+        if venv.exists():
+            return str(venv)
+    return sys.executable
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -27,7 +35,7 @@ def main() -> int:
     if not str(path).endswith(".py"):
         return 0
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/architecture", "-q", "-p", "no:warnings"],
+        [pytest_python(ROOT), "-m", "pytest", "tests/architecture", "-q", "-p", "no:warnings"],
         cwd=ROOT, capture_output=True, text=True,
     )
     if proc.returncode == 0:

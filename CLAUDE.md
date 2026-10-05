@@ -23,7 +23,7 @@ There are **two ways to produce a BoQ**:
 
 ## Start of every session — ASK FIRST
 Before any other work, ask the user (AskUserQuestion) which they want this session:
-- **Web app** → start backend + frontend (commands below), confirm both answer, give the links.
+- **Web app** → `python scripts/dev.py start` (or the commands below), confirm both answer, give the links.
 - **DOE workflow** → ask for the project folder, then run the `estimate-project` skill.
 - **Develop the code** → normal engineering work on this repo.
 Skip the question only if the user's first message already makes the choice clear.
@@ -54,20 +54,26 @@ Skip the question only if the user's first message already makes the choice clea
 | Baseline index (per-run reports local — client figures) | `reports/baselines/` |
 
 ## Run, build, test
-```powershell
-# Backend (main.py has no __main__ block — run uvicorn)
-cd api; .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
-# Frontend
+Runs on **Windows, macOS and Linux** (Python 3.12+, Node 20+). `$PY` below = the project venv:
+`api\.venv\Scripts\python.exe` on Windows, `api/.venv/bin/python` on macOS/Linux — never the
+system `python`. Use forward slashes in paths; keep new code OS-neutral (`pathlib`, no `.exe`
+or drive letters without a macOS/Linux equivalent).
+```bash
+python scripts/dev.py setup                          # first time on a machine (macOS: python3)
+python scripts/dev.py start                          # backend :8000 + frontend :5180, Ctrl+C stops both
+# ...or by hand (main.py has no __main__ block — run uvicorn from api/)
+cd api && $PY -m uvicorn main:app --host 127.0.0.1 --port 8000
 npm run dev                                          # http://127.0.0.1:5180
 # DOE workflow (Claude Code reads the pages between the two steps — see skill estimate-project)
-api\.venv\Scripts\python.exe doe\execution\project.py prepare "<project folder>"
-api\.venv\Scripts\python.exe doe\execution\project.py finish  "<project folder>" [--reference wedela]
+$PY doe/execution/project.py prepare "<project folder>"
+$PY doe/execution/project.py finish  "<project folder>" [--reference wedela]
 # Verify (all must pass before a commit)
-api\.venv\Scripts\python.exe -m pytest -q -p no:warnings   # ~390 tests, no network (pytest.ini: pythonpath=api)
+$PY -m pytest -q -p no:warnings                      # ~530 tests, no network (pytest.ini: pythonpath=api)
 npm run build
 npx playwright test                                  # e2e; audit spec needs the backend + local workbook
-api\.venv\Scripts\python.exe scripts/evaluate.py --project wedela --self-test   # RS 100.0%
+$PY scripts/evaluate.py --project wedela --self-test # RS 100.0% (needs the local Wedela data)
 ```
+A fresh clone skips the tests that need `data/projects/*/raw/` (client data, never in git).
 Test dirs for the new packages end in `_layer` (`tests/evaluation_layer/`) — a
 `tests/evaluation/` package would shadow `evaluation`.
 

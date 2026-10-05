@@ -9,20 +9,22 @@ Direction: `doe/playbook/PLAYBOOK.md` (rules, scores, when to stop) and `doe/pla
 Execution: `doe/execution/project.py` — every number comes from it. You only READ drawings and
 DECIDE; you never compute a quantity, length or price, and you never edit `api/`, `src/` or the scorer.
 
-Shell: PowerShell, from the repo root, `$env:PYTHONIOENCODING="utf-8"`, Python `api\.venv\Scripts\python.exe`.
+Run from the repo root. `$PY` = the project venv: `api\.venv\Scripts\python.exe` on Windows
+(PowerShell: also set `$env:PYTHONIOENCODING="utf-8"`), `api/.venv/bin/python` on macOS/Linux.
+No venv yet → run `python scripts/dev.py setup` first (macOS: `python3`).
 
 ## 1. Prepare (deterministic)
 ```
-api\.venv\Scripts\python.exe doe\execution\project.py prepare "<project folder>"
+$PY doe/execution/project.py prepare "<project folder>"
 ```
 It lists every PDF page as pNN with its sheet name and writes, under
-`<folder>\AfriPlan_Output\work\`: `pages\pNN.png` (whole page), `pNN_q1..q4.png` (zoomed
+`<folder>/AfriPlan_Output/work/`: `pages/pNN.png` (whole page), `pNN_q1..q4.png` (zoomed
 quarters), `pNN_legend1/2.png` (the legend / quantity table at high zoom, when the page has a
-text layer), `pNN.txt` (text layer), and `forms\README.md` (the exact instructions + strict
+text layer), `pNN.txt` (text layer), and `forms/README.md` (the exact instructions + strict
 schemas). No PDFs → skip to step 3.
 
-## 2. Read every page → one form per page (`forms\pNN.json`)
-Read `forms\README.md` once. Then for each page, look at `pNN.png` first; open quarters or the
+## 2. Read every page → one form per page (`forms/pNN.json`)
+Read `forms/README.md` once. Then for each page, look at `pNN.png` first; open quarters or the
 legend crops whenever text or symbols are too small. Write:
 `{"page_type": ..., "tool": "read_power_spine" | "read_layout_takeoff" | "read_project_context" | "none", "input": {...}}`
 
@@ -48,15 +50,15 @@ geysers, A/C units — their connection is billed via the isolator) is written i
 
 ## 3. Finish (deterministic)
 ```
-api\.venv\Scripts\python.exe doe\execution\project.py finish "<project folder>" [--name "<Project>"] [--reference <reference project>]
+$PY doe/execution/project.py finish "<project folder>" [--name "<Project>"] [--reference <reference project>]
 ```
 A missing or invalid form STOPS the run with the reason — fix the form and run finish again.
-Output in `<folder>\AfriPlan_Output\`: `<Project>_BoQ_<stamp>.xlsx` + `.pdf`, `things_to_check.md`,
+Output in `<folder>/AfriPlan_Output/`: `<Project>_BoQ_<stamp>.xlsx` + `.pdf`, `things_to_check.md`,
 `summary.json` (scores when `--reference` is given).
 
 ## 4. Decide and report
 - Read `summary.json` and the top of `things_to_check.md`; tell the owner the totals, the number
   of things to check, the most serious ones, and the scores if any.
-- E-mail when asked: `doe\execution\send_email.py "<folder>\AfriPlan_Output"` (exit 4 = no mail
+- E-mail when asked: `$PY doe/execution/send_email.py "<folder>/AfriPlan_Output"` (exit 4 = no mail
   credentials → say so; never paste large attachments by hand).
 - Add anything that surprised you to `doe/playbook/LESSONS.md` (general lessons, no client figures).

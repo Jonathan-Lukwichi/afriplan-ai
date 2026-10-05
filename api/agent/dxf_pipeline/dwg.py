@@ -33,6 +33,8 @@ _LIBREDWG_CANDIDATES = [
     os.path.expanduser(r"~\libredwg\dwg2dxf.exe"),
     os.path.expanduser("~/libredwg/dwg2dxf"),
     r"C:\Program Files\libredwg\dwg2dxf.exe",
+    "/opt/homebrew/bin/dwg2dxf",   # macOS `brew install libredwg` (Apple Silicon)
+    "/usr/local/bin/dwg2dxf",      # macOS Intel Homebrew / Linux source build
 ]
 
 # ODA File Converter — fallback (needs an ODA account to install).
@@ -41,6 +43,7 @@ _ODA_CANDIDATES = [
     "ODAFileConverter",
     "ODAFileConverter.exe",
     r"C:\Program Files\ODA\ODAFileConverter\ODAFileConverter.exe",
+    "/Applications/ODAFileConverter.app/Contents/MacOS/ODAFileConverter",
 ]
 
 
@@ -136,7 +139,7 @@ def convert_dwg_to_dxf(dwg_bytes: bytes, file_name: str = "input.dwg") -> Conver
             error=(
                 "No DWG→DXF converter found. Install the free LibreDWG "
                 "(https://github.com/LibreDWG/libredwg/releases — no login, unzip "
-                "and put dwg2dxf.exe on PATH or in ~/libredwg/), or the ODA File "
+                "and put dwg2dxf.exe on PATH or in ~/libredwg/; macOS: brew install libredwg), or the ODA File "
                 "Converter, or simply 'Save As DXF' from your CAD program and "
                 "upload the .dxf directly."
             ),

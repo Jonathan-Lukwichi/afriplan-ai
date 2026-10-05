@@ -21,7 +21,7 @@ Rules
 - Use real strings from real drawings/bills as fixtures (the taxonomy tests do this).
 - Tests must not hit the network; tests needing `data/projects/*/raw/` use
   `pytest.mark.skipif(not raw_available(...))`.
-- After each green: `python -m pytest -q -p no:warnings` (full suite) before committing.
+- After each green: `$PY -m pytest -q -p no:warnings` (full suite) before committing.
 
 Test locations: `tests/<pipeline>/unit/`, `tests/shared/`, and `tests/<layer>_layer/`
 for top-level packages (never `tests/evaluation/` — it would shadow the package).

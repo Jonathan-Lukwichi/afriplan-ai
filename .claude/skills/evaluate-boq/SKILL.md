@@ -9,14 +9,14 @@ description: Score a pipeline BOQ against a human-priced reference project with 
 list of exactly what was missed — never an anecdote.
 
 ## Before you start
-1. `python scripts/verify_data.py <project>` → must print `OK`. If not, stop: the inputs
+1. `$PY scripts/verify_data.py <project>` → must print `OK`. If not, stop: the inputs
    are not the ones the committed baselines were scored on.
-2. `python scripts/evaluate.py --project <project> --self-test` → must print `RS 100.0%`.
+2. `$PY scripts/evaluate.py --project <project> --self-test` → must print `RS 100.0%`.
 
 ## Score a whole pipeline (the baseline)
 ```bash
-python scripts/run_baseline.py --project wedela --pipeline dxf --out reports/baselines/<YYYY-MM-DD>-wedela-dxf.md
-python scripts/run_baseline.py --project wedela --pipeline pdf --out reports/baselines/<YYYY-MM-DD>-wedela-pdf.md   # PAID — ask first
+$PY scripts/run_baseline.py --project wedela --pipeline dxf --out reports/baselines/<YYYY-MM-DD>-wedela-dxf.md
+$PY scripts/run_baseline.py --project wedela --pipeline pdf --out reports/baselines/<YYYY-MM-DD>-wedela-pdf.md   # PAID — ask first
 ```
 Read the four headline rows (per-building / project-level × as-is / +completer).
 Per-building is strict (needs correct building attribution); project-level shows what
@@ -24,8 +24,8 @@ was quantified at all.
 
 ## Score one run or one BOQ
 ```bash
-python scripts/evaluate.py --project wedela --run runs/dxf/<id>.json --building "Small Guard House" --source dwg
-python scripts/evaluate.py --project wedela --boq boq.json --building "Storage" --source pdf --out reports/x.md
+$PY scripts/evaluate.py --project wedela --run runs/dxf/<id>.json --building "Small Guard House" --source dwg
+$PY scripts/evaluate.py --project wedela --boq boq.json --building "Storage" --source pdf --out reports/x.md
 ```
 
 ## How to read the report

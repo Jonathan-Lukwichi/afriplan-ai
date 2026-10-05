@@ -21,4 +21,6 @@ data/projects/*/ratio_model.json
 reports/baselines/*-wedela-*.md
 reports/audits/wedela-*.md
 runs/
+# Local conversation logs (session-logger) — may quote client details
+sessions/
 
