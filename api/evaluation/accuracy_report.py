@@ -14,6 +14,7 @@ from typing import Dict
 
 from evaluation.gaps import analyse_gaps
 from evaluation.metrics import Scorecard
+from evaluation.reading import reading_accuracy
 
 METRICS_EXPLAINED = {
     "reproduction_score": "HEADLINE. Share of the real bill's value we reproduced with the right quantity: "
@@ -38,7 +39,8 @@ def build_accuracy_report(cards: Dict[str, Scorecard], *, project: str, run: str
                           top_n: int = 30) -> dict:
     readers = {label: {**{m: getattr(c, m) for m in _HEADLINE},
                        "scoped_reproduction_score": c.scoped.get("reproduction_score", 0.0),
-                       "reference_value": c.reference_value, "predicted_value": c.predicted_value}
+                       "reference_value": c.reference_value, "predicted_value": c.predicted_value,
+                       "reading": reading_accuracy(c)}
                for label, c in cards.items()}
     g = analyse_gaps(cards[delivered])
     return {
@@ -65,13 +67,43 @@ def _pts(v: float) -> str:
     return f"{v * 100:.1f}"
 
 
+def _reading_section(rep: dict) -> list:
+    """Reading accuracy first: only what is counted or measured on the uploaded drawings; no prices."""
+    rd = rep["readers"][rep["delivered"]]["reading"]
+    out = ["## Reading accuracy — did we read what is drawn? (prices play no part)", "",
+           "Judged only on items that are **counted or measured on the uploaded drawings** "
+           f"({_pct(rd['judged_share_of_bill'])} of the real bill's value). Each item weighs what it is worth "
+           "in the real bill; our own rates never enter.", "",
+           "| Reader | **Reading score** | Coverage | Qty accuracy | Items found | Within ±5 % | Within ±10 % | Item precision |",
+           "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for label, r in rep["readers"].items():
+        g = r["reading"]
+        out.append(f"| {label} | **{_pct(g['reading_score'])}** | {_pct(g['coverage'])} | {_pct(g['qty_accuracy'])} | "
+                   f"{g['items_found']} / {g['items_judged']} | {g['items_within_5pct']} | {g['items_within_10pct']} | "
+                   f"{_pct(g['item_precision'])} |")
+    out += ["", "Not judged as reading (they are not counted or measured on the uploaded drawings):", ""]
+    why = {"derived": "follow from other items by an estimating rule",
+           "provisional": "never on any drawing (sums, fees, P&Gs)",
+           "not_on_uploaded_drawings": "the drawing that shows them was not uploaded"}
+    out += [f"- **{name}** ({_pct(x['share_of_bill'])} of the bill) — {why.get(name, name)}: "
+            f"{', '.join(x['families'])}" for name, x in rd["excluded"].items()]
+    out += ["", f"### Reading losses, {rep['delivered']} (biggest first)", "",
+            "| Building | Item | Method | Real qty | Our qty | Verdict | Points lost |", "|---|---|---|---:|---:|---|---:|"]
+    out += [f"| {i['building']} | `{i['key']}` {i['label'][:40]} | {i['method']} | {i['ref_qty']:g} | {i['pred_qty']:g} | "
+            f"{i['verdict']} | {_pts(i['points_lost'])} |" for i in rd["items"] if i["points_lost"] > 0.0005][:30]
+    if rd["extras"]:
+        out += ["", "Read by us but not in the real bill: " + ", ".join(f"`{e}`" for e in rd["extras"])]
+    return out + [""]
+
+
 def render_accuracy_markdown(rep: dict) -> str:
     g = rep["delivered_gaps"]
     d = rep["readers"][rep["delivered"]]
     out = [f"# Accuracy report — {rep['project']} — {rep['run']}", "",
            f"**{rep['delivered']}: Reproduction Score {_pct(d['reproduction_score'])}** — "
-           f"{_pct(1 - d['reproduction_score'])} of the real bill's value is still missing or mis-quantified.", "",
-           "## What we measure", "",
+           f"{_pct(1 - d['reproduction_score'])} of the real bill's value is still missing or mis-quantified.", ""]
+    out += _reading_section(rep)
+    out += ["## What we measure", "",
            "Our BoQ is compared line by line with the real, human-priced bill (its priced building lines; "
            "contingency, VAT and P&Gs excluded). Lines are matched by building and item type (ItemKey). "
            "Every item is weighted by its value in the real bill, so a big feeder cable counts far more than a "

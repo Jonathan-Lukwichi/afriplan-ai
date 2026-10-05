@@ -35,6 +35,15 @@ def test_report_json_holds_every_reader_and_the_gap_breakdown_of_the_delivered_b
     assert gaps["items"][0]["family"] == "connection_fee"             # biggest loss first
 
 
+def test_reading_accuracy_leads_the_report_for_every_reader():
+    rep = build_accuracy_report(_cards(), project="t", run="r1", delivered="Combined (delivered)")
+    for r in rep["readers"].values():
+        assert {"reading_score", "coverage", "qty_accuracy", "item_precision"} <= set(r["reading"])
+    md = render_accuracy_markdown(rep)
+    assert md.index("## Reading accuracy") < md.index("## Every reader")
+    assert "connection_fee" in md.split("## Every reader")[0]          # excluded items are named, not hidden
+
+
 def test_markdown_explains_the_metrics_and_lists_the_losses_with_their_fix():
     md = render_accuracy_markdown(build_accuracy_report(_cards(), project="t", run="r1",
                                                         delivered="Combined (delivered)"))

@@ -144,6 +144,10 @@ inside an optimisation loop · push to `main` / deploy without approval.
   `accuracy_report.md/.json` — every reader's metrics and the missing points split by item, cause
   and kind of fix (`evaluation/gaps.py`); dated copies in `reports/accuracy/` (gitignored). Wedela's
   biggest gaps: feeder cable sizes, boards counted twice, derived material not produced, trench length.
+- **Current aim = READING accuracy** (`evaluation/reading.py`, pricing judged later): only items counted or
+  measured on the uploaded drawings, weighted by the real bill, our rates never enter. Wedela DOE combined
+  **67.5 %** (CAD 53.2 %, PDF 59.7 %). Recheck each loss against the drawing — the reference is a priced
+  bill: part of the loss is the bill differing from the drawing, not misreading. Next: a drawing ground truth.
 - Biggest levers next: building attribution (008), a second reference project (014),
   tag→symbol attribution on site plans (leader lines), site-lighting double counts across
   PDF sheets (flagged, not yet merged).

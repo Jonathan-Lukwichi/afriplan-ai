@@ -38,6 +38,28 @@ counts 250× more than one worth R 400. That is deliberate: it is how a tender i
 a pricing policy, not something read off a drawing. RS judges the *take-off* (what and how
 much); rate accuracy judges the *pricing*. Both are reported; only RS is the headline.
 
+## 2b. Reading accuracy — the headline for now
+
+The current aim is **reading**: did AfriPlan read what is drawn? Pricing is judged later.
+`api/evaluation/reading.py` judges only the items that are **counted or measured on the uploaded
+drawings** (network method `count` / `length`, drawing type present). It leaves out, and names:
+**derived** items (wire, conduit, trunking, boxes, trench — an estimating rule, not a reading) and
+**provisional** items (connection fees, CoC, P&Gs — never on a drawing).
+
+| Reading metric | Meaning |
+|---|---|
+| **Reading score** | Σ w·found·qty_acc / Σ w on judged items — w is the item's value in the *real* bill (what it is worth to get right); **our rates never enter** |
+| Coverage | share of the judged value we read at all |
+| Quantity accuracy | how close our counts / lengths are, where we read the item |
+| Items found, within ±5 %, within ±10 % | plain counts — how many items, how many close enough |
+| Item precision | of the read-type items we produced, the share that are in the real bill (by count — prices not used) |
+
+**Caveat — the reference is a priced bill, not the drawings.** Where the quantity surveyor priced a
+different size or grouped boards differently from the drawing, a correct reading still loses points.
+Each reading loss is therefore rechecked against the drawing and labelled *our error*, *bill differs
+from drawing* or *to verify*. A drawing ground truth (what is drawn, counted and measured by a person)
+is the clean reference to build next.
+
 ## 3. Where the missing points are — the gap analysis
 
 `api/evaluation/gaps.py` splits the missing score exactly: each real-bill item loses
