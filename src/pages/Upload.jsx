@@ -136,7 +136,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
               </p>
               <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, marginBottom: 'var(--space-md)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={aiSymbols} onChange={(e) => setAiSymbols(e.target.checked)}
-                       data-testid="ai-symbols" style={{ marginTop: 3, minWidth: 18, minHeight: 18 }} />
+                       data-testid="ai-symbols" style={{ marginTop: 0, width: 24, height: 24, minWidth: 24, flexShrink: 0 }} />
                 <span>
                   <strong>Recognise unnamed symbols with AI</strong> — for drawings whose light fittings and
                   sockets are loose lines (no symbol names). The app counts every copy exactly; the AI only
@@ -184,7 +184,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
               {readers.map((id) => (
                 <label key={id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
                   <input type="radio" name="ai-reader" value={id} checked={aiProvider === id}
-                         onChange={() => setAiProvider(id)} style={{ marginTop: 3, minWidth: 18, minHeight: 18 }} />
+                         onChange={() => setAiProvider(id)} style={{ marginTop: 0, width: 24, height: 24, minWidth: 24, flexShrink: 0 }} />
                   <span><strong>{AI_READERS[id]?.label || id}</strong> — {AI_READERS[id]?.hint}</span>
                 </label>
               ))}
