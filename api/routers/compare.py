@@ -17,12 +17,12 @@ import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
 from agent.comparison import compare_runs, export_comparison_to_pdf
+from core import run_jobs
 from core.compare_store import CompareRecord, compare_store
-from core.run_jobs import ON_VERCEL, checked_ai_provider, run_dxf_job, run_pdf_job
+from core.run_jobs import ON_VERCEL, check_room, checked_ai_provider, run_dxf_job, run_pdf_job
 from core.run_progress import get_progress
 from core.run_store import RunRecord, run_store
 
@@ -34,9 +34,10 @@ async def _run_both_then_compare(
     dxf_pairs: list[tuple[bytes, str]], pdf_pairs: list[tuple[bytes, str]],
     provider: Optional[str] = None,
 ) -> None:
+    # each reader waits for its own line (core/run_queue.py), then both run side by side
     await asyncio.gather(
-        run_in_threadpool(run_dxf_job, dxf_run_id, dxf_pairs),
-        run_in_threadpool(run_pdf_job, pdf_run_id, pdf_pairs, provider),
+        run_jobs.DXF_QUEUE.run(dxf_run_id, run_dxf_job, dxf_pairs),
+        run_jobs.PDF_QUEUE.run(pdf_run_id, run_pdf_job, pdf_pairs, provider),
     )
 
     dxf_record = run_store.get(dxf_run_id)
@@ -66,6 +67,7 @@ async def create_comparison(
     ai_provider: str = Form(""),                      # the PDF run's AI reader; "" = server default
 ):
     provider = checked_ai_provider(ai_provider)
+    check_room(run_jobs.DXF_QUEUE, run_jobs.PDF_QUEUE)
     dxf_uploads = list(dxf_files or []) + ([dxf_file] if dxf_file is not None else [])
     if not dxf_uploads:
         raise HTTPException(400, "no DXF/DWG drawing uploaded")

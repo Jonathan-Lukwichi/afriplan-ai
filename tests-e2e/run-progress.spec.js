@@ -37,3 +37,27 @@ test('a failed PDF job shows the real reason, not "no billable items"', async ({
   }));
   await expect(page.getByText(why)).toBeVisible();
 });
+
+test('a run waiting in line says so, with no steps or page count yet', async ({ page }) => {
+  await startPdfRun(page, () => ({
+    run_id: 'demo', pipeline: 'pdf', status: 'running', input_file: '2 files', error: null, result: null,
+    progress: { stage: 'queued', done: 0, total: 0, elapsed_s: 75,
+                message: 'Waiting in line: 2 runs ahead of yours',
+                note: 'The server runs a few projects at a time so that no run is lost.' },
+  }));
+  const box = page.getByTestId('run-progress');
+  await expect(box).toContainText('Waiting in line: 2 runs ahead of yours');
+  await expect(box).toContainText('waiting for 1 min 15 s');
+  await expect(box).not.toContainText('Read drawings');
+});
+
+test('an upload refused because the server is busy shows the reason', async ({ page }) => {
+  const busy = 'AfriPlan is busy: 2 PDF run(s) in progress and 20 waiting. Please try again in a few minutes.';
+  await page.route('**/api/runs', (r) => r.fulfill({ status: 503, json: { detail: busy } }));
+  await page.addInitScript(() => localStorage.setItem('afriplan_demo_authed', '1'));
+  await page.goto('/#upload');
+  await page.getByRole('button', { name: 'PDF', exact: false }).first().click();
+  await page.locator('input[type=file][accept=".pdf"]').setInputFiles(PDF);
+  await page.getByRole('button', { name: /Run PDF engine/ }).click();
+  await expect(page.getByText(busy)).toBeVisible();
+});

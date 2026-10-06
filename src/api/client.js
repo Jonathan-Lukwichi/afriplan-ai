@@ -16,7 +16,9 @@ async function request(path, { method = 'GET', body, signal } = {}) {
   if (!res.ok) {
     let detail = null;
     try { detail = await res.json(); } catch { try { detail = await res.text(); } catch {} }
-    const err = new Error(`${res.status} ${res.statusText} — ${path}`);
+    // the server's own reason ("AfriPlan is busy: …") beats a bare status line
+    const reason = detail && typeof detail.detail === 'string' ? detail.detail : null;
+    const err = new Error(reason || `${res.status} ${res.statusText} — ${path}`);
     err.status = res.status;
     err.detail = detail;
     throw err;

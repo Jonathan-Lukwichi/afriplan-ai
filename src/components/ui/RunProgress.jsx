@@ -15,6 +15,20 @@ function elapsed(seconds) {
 
 export default function RunProgress({ progress }) {
   if (!progress) return null;
+  if (progress.stage === 'queued') {
+    // waiting for a free slot on the server (api/core/run_queue.py) — nothing has started yet
+    return (
+      <div data-testid="run-progress" style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 14, color: 'var(--ink)', marginBottom: 6 }}>{progress.message}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-muted)', fontFamily: 'var(--mono)' }}>
+          waiting for {elapsed(progress.elapsed_s)}
+        </div>
+        {progress.note && (
+          <div style={{ fontSize: 13, color: 'var(--amber)', marginTop: 8 }}>⏳ {progress.note}</div>
+        )}
+      </div>
+    );
+  }
   const current = STEPS.findIndex((s) => s.key === progress.stage);
   const pct = progress.total ? Math.round((100 * progress.done) / progress.total) : null;
 

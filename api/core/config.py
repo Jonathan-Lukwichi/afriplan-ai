@@ -100,6 +100,22 @@ PDF_PIPELINE_MODELS = {
 PDF_PARALLEL_PAGES = 6
 
 
+def run_slots() -> Dict[str, int]:
+    """How many runs of each kind execute at once (core/run_queue.py); the rest wait in line.
+
+    A full CAD set peaks at ~1.1 GB, so on a 2 GB server only one runs at a time; a PDF run
+    mostly waits on the AI, so two share the server. `max_waiting` caps each line: beyond it a
+    new upload is refused with "busy". Raise them with the server's memory (env vars)."""
+    def env_int(name: str, default: int) -> int:
+        try:
+            return max(0, int(os.environ.get(name, default)))
+        except ValueError:
+            return default
+    return {"dxf": max(1, env_int("AFRIPLAN_DXF_SLOTS", 1)),
+            "pdf": max(1, env_int("AFRIPLAN_PDF_SLOTS", 2)),
+            "max_waiting": env_int("AFRIPLAN_QUEUE_MAX", 20)}
+
+
 # ╔═══════════════════════════════════════════════════════════════════╗
 # ║ GOOGLE GEMINI — the free alternative (core/gemini_client.py)      ║
 # ╚═══════════════════════════════════════════════════════════════════╝
