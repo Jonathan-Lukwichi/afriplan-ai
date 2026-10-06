@@ -16,10 +16,24 @@ RUN npm run build
 # version used in development, so DWG conversion behaves identically online.
 FROM python:3.12-slim AS libredwg
 ARG LIBREDWG_VERSION=0.14
+# The same release from several sources: ftp.gnu.org alone was unreachable during a deploy
+# (2026-10-06). Every copy must match this checksum (identical on all sources, checked by hand).
+ARG LIBREDWG_SHA256=62ebb73b984f865960f20ed26619ea5f8789d5e3fd088fa40a2598384da81275
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential pkg-config curl ca-certificates xz-utils \
     && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL "https://ftp.gnu.org/gnu/libredwg/libredwg-${LIBREDWG_VERSION}.tar.xz" | tar -xJ -C /tmp \
+RUN set -e; f="/tmp/libredwg.tar.xz"; ok=""; \
+    for url in \
+        "https://ftp.gnu.org/gnu/libredwg/libredwg-${LIBREDWG_VERSION}.tar.xz" \
+        "https://mirrors.kernel.org/gnu/libredwg/libredwg-${LIBREDWG_VERSION}.tar.xz" \
+        "https://github.com/LibreDWG/libredwg/releases/download/${LIBREDWG_VERSION}/libredwg-${LIBREDWG_VERSION}.tar.xz" \
+        "https://ftp.halifax.rwth-aachen.de/gnu/libredwg/libredwg-${LIBREDWG_VERSION}.tar.xz"; do \
+      if curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 20 -o "$f" "$url" \
+         && echo "${LIBREDWG_SHA256}  $f" | sha256sum -c -; then ok=1; echo "libredwg from $url"; break; fi; \
+      echo "libredwg: $url failed, trying the next source"; \
+    done; \
+    test -n "$ok"; \
+    tar -xJf "$f" -C /tmp \
     && cd "/tmp/libredwg-${LIBREDWG_VERSION}" \
     && ./configure --prefix=/opt/libredwg --disable-shared --enable-static \
                    --disable-bindings --disable-docs \
