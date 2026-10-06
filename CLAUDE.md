@@ -148,6 +148,8 @@ inside an optimisation loop · push to `main` / deploy without approval.
   measured on the uploaded drawings, weighted by the real bill, our rates never enter. Wedela DOE combined
   **67.5 %** (CAD 53.2 %, PDF 59.7 %). Recheck each loss against the drawing — the reference is a priced
   bill: part of the loss is the bill differing from the drawing, not misreading. Next: a drawing ground truth.
+  A person checked 20 items of Claude's own drawing reading (6 Oct): **19 correct, 0 wrong, 1 blank**. Verdict and
+  data plan (5 projects from 3+ consulting firms) in `docs/accuracy-metrics.md` §2c.
 - Biggest levers next: building attribution (008), a second reference project (014),
   tag→symbol attribution on site plans (leader lines), site-lighting double counts across
   PDF sheets (flagged, not yet merged).

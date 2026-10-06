@@ -60,6 +60,35 @@ Each reading loss is therefore rechecked against the drawing and labelled *our e
 from drawing* or *to verify*. A drawing ground truth (what is drawn, counted and measured by a person)
 is the clean reference to build next.
 
+## 2c. Conclusion and recommendation (6 Oct 2026)
+
+**Result on the reference project (Wedela, 7 buildings):** reading score **67.5 %** for the delivered
+bill (CAD reader alone 53.2 %, PDF reader alone 59.7 %).
+
+| | What the evidence shows |
+|---|---|
+| **Proven** | Single-line diagrams are read correctly: 13 / 13 boards and 13 / 13 feeder sizes, identical in the PDF and CAD versions. A person checked a 20-item sample of the drawing reading: **19 correct, 0 wrong, 1 left blank** (a switch count where the drawing and its own schedule disagree). Every bill line carries its source. |
+| **Not yet** | Counting symbols on layout sheets (sockets and switches came out 1.6× to 4× too many — counted on two sheets); cable lengths and site-plan items (sleeves, manholes); boards named differently on layouts and single-line diagrams. All evidence is from one project. |
+| **Not judged** | Derived material (wire, conduit, trench) — about 29 % of the bill's value; allowances — about 1.6 %; pricing (against the AACE 56R-08 Class 1 range, next). |
+
+**Verdict:** a traceable first draft that an estimator reviews — ready for pilots, not yet for an
+unchecked tender total.
+
+**Recommendation — more data, not a custom app per company.** Symbols are chosen by the consulting
+engineer who draws the set (each set has its own legend, which AfriPlan reads first); the electrical
+rules come from SANS 10142-1 and are shared; only the bill layout, rates and markup belong to each
+contractor (a company profile). Every new real project with drawings and its priced bill:
+
+1. becomes a **test** every future fix is re-checked against;
+2. shows **new symbol variants**, learned once and shared;
+3. **calibrates the rules** for derived material (an average across projects, not one guess);
+4. shows whether the reader **generalises** beyond one project.
+
+Target: **5 real projects from at least 3 consulting firms**, each with PDF + DWG drawings, the
+priced bill and a 20-item check by a person; first, settle the open drawing questions (board names,
+which sheet governs, written vs measured lengths, unexplained symbols) with an electrical engineer.
+Report the reading score on every project — up or down.
+
 ## 3. Where the missing points are — the gap analysis
 
 `api/evaluation/gaps.py` splits the missing score exactly: each real-bill item loses
