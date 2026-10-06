@@ -69,6 +69,23 @@ After that, **every push to `main` redeploys automatically**.
   **Standard (2 GB RAM, ~$25/month)**. **Starter (512 MB, ~$7/month)** runs single drawings
   but a full set would run out of memory (the service restarts mid-run). Change `plan:` in
   `render.yaml` or in the dashboard.
+- **Many users at once — the run queue.** Heavy runs take turns (`api/core/run_queue.py`):
+  each kind runs `slots` at a time, the others wait in line and see *"Waiting in line: N runs
+  ahead of yours"*; when every slot is busy and the line is full, a new upload gets *"AfriPlan
+  is busy … try again in a few minutes"* (503) instead of crashing the server. Set with env vars:
+
+  | Variable | Default | Meaning |
+  |---|---|---|
+  | `AFRIPLAN_DXF_SLOTS` | 1 | CAD projects processed at once |
+  | `AFRIPLAN_PDF_SLOTS` | 2 | PDF projects processed at once (they mostly wait on the AI) |
+  | `AFRIPLAN_QUEUE_MAX` | 20 | runs allowed to wait in each line |
+
+  Load test (2026-10-06, `scripts/load_test.py`, 10 users each uploading the full 18-DWG set at
+  the same moment, local PC): **10 / 10 passed, none lost.** One slot: peak **1.2 GB**, last user
+  done after **14 min** (one project ≈ 85 s). Two slots: peak **2.0 GB**, last user **8.7 min** —
+  too close to Standard's 2 GB, so keep `AFRIPLAN_DXF_SLOTS=1` on Standard; with **4 GB** set it
+  to 2. Not load-tested: the PDF engine (paid per page) — the free AI model's daily quota is
+  shared by every user, and the paid model is limited per minute by the provider account.
 - **Disk.** Runs and the contractor profile are stored in SQLite on a 1 GB disk mounted at
   `/app/data` (~$0.25/month), so they survive restarts and deploys.
 - **Who can use it.** The login is a demo login — **anyone with the URL can use the app**,

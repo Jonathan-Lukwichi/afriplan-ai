@@ -38,6 +38,57 @@ counts 250× more than one worth R 400. That is deliberate: it is how a tender i
 a pricing policy, not something read off a drawing. RS judges the *take-off* (what and how
 much); rate accuracy judges the *pricing*. Both are reported; only RS is the headline.
 
+## 2b. Reading accuracy — the headline for now
+
+The current aim is **reading**: did AfriPlan read what is drawn? Pricing is judged later.
+`api/evaluation/reading.py` judges only the items that are **counted or measured on the uploaded
+drawings** (network method `count` / `length`, drawing type present). It leaves out, and names:
+**derived** items (wire, conduit, trunking, boxes, trench — an estimating rule, not a reading) and
+**provisional** items (connection fees, CoC, P&Gs — never on a drawing).
+
+| Reading metric | Meaning |
+|---|---|
+| **Reading score** | Σ w·found·qty_acc / Σ w on judged items — w is the item's value in the *real* bill (what it is worth to get right); **our rates never enter** |
+| Coverage | share of the judged value we read at all |
+| Quantity accuracy | how close our counts / lengths are, where we read the item |
+| Items found, within ±5 %, within ±10 % | plain counts — how many items, how many close enough |
+| Item precision | of the read-type items we produced, the share that are in the real bill (by count — prices not used) |
+
+**Caveat — the reference is a priced bill, not the drawings.** Where the quantity surveyor priced a
+different size or grouped boards differently from the drawing, a correct reading still loses points.
+Each reading loss is therefore rechecked against the drawing and labelled *our error*, *bill differs
+from drawing* or *to verify*. A drawing ground truth (what is drawn, counted and measured by a person)
+is the clean reference to build next.
+
+## 2c. Conclusion and recommendation (6 Oct 2026)
+
+**Result on the reference project (Wedela, 7 buildings):** reading score **67.5 %** for the delivered
+bill (CAD reader alone 53.2 %, PDF reader alone 59.7 %).
+
+| | What the evidence shows |
+|---|---|
+| **Proven** | Single-line diagrams are read correctly: 13 / 13 boards and 13 / 13 feeder sizes, identical in the PDF and CAD versions. A person checked a 20-item sample of the drawing reading: **19 correct, 0 wrong, 1 left blank** (a switch count where the drawing and its own schedule disagree). Every bill line carries its source. |
+| **Not yet** | Counting symbols on layout sheets (sockets and switches came out 1.6× to 4× too many — counted on two sheets); cable lengths and site-plan items (sleeves, manholes); boards named differently on layouts and single-line diagrams. All evidence is from one project. |
+| **Not judged** | Derived material (wire, conduit, trench) — about 29 % of the bill's value; allowances — about 1.6 %; pricing (against the AACE 56R-08 Class 1 range, next). |
+
+**Verdict:** a traceable first draft that an estimator reviews — ready for pilots, not yet for an
+unchecked tender total.
+
+**Recommendation — more data, not a custom app per company.** Symbols are chosen by the consulting
+engineer who draws the set (each set has its own legend, which AfriPlan reads first); the electrical
+rules come from SANS 10142-1 and are shared; only the bill layout, rates and markup belong to each
+contractor (a company profile). Every new real project with drawings and its priced bill:
+
+1. becomes a **test** every future fix is re-checked against;
+2. shows **new symbol variants**, learned once and shared;
+3. **calibrates the rules** for derived material (an average across projects, not one guess);
+4. shows whether the reader **generalises** beyond one project.
+
+Target: **5 real projects from at least 3 consulting firms**, each with PDF + DWG drawings, the
+priced bill and a 20-item check by a person; first, settle the open drawing questions (board names,
+which sheet governs, written vs measured lengths, unexplained symbols) with an electrical engineer.
+Report the reading score on every project — up or down.
+
 ## 3. Where the missing points are — the gap analysis
 
 `api/evaluation/gaps.py` splits the missing score exactly: each real-bill item loses

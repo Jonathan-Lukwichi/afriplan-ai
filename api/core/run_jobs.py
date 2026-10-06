@@ -27,16 +27,32 @@ import uuid
 from typing import Optional
 
 from fastapi import BackgroundTasks, HTTPException
-from fastapi.concurrency import run_in_threadpool
 
 from agent.dxf_pipeline.passes.run import run_dxf_project
 from agent.pdf_pipeline.llm import build_default_pdf_llm
 from agent.pdf_pipeline.passes.run import run_pdf_estimator
-from core.config import ai_providers_ready
+from core.config import ai_providers_ready, run_slots
 from core.run_progress import clear_progress, set_progress
+from core.run_queue import QueueFull, RunQueue
 from core.run_store import RunRecord, run_store
 
 ON_VERCEL = bool(os.environ.get("VERCEL"))
+
+# Heavy runs take turns (core/run_queue.py): a burst of uploads waits in line instead of
+# running the server out of memory. CAD and PDF have separate lines — a CAD set is
+# memory-heavy, a PDF run mostly waits on the AI.
+_SLOTS = run_slots()
+DXF_QUEUE = RunQueue("dxf", _SLOTS["dxf"], _SLOTS["max_waiting"])
+PDF_QUEUE = RunQueue("pdf", _SLOTS["pdf"], _SLOTS["max_waiting"])
+
+
+def check_room(*queues: RunQueue) -> None:
+    """Refuse an upload with 503 when its line is full — before any run record is stored."""
+    try:
+        for q in queues:
+            q.check_room()
+    except QueueFull as e:
+        raise HTTPException(503, str(e))
 
 
 def checked_ai_provider(choice: str) -> Optional[str]:
@@ -102,23 +118,25 @@ def run_pdf_job(run_id: str, files: list[tuple[bytes, str]], provider: Optional[
 
 async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]],
                          ai_symbols: bool = False) -> str:
+    check_room(DXF_QUEUE)
     run_id = uuid.uuid4().hex[:12]
     label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
     run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="running", input_file=label))
     if ON_VERCEL:
-        await run_in_threadpool(run_dxf_job, run_id, pairs, ai_symbols)
+        await DXF_QUEUE.run(run_id, run_dxf_job, pairs, ai_symbols)
     else:
-        background_tasks.add_task(run_in_threadpool, run_dxf_job, run_id, pairs, ai_symbols)
+        background_tasks.add_task(DXF_QUEUE.run, run_id, run_dxf_job, pairs, ai_symbols)
     return run_id
 
 
 async def launch_pdf_run(background_tasks: BackgroundTasks, pairs: list[tuple[bytes, str]],
                          provider: Optional[str] = None) -> str:
+    check_room(PDF_QUEUE)
     run_id = uuid.uuid4().hex[:12]
     label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
     run_store.put(RunRecord(run_id=run_id, pipeline="pdf", status="running", input_file=label))
     if ON_VERCEL:
-        await run_in_threadpool(run_pdf_job, run_id, pairs, provider)
+        await PDF_QUEUE.run(run_id, run_pdf_job, pairs, provider)
     else:
-        background_tasks.add_task(run_in_threadpool, run_pdf_job, run_id, pairs, provider)
+        background_tasks.add_task(PDF_QUEUE.run, run_id, run_pdf_job, pairs, provider)
     return run_id
