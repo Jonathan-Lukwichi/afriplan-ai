@@ -33,7 +33,12 @@ jobs:
       - name: Architecture rules (pipeline independence, read-only layers)
         run: python -m pytest tests/architecture -q -p no:warnings
       - name: Test suite
-        run: python -m pytest -q -p no:warnings --ignore=tests/architecture
+        shell: bash   # bash -eo pipefail: a failing pytest still fails the step through tee
+        run: python -m pytest -q -p no:warnings -rf --ignore=tests/architecture | tee pytest.log
+      # Job logs need a GitHub login; annotations show on the commit/PR page for anyone.
+      - name: Name the failing tests
+        if: failure()
+        run: grep '^FAILED ' pytest.log | sed 's/^/::error::/' || true
 
   frontend:
     name: Frontend build
