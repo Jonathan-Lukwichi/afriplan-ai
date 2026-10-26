@@ -1,0 +1,220 @@
+<title>AfriPlan AI OS Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Premium "signal pipeline": a project folder flows through glowing filter-nodes into a priced bill,
+     over a circuit-board field. Deliberate dark finish. Horizontal on desktop, stacks on phone. */
+  :root{
+    --bg:#060a13; --bg2:#0a1120; --ink:#eaf2ff; --muted:#93a7c6; --faint:#60728f;
+    --hair:rgba(140,170,220,.16); --glass:rgba(150,180,230,.045);
+    --input:#b58bff; --agents:#4f9dff; --engine:#2fd98b; --cost:#f7b32b; --bill:#22d3ee; --output:#fb7aa0; --intel:#2dd4bf;
+    --f-disp:"Sora","Segoe UI",system-ui,sans-serif; --f-mono:"Space Mono",ui-monospace,monospace;
+    color-scheme:dark;
+  }
+  html,body{background:var(--bg)}
+  body{color:var(--ink);font-family:var(--f-disp);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .scene{position:relative;min-height:100%;overflow:hidden;
+    background:
+      radial-gradient(900px 520px at 10% -8%, rgba(181,139,255,.13), transparent 60%),
+      radial-gradient(900px 520px at 95% 8%, rgba(34,211,238,.12), transparent 60%),
+      radial-gradient(800px 600px at 50% 118%, rgba(247,179,43,.07), transparent 60%),
+      linear-gradient(var(--bg),var(--bg2));}
+  .circuit{position:fixed;inset:0;width:100%;height:100%;opacity:.15;z-index:0;pointer-events:none}
+
+  .wrap{position:relative;z-index:2;
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-block:30px 40px;max-width:1240px;margin:0 auto}
+  .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--input);margin:0 0 10px}
+  h1{font-size:clamp(23px,4.6vw,38px);font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.08;text-wrap:balance;
+    background:linear-gradient(92deg,#ecdfff,#fff 45%,#dff6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--muted);font-size:clamp(14px,2vw,15.5px);margin:11px 0 0;max-width:68ch;font-weight:300}
+  .lede b{color:var(--ink);font-weight:500}
+
+  .pipeline{display:flex;align-items:stretch;gap:0;margin-top:26px}
+  @media (max-width:860px){.pipeline{flex-direction:column}}
+
+  .stage{position:relative;flex:1 1 0;min-width:0;border:1px solid var(--hair);border-radius:16px;
+    padding:16px 14px 15px;background:linear-gradient(180deg,color-mix(in srgb,var(--ac) 14%,transparent),var(--glass));
+    box-shadow:0 10px 34px -22px var(--ac),inset 0 0 0 1px rgba(255,255,255,.02);
+    backdrop-filter:blur(4px);transition:transform .25s,box-shadow .25s,border-color .25s;cursor:default}
+  .stage:hover{transform:translateY(-5px);border-color:var(--ac);box-shadow:0 18px 44px -18px var(--ac),0 0 0 1px var(--ac)}
+  .stage.pulse{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac),0 14px 40px -16px var(--ac)}
+  .stage .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:var(--ac);
+    background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--ac) 32%,transparent),transparent 70%);
+    border:1px solid color-mix(in srgb,var(--ac) 45%,transparent);box-shadow:0 0 18px -4px var(--ac)}
+  .stage .ic svg{width:23px;height:23px}
+  .st-title{font-weight:700;font-size:16px;letter-spacing:.01em;margin:11px 0 2px}
+  .st-sub{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ac)}
+  .st-desc{font-size:12.8px;color:var(--muted);margin-top:9px;font-weight:300;line-height:1.5}
+  .duo{display:flex;gap:6px;margin-top:10px}
+  .duo span{flex:1;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;text-align:center;
+    color:var(--ink);border:1px dashed color-mix(in srgb,var(--ac) 50%,var(--hair));border-radius:8px;padding:6px 4px;
+    background:color-mix(in srgb,var(--ac) 8%,transparent)}
+
+  .link{position:relative;flex:0 0 76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+  @media (max-width:860px){.link{flex-basis:auto;min-height:66px;padding:4px 0}}
+  .rail{position:absolute;top:50%;left:-2px;right:-2px;height:3px;transform:translateY(-50%);border-radius:3px;
+    background:linear-gradient(90deg,var(--from),var(--to));opacity:.45}
+  .comet{position:absolute;top:50%;left:0;width:9px;height:9px;border-radius:50%;background:var(--to);transform:translate(-50%,-50%);
+    box-shadow:0 0 10px 2px var(--to),0 0 22px 7px color-mix(in srgb,var(--to) 60%,transparent);z-index:1}
+  .comet::before{content:"";position:absolute;top:50%;right:5px;width:42px;height:3px;transform:translateY(-50%);
+    background:linear-gradient(90deg,transparent,var(--to));border-radius:3px;opacity:.9}
+  .hex{position:relative;z-index:2;width:38px;height:34px;display:grid;place-items:center;color:#061018;
+    clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);
+    background:linear-gradient(140deg,var(--from),var(--to));box-shadow:0 0 20px -2px var(--to)}
+  .hex svg{width:17px;height:17px}
+  .verb{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);z-index:2}
+  @media (prefers-reduced-motion:no-preference){
+    .comet{animation:cometX var(--spd,2.4s) linear infinite}
+    .hex{animation:hexpulse 2.4s ease-in-out infinite}
+  }
+  @keyframes cometX{0%{left:-4%;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:104%;opacity:0}}
+  @keyframes hexpulse{0%,100%{box-shadow:0 0 14px -4px var(--to)}50%{box-shadow:0 0 26px 2px var(--to)}}
+  @media (max-width:860px){
+    .rail{top:-2px;bottom:-2px;left:50%;right:auto;width:3px;height:auto;transform:translateX(-50%);
+      background:linear-gradient(180deg,var(--from),var(--to))}
+    .comet{left:50%;top:0;transform:translate(-50%,-50%)}
+    .comet::before{top:auto;bottom:5px;right:50%;transform:translateX(50%);width:3px;height:42px;
+      background:linear-gradient(180deg,transparent,var(--to))}
+    @media (prefers-reduced-motion:no-preference){.comet{animation:cometY var(--spd,2.4s) linear infinite}}
+  }
+  @keyframes cometY{0%{top:-4%;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:104%;opacity:0}}
+
+  .intel{margin-top:30px;border:1px solid var(--hair);border-radius:18px;padding:18px;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,rgba(45,212,191,.06),transparent),var(--glass)}
+  .intel-head{font-family:var(--f-mono);font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--intel);margin:0 0 14px;
+    display:flex;align-items:center;gap:9px}
+  .intel-head::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--intel);box-shadow:0 0 12px var(--intel)}
+  .intel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media (max-width:640px){.intel-grid{grid-template-columns:1fr}}
+  .icard{--ac:var(--intel);border:1px solid var(--hair);border-radius:13px;padding:14px;background:var(--glass);
+    display:flex;gap:12px;align-items:flex-start;transition:transform .2s,border-color .2s}
+  .icard:hover{transform:translateY(-3px);border-color:var(--ac)}
+  .icard .ic{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--ac);
+    background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--ac) 30%,transparent),transparent 70%);
+    border:1px solid color-mix(in srgb,var(--ac) 40%,transparent)}
+  .icard .ic svg{width:19px;height:19px}
+  .icard h4{margin:0 0 3px;font-size:14px;font-weight:600}
+  .icard p{margin:0;font-size:12px;color:var(--muted);font-weight:300;line-height:1.45}
+
+  .foot{margin-top:22px;font-family:var(--f-mono);font-size:12px;color:var(--faint);line-height:1.7;letter-spacing:.02em}
+  .foot b{color:var(--ink);font-weight:400}
+  .tagline{display:inline-flex;gap:8px;align-items:center;margin-top:6px;font-family:var(--f-mono);font-size:11.5px;color:var(--input);
+    border:1px solid var(--hair);border-radius:999px;padding:6px 13px;background:var(--glass)}
+
+  @media (max-width:430px){.wrap{padding-block:22px 34px}}
+</style>
+
+<div class="scene">
+  <svg class="circuit" aria-hidden="true"><defs>
+    <pattern id="cir" width="120" height="120" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#38d0c4" stroke-width="1">
+        <path d="M0 24 H48 V60 H120"/><path d="M24 120 V84 H72 V36 H120"/>
+        <path d="M0 96 H60 V120"/><path d="M84 0 V40 H120"/><path d="M0 60 H24"/>
+      </g>
+      <g fill="#38d0c4"><circle cx="48" cy="60" r="3"/><circle cx="72" cy="84" r="3"/>
+        <circle cx="60" cy="96" r="3"/><circle cx="84" cy="40" r="3"/><circle cx="24" cy="84" r="2.4"/></g>
+    </pattern></defs>
+    <rect width="100%" height="100%" fill="url(#cir)"/>
+  </svg>
+
+  <div class="wrap">
+    <p class="eyebrow">AfriPlan Electrical · system 02 · ai operating system</p>
+    <h1>AI Operating System — drawings in, a priced bill out</h1>
+    <p class="lede">Follow the signal. The AI brain is pointed at a project folder and reads the drawings on its
+      own. From there the signal streams through each glowing filter: it is <b>read</b>, turned into
+      <b>quantities</b>, <b>priced</b>, and compiled into one Bill of Quantities, with no cloud bill.</p>
+    <span class="tagline">◇ autonomous · on subscription</span>
+
+    <div class="pipeline" id="pipe"></div>
+
+    <div class="intel">
+      <p class="intel-head">Shared intelligence layer · read-only</p>
+      <div class="intel-grid" id="intel"></div>
+    </div>
+
+    <p class="foot">
+      <b>One core, two front doors.</b> This is the AI Operating System. The same estimating core also runs as
+      the Web App, shown on its own page. Both produce the one priced Bill of Quantities.
+    </p>
+  </div>
+</div>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap">
+
+<script>
+(function(){
+  "use strict";
+  var IC={
+    upload:'<path d="M12 15V4M8 8l4-4 4 4M5 20h14"/>',
+    scan:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    engine:'<path d="M3 7l4-4 13 13-4 4z"/><path d="M7 7l2 2M11 11l2 2M15 15l2 2"/>',
+    coins:'<path d="M5 8c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3z"/><path d="M5 8v5c0 1.7 3.1 3 7 3s7-1.3 7-3V8"/>',
+    doc:'<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4M9 12h6M9 16h6"/>',
+    download:'<path d="M12 4v10M8 10l4 4 4-4M5 20h14"/>',
+    brain:'<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+    folder:'<path d="M3 7h6l2 2h10v10H3z"/>',
+    target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>',
+    shield:'<path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+    tag:'<path d="M3 12l9-9h8v8l-9 9z"/><circle cx="16" cy="8" r="1.3"/>',
+    verb:'<path d="M4 12h12M12 7l5 5-5 5"/>'
+  };
+  function svg(name){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[name]+'</svg>';}
+
+  var STAGES=[
+    {ac:"--input",ic:"brain",title:"AI Brain",sub:"Reads the folder",
+      desc:"The AI brain is pointed at a project folder and reads the drawings on its own — no cloud bill."},
+    {ac:"--agents",ic:"scan",title:"AI Agents",sub:"Vision + Geometry",
+      desc:"Two AI agents read the drawings together: one understands the pages, one measures the CAD lines.",
+      duo:["Vision","Geometry"]},
+    {ac:"--engine",ic:"engine",title:"Take-off Engine",sub:"Quantities",
+      desc:"Every reading becomes measured quantities and take-off items, each with its evidence, then merged into one agreed set."},
+    {ac:"--cost",ic:"coins",title:"Cost Engine",sub:"Build-up rates",
+      desc:"Each item is priced from labour, plant and material build-ups."},
+    {ac:"--bill",ic:"doc",title:"Priced Bill",sub:"Source of truth",
+      desc:"One complete, costed Bill of Quantities — the single source every view reads from."},
+    {ac:"--output",ic:"folder",title:"Output Folder",sub:"Excel + PDF",
+      desc:"The priced Excel and PDF bill, written straight into the project's output folder."}
+  ];
+  var VERBS=["Prepare","Extract","Cost","Compile","Export"];
+  var INTEL=[
+    {ic:"target",title:"Accuracy",desc:"Scores the bill against a real, human-priced reference project."},
+    {ic:"shield",title:"Compliance",desc:"Audits the bill and flags what the drawings cannot yet support."},
+    {ic:"tag",title:"Live Pricing",desc:"Pulls real supplier quotes to refine material rates."}
+  ];
+
+  var pipe=document.getElementById("pipe"), html="";
+  STAGES.forEach(function(s,i){
+    var duo = s.duo ? '<div class="duo">'+s.duo.map(function(d){return '<span>'+d+'</span>';}).join("")+'</div>' : "";
+    html+='<div class="stage" style="--ac:var('+s.ac+')" data-i="'+i+'">'+
+      '<div class="ic">'+svg(s.ic)+'</div>'+
+      '<div class="st-title">'+s.title+'</div>'+
+      '<div class="st-sub">'+s.sub+'</div>'+
+      '<div class="st-desc">'+s.desc+'</div>'+duo+'</div>';
+    if(i<STAGES.length-1){
+      var from="var("+STAGES[i].ac+")", to="var("+STAGES[i+1].ac+")";
+      var spd=(2.2+ (i%3)*0.35).toFixed(2)+"s";
+      html+='<div class="link" style="--from:'+from+';--to:'+to+';--spd:'+spd+'">'+
+        '<span class="rail"></span>'+
+        '<span class="comet"></span>'+
+        '<span class="hex">'+svg("verb")+'</span>'+
+        '<span class="verb">'+VERBS[i]+'</span></div>';
+    }
+  });
+  pipe.innerHTML=html;
+
+  var intel=document.getElementById("intel");
+  intel.innerHTML=INTEL.map(function(c){
+    return '<div class="icard"><div class="ic">'+svg(c.ic)+'</div><div><h4>'+c.title+'</h4><p>'+c.desc+'</p></div></div>';
+  }).join("");
+
+  var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(!reduce){
+    var cards=pipe.querySelectorAll(".stage"), k=0;
+    setInterval(function(){
+      cards.forEach(function(c){c.classList.remove("pulse");});
+      cards[k%cards.length].classList.add("pulse"); k++;
+    },1500);
+  }
+})();
+</script>
