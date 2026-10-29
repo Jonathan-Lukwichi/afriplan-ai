@@ -99,8 +99,7 @@ $PY scripts/evaluate.py --project wedela --self-test # RS 100.0% (needs the loca
 A fresh clone skips the tests that need `data/projects/*/raw/` (client data, never in git).
 **CI** (`.github/workflows/ci.yml`) on every push/PR: architecture rules, pytest, build, Playwright
 (audit + DWG-set specs skip without the backend and client files), no-client-data check.
-Test dirs for the new packages end in `_layer` (`tests/evaluation_layer/`) — a
-`tests/evaluation/` package would shadow `evaluation`.
+Test dirs for top-level packages end in `_layer` (`tests/evaluation_layer/`); `tests/evaluation/` would shadow it.
 
 ## Hard rules
 1. **Pipelines do not share state and do not call each other.** `api/agent/pdf_pipeline`
