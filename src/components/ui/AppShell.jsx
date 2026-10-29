@@ -109,6 +109,14 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
 }
 
 function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, showClose, onCollapse }) {
+  // Sign out asks once: the first click arms it, a second click within 4 s signs out.
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  useEffect(() => {
+    if (!confirmSignOut) return undefined;
+    const t = setTimeout(() => setConfirmSignOut(false), 4000);
+    return () => clearTimeout(t);
+  }, [confirmSignOut]);
+
   return (
     <aside className={className} style={{
       width: 'var(--sidebar-width)', flexShrink: 0, height: '100vh',
@@ -185,9 +193,15 @@ function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, s
           <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Demo Engineer</div>
           <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Demo mode</div>
         </div>
-        <button onClick={onSignOut} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: 6 }} aria-label="Sign out">
-          <LogOut size={17} />
-        </button>
+        {confirmSignOut ? (
+          <button onClick={onSignOut} className="btn-ghost" style={{ minHeight: 32, padding: '0 10px', fontSize: 13 }}>
+            Confirm sign out
+          </button>
+        ) : (
+          <button onClick={() => setConfirmSignOut(true)} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: 6 }} aria-label="Sign out">
+            <LogOut size={17} />
+          </button>
+        )}
       </div>
     </aside>
   );

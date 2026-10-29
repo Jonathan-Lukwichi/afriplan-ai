@@ -40,6 +40,14 @@ test('the sidebar marks exactly one item as the current page', async ({ page }) 
   await expect(page.locator('[aria-current="page"]')).toHaveText(/Audit a BoQ/);
 });
 
+test('sign out asks once before signing out', async ({ page }) => {
+  await openAuthed(page, 'welcome');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page).toHaveURL(/#welcome$/);
+  await page.getByRole('button', { name: 'Confirm sign out' }).click();
+  await expect(page).toHaveURL(/#landing$/);
+});
+
 test('server error without a reason: no status code or API path shown', async ({ page }) => {
   await page.route('**/api/runs', (r) => r.fulfill({ status: 500, body: 'Internal Server Error' }));
   await runDxf(page);
