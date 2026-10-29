@@ -54,8 +54,8 @@ class CaseResult:
 
 def write_sample(folder: Path):
     """A synthetic drawing with known quantities, so the check runs without client data:
-    11 downlights, 13 double sockets, 1 board, 34.25 m of 2.5 mm² cable (one run curved), and 2
-    unknown symbols. Ported from the playbook's three-layer-check pack. Returns (drawing, csv)."""
+    11 downlights, 13 double sockets, 1 board, 34.25 m of 2.5 mm² wiring (one run curved; AfriPlan
+    bills drawn final-circuit wiring as GP wire), and 2 unknown symbols. Ported from the playbook's three-layer-check pack. Returns (drawing, csv)."""
     import math
     import ezdxf
 
@@ -86,7 +86,7 @@ def write_sample(folder: Path):
     drawing, expected = folder / "sample-house.dxf", folder / "expected.csv"
     doc.saveas(drawing)
     expected.write_text("item,unit,expected,tolerance_pct\nlight_downlight,no,11,0\nsocket_double,no,13,0\n"
-                        "db,no,1,0\nsurfix|2.5mm2,m,34.25,0.5\n", encoding="utf-8")
+                        "db,no,1,0\ngp_wire|2.5mm2,m,34.25,0.5\n", encoding="utf-8")
     return drawing, expected
 
 

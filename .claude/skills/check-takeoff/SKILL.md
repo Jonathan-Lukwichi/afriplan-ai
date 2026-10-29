@@ -18,7 +18,8 @@ Goal: a clear PASS or FAIL for the take-off, measured on drawings whose correct 
 2. Report the table the script prints, exactly as printed (do not recompute or round), and the
    OVERALL line. A case folder without exactly one drawing and an `expected.csv` is "not tested",
    never a pass.
-3. On FAIL, use `/fix-and-learn`. Known today: the sample FAILS (issue 015).
+3. On FAIL, use `/fix-and-learn`. Known today: the sample's wiring passes; its three symbol counts
+   FAIL until underscore block names classify (issue 015, part 3).
 
 Rules
 - Never change an `expected.csv` to make a case pass. A hand count changes only when the user

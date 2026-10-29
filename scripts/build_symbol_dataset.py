@@ -31,7 +31,8 @@ ROOT = Path(__file__).resolve().parent.parent
 def _read_dxf(data: bytes):
     """Text read first; LibreDWG output with odd binary chunks needs ezdxf's recover mode."""
     try:
-        return ezdxf.read(io.StringIO(data.decode("utf-8", "ignore")))
+        # newline=None: CRLF (Windows) files otherwise parse as an empty drawing, no error
+        return ezdxf.read(io.StringIO(data.decode("utf-8", "ignore"), newline=None))
     except Exception:  # noqa: BLE001
         pass
     import tempfile

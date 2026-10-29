@@ -53,7 +53,7 @@ def test_the_sample_drawing_is_written_with_its_hand_counts(tmp_path):
     drawing, expected = ct.write_sample(tmp_path)
     assert drawing.suffix == ".dxf" and drawing.exists()
     assert {e.item: e.expected for e in ct.read_expected(expected)} == {
-        "light_downlight": 11, "socket_double": 13, "db": 1, "surfix|2.5mm2": 34.25}
+        "light_downlight": 11, "socket_double": 13, "db": 1, "gp_wire|2.5mm2": 34.25}
 
 
 def test_the_same_drawing_twice_gives_identical_take_offs(tmp_path):
@@ -62,8 +62,15 @@ def test_the_same_drawing_twice_gives_identical_take_offs(tmp_path):
     assert result.identical_twice is True
 
 
-@pytest.mark.xfail(strict=True, reason="issue 015: the DXF engine recognises the sample's 27 symbols "
-                   "and 34.25 m of cable, then drops them from the bill without a gap")
+def test_the_sample_drawing_wiring_is_measured_exactly(tmp_path):
+    drawing, expected = ct.write_sample(tmp_path)
+    rows = {r.item: r for r in ct.check_case(drawing, expected).rows}
+    assert rows["gp_wire|2.5mm2"].ok and rows["gp_wire|2.5mm2"].found == 34.25
+
+
+@pytest.mark.xfail(strict=True, reason="issue 015 (open part): block names joined by underscores "
+                   "(LIGHT_DOWNLIGHT, SOCKET_DOUBLE, DB_MAIN) are not classified, so 27 symbols bill "
+                   "as one 'unclassified' line, now with a gap")
 def test_the_sample_drawing_take_off_matches_its_hand_counts(tmp_path):
     drawing, expected = ct.write_sample(tmp_path)
     result = ct.check_case(drawing, expected)

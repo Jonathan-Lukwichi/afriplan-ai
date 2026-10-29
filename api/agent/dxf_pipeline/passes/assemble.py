@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, Optional, Set
 
-from agent.dxf_pipeline.passes.recognize import DxfRecognition
+from agent.dxf_pipeline.passes.recognize import _UNCLASSIFIED_ELEC, DxfRecognition
 from agent.dxf_pipeline.passes.sld import SldFacts
 from agent.dxf_pipeline.patterns import EXACT_BLOCK_MAP, REGEX_BLOCK_PATTERNS
 from agent.shared import (
@@ -249,9 +249,13 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
 def _fittings(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
     # group by (canonical, building_block) so the take-off is per-room/building
     grouped: Dict[tuple, int] = {}
+    unnamed: Dict[tuple, Dict[str, int]] = {}        # block names behind each "unclassified" group
     for s in rec.symbols:
         bldg = s.room or s.building or ""
         grouped[(s.canonical_name, bldg)] = grouped.get((s.canonical_name, bldg), 0) + 1
+        if s.canonical_name == _UNCLASSIFIED_ELEC.canonical_name:
+            names = unnamed.setdefault((s.canonical_name, bldg), {})
+            names[s.raw_name or "?"] = names.get(s.raw_name or "?", 0) + 1
 
     for (canonical, bldg), qty in sorted(grouped.items(), key=lambda kv: (-kv[1], kv[0][0])):
         out.items.append(ItemFinding(
@@ -262,6 +266,15 @@ def _fittings(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> Non
             install_zar=cfg.default_point_install_labour, building=bldg, sheet="DXF",
             evidence=Evidence.COUNTED, notes="Exact count from DXF blocks/geometry.",
         ))
+        if (canonical, bldg) in unnamed:             # counted, but not named: never silent (rule 7)
+            blocks = ", ".join(f"{n} ×{c}" for n, c in sorted(unnamed[(canonical, bldg)].items()))
+            out.items[-1].gaps.append(GapItem(
+                section=out.items[-1].section, building_block=bldg,
+                description=f"{int(qty)} electrical symbols AfriPlan could not name (blocks: {blocks})",
+                assumption="Counted exactly, but what they are and their price are unknown.",
+                suggested_action="Name each block from the drawing's legend, then re-run or price by hand.",
+                severity="medium", drawing_ref="DXF",
+            ))
 
 
 # ─── Section 4 — reticulation cable (MEASURED per circuit, not assumed) ─

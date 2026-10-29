@@ -165,7 +165,10 @@ def _load(file_bytes: bytes, file_name: str):
     if not conv.ok or conv.dxf_bytes is None:
         return None, converted, conv.error
     try:
-        return ezdxf.read(io.StringIO(conv.dxf_bytes.decode("utf-8", "ignore"))), converted, None
+        # newline=None: a DXF saved on Windows has CRLF line ends; kept as-is, ezdxf parses it as
+        # an EMPTY drawing without raising (issue 015)
+        text = io.StringIO(conv.dxf_bytes.decode("utf-8", "ignore"), newline=None)
+        return ezdxf.read(text), converted, None
     except Exception:  # noqa: BLE001 — fall back to binary/tag reader
         try:
             import tempfile

@@ -44,6 +44,29 @@ def _bill():
     return build_boq_from_recognition(recognise(_doc_with_electrical()), project_name="T")
 
 
+def test_symbols_it_cannot_name_are_listed_for_the_estimator_by_block_name():
+    """Hard rule 7: counted but unnamed symbols must not be priced silently (issue 015)."""
+    doc = ezdxf.new(setup=True)
+    doc.header["$INSUNITS"] = 4
+    doc.blocks.new("MYSTERY_SYMBOL")
+    for i in range(3):
+        doc.modelspace().add_blockref("MYSTERY_SYMBOL", (i * 1000, 0), dxfattribs={"layer": "E-POWER"})
+    boq = build_boq_from_recognition(recognise(doc), project_name="T")
+    gaps = [g for g in boq.gaps if "MYSTERY_SYMBOL" in g.description]
+    assert len(gaps) == 1
+    assert "3" in gaps[0].description
+
+
+def test_a_dxf_saved_with_windows_line_endings_is_read_not_emptied():
+    """AutoCAD on Windows writes CRLF. The loader once parsed such a file as an empty drawing,
+    with no error, and the run said 'No electrical content recognised' (issue 015)."""
+    crlf = _dxf_bytes(_doc_with_electrical()).replace(b"\n", b"\r\n")
+    run = run_dxf_estimator(crlf, "plan.dxf")
+    assert run.success, run.error
+    assert run.symbol_count == 2
+    assert run.electrical_cable_length_m == pytest.approx(5.0)
+
+
 # ─── Provenance: measured, not assumed ───────────────────────────────
 
 def test_all_dxf_lines_are_extracted_not_assumed():
