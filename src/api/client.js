@@ -12,13 +12,23 @@ async function request(path, { method = 'GET', body, signal } = {}) {
     opts.headers = { 'Content-Type': 'application/json' };
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(`${API_BASE}${path}`, opts);
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, opts);
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    // the browser's own text ("Failed to fetch") means nothing to a user; keep it for IT
+    const err = new Error("Can't reach the AfriPlan server. Check your connection and try again.");
+    err.technical = `${e.message} (${path})`;
+    throw err;
+  }
   if (!res.ok) {
     let detail = null;
     try { detail = await res.json(); } catch { try { detail = await res.text(); } catch {} }
-    // the server's own reason ("AfriPlan is busy: …") beats a bare status line
+    // the server's own reason ("AfriPlan is busy: …") beats a generic line
     const reason = detail && typeof detail.detail === 'string' ? detail.detail : null;
-    const err = new Error(reason || `${res.status} ${res.statusText} — ${path}`);
+    const err = new Error(reason || `The server had a problem (error ${res.status}). Please try again in a minute.`);
+    err.technical = `${res.status} ${res.statusText} (${path})`;
     err.status = res.status;
     err.detail = detail;
     throw err;
