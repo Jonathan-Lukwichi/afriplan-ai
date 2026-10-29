@@ -9,8 +9,8 @@ Design principle (the determinism contract):
     no randomness, no network, no LLM.
 
 The model is reconstructed from the Wedela "Installation Rate" sheet and the
-three take-off / rate-build-up methodology references (see the project memory
-`boq-measurement-methodology`). It reproduces those rates exactly:
+three take-off / rate-build-up methodology references (summarised in
+`doe/knowledge/BOQ_KNOWLEDGE.md`). It reproduces those rates exactly:
 
     Install rate  =  (Σ crew_hourly × crew_count) × task_hours ÷ base_qty
     Built-up rate =  material × markup  +  install labour

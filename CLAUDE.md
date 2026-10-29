@@ -51,6 +51,7 @@ Skip the question only if the user's first message already makes the choice clea
 | Reference projects: manifest committed; raw files + parsed bill LOCAL ONLY | `data/projects/<p>/` |
 | CLIs (verify data, build reference, evaluate, audit, baseline, symbol dataset) | `scripts/` |
 | **DOE workflow** — playbook (rules, lessons) · brain (how to read pages) · execution (`project.py`) | `doe/playbook/` · `doe/brain/` · `doe/execution/` |
+| **BoQ domain knowledge** — how a QS prepares, measures and prices a BoQ; the 4 ways wiring is billed (SA = material by material, convention A) and the route take-off | `doe/knowledge/BOQ_KNOWLEDGE.md` |
 | Baseline index (per-run reports local — client figures) | `reports/baselines/` |
 
 ## Run, build, test

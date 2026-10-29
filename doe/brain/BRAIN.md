@@ -15,6 +15,12 @@ BoQ in `<folder>\AfriPlan_Output\`. The step-by-step procedure is the skill
    combines, prices, writes the documents (+ scores against a reference project when asked).
 4. Decide (playbook §6), report to the owner, e-mail when asked, add lessons.
 
+**Domain knowledge:** `doe/knowledge/BOQ_KNOWLEDGE.md` — how a quantity surveyor prepares,
+measures and prices an electrical BoQ (which drawing gives which line, the four ways wiring is
+billed — South Africa bills it material by material — routed lengths with drops, rate build-up),
+and where AfriPlan applies it. Read it when judging a page or
+a bill against how a person would do the job.
+
 ## What is deterministic and what is not
 - Steps 1 and 3 are deterministic: the same folder and the same forms always give the same BoQ.
 - Step 2 is the only judgement step. The forms are saved, so a result can always be reproduced

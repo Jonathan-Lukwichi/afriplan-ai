@@ -114,8 +114,46 @@ Bare copper earth wire, run alongside a feeder (large sizes) or as a circuit ear
 ### DB
 Distribution board. Priced per board as a "Sum" line.
 
-### Point method
-Reticulation wire allowance per point (short/medium/long/axis) — `api/core/rate_model.py`.
+### Point / point method
+A **point** is the wiring of one outlet (light, switch, socket). The point method bills
+wiring per point, banded by routed length (short/medium/long, then excess metres) —
+`api/core/rate_model.py`. It is convention C below, **not** how SA bills are written; the
+PDF engine uses it only as an allowance.
+
+---
+
+## Final-circuit wiring (`doe/knowledge/BOQ_KNOWLEDGE.md`)
+
+### Wiring conventions A–D
+Four ways the same wiring is billed: **A** material by material (South Africa — what the
+reference bills and the scorer use) · **B** circuit wiring in metres · **C** point, banded
+by length · **D** all-in point. AfriPlan must produce **A**.
+
+### Route · drop
+**Route** = the horizontal run of a circuit's conduit, board to point to point (straight
+runs). **Drop** = the vertical run from the ceiling void down to a switch or socket box:
+ceiling height − mounting height. Light points in the ceiling have no drop. Every
+convention is derived from route + drops + points (the **route take-off**).
+
+### GP wire
+Single-core general-purpose wire pulled through conduit, billed in metres **by size and
+colour** (red, black, white; the switch wire is why lighting needs three colours).
+Not surfix cable.
+
+### Wall box · round / looping box
+Flush **wall box**: 100×50 for a switch, 100×100 for a socket. **Round / looping box**: at
+ceiling points and where a circuit loops on.
+
+### Chasing
+Cutting the wall for a drop's conduit; billed per drop, banded by height.
+
+### Looped · dedicated run
+**Looped**: lights and sockets fed point to point on one circuit. **Dedicated**: AC units,
+geysers and stoves each run straight from the board, usually in heavier wire.
+
+### SITC
+Supply, installation, testing and commissioning — a supply + install line. AfriPlan bills
+are supply + install.
 
 ---
 
