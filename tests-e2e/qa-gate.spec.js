@@ -22,6 +22,16 @@ test('server unreachable: Run says so in plain words, not "Failed to fetch"', as
   await expect(page.getByText('Failed to fetch')).toHaveCount(0);
 });
 
+test('landing and login links are real buttons the keyboard reaches', async ({ page }) => {
+  await page.goto('/#landing');
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(2);   // header + footer
+  await expect(page.getByRole('button', { name: 'Get started' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#login$/);
+  await expect(page.getByRole('button', { name: /Back to home/ })).toHaveCount(1);
+});
+
 test('server error without a reason: no status code or API path shown', async ({ page }) => {
   await page.route('**/api/runs', (r) => r.fulfill({ status: 500, body: 'Internal Server Error' }));
   await runDxf(page);

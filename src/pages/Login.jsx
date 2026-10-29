@@ -64,7 +64,7 @@ export default function Login({ onNavigate, onSignIn }) {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <span style={{ fontSize: 13, color: 'var(--blueprint)', cursor: 'pointer' }} onClick={() => onNavigate('landing')}>← Back to home</span>
+          <button type="button" className="link-button" style={{ fontSize: 13, color: 'var(--blueprint)' }} onClick={() => onNavigate('landing')}>← Back to home</button>
         </div>
       </div>
     </div>

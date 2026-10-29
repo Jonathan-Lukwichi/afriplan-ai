@@ -260,16 +260,16 @@ export default function Landing({ onNavigate }) {
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <h2 style={{ fontSize: 34 }}>Price your <em>next job</em></h2>
-            <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 20, color: 'var(--blueprint)', cursor: 'pointer' }} onClick={() => onNavigate('login')}>
+            <button type="button" className="link-button" style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 20, color: 'var(--blueprint)', alignSelf: 'flex-start' }} onClick={() => onNavigate('login')}>
               Get started
-            </span>
+            </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <span style={footerHeading}>MENU</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', fontSize: 14, color: 'var(--ink-2)' }}>
               <span>Product</span>
               <span>How it works</span>
-              <span onClick={() => onNavigate('login')} style={{ cursor: 'pointer' }}>Sign in</span>
+              <button type="button" className="link-button" onClick={() => onNavigate('login')}>Sign in</button>
             </div>
           </div>
         </div>

@@ -136,6 +136,22 @@
 .btn-ghost:hover:not(:disabled) { border-color: var(--ink); background: rgba(16,26,51,0.03); }
 .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* A button that looks like plain text or a link: keyboard-reachable, unlike a <span onClick>.
+   Callers set font and colour inline, as the spans did. */
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;   /* WCAG 2.5.8 AA hit area, checked by tests-e2e/responsive.spec.js */
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {

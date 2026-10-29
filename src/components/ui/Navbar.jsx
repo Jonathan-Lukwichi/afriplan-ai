@@ -39,12 +39,14 @@ export default function Navbar({ onNavigate }) {
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <span
+          <button
+            type="button"
+            className="link-button"
             onClick={() => onNavigate('login')}
-            style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', cursor: 'pointer' }}
+            style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}
           >
             Sign in
-          </span>
+          </button>
           <button onClick={() => onNavigate('login')} className="btn-gradient" style={{ minHeight: 46, padding: '0 24px' }}>
             Start your BoQ →
           </button>
