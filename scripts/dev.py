@@ -38,6 +38,24 @@ def python_problem(version: tuple) -> str | None:
             "Install it from https://www.python.org/downloads/ (macOS: `brew install python@3.12`).")
 
 
+def pinned_python(root: Path) -> tuple | None:
+    """(major, minor) from `.python-version`, the version CI and Docker build with."""
+    pin = root / ".python-version"
+    if not pin.exists():
+        return None
+    major, minor = pin.read_text(encoding="utf-8").strip().split(".")[:2]
+    return int(major), int(minor)
+
+
+def python_drift(version: tuple, pinned: tuple | None) -> str | None:
+    """A warning when this Python is not the pinned one (it may still work), else None."""
+    if pinned is None or tuple(version[:2]) == pinned:
+        return None
+    pin = ".".join(map(str, pinned))
+    return (f"Note: this is Python {version[0]}.{version[1]}; CI and Docker use {pin} (.python-version). "
+            f"For the same results, build api/.venv with {pin}, e.g. `uv venv --python {pin} api/.venv`.")
+
+
 def ensure_env_file(root: Path) -> bool:
     """Create api/.env from api/.env.example if it is missing. True when it was created."""
     env, example = root / "api" / ".env", root / "api" / ".env.example"
@@ -64,6 +82,9 @@ def setup() -> int:
     if problem:
         print(problem)
         return 1
+    drift = python_drift(sys.version_info, pinned_python(ROOT))
+    if drift:
+        print(drift)
     py = venv_python(ROOT)
     print("1/3 Python packages (api/.venv)")
     if not py.exists():

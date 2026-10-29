@@ -75,7 +75,8 @@ split (instructions → agent → engines + check): `.claude/rules/three-layer-a
 | Fresh-context review prompt · AutoResearch loop (defined, not running) | `prompts/review.md` · `autoresearch/program.md` |
 
 ## Run, build, test
-Runs on **Windows, macOS and Linux** (Python 3.12+, Node 20+). `$PY` below = the project venv:
+Runs on **Windows, macOS and Linux**. Versions pinned in `.python-version` (3.12) and `.nvmrc` (20); CI and
+Docker build with exactly these (a test checks Docker). `$PY` below = the project venv:
 `api\.venv\Scripts\python.exe` on Windows, `api/.venv/bin/python` on macOS/Linux — never the
 system `python`. Use forward slashes in paths; keep new code OS-neutral (`pathlib`, no `.exe`
 or drive letters without a macOS/Linux equivalent).
