@@ -2,7 +2,7 @@
 // Needs the backend running (VITE_API_BASE_URL baked into the build) and the
 // client's reference workbook, which is local-only (gitignored) — so the test
 // skips itself on CI or any machine without them, instead of failing.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import fs from 'node:fs';
 import path from 'node:path';
 

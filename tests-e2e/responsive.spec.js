@@ -11,7 +11,7 @@
 // Pricing render their "no run selected" empty state without one, which
 // still exercises the layout system, matching the original harness's own
 // approach.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import fs from 'node:fs';
 
 const WIDTHS = [320, 360, 390, 414, 768, 1024, 1440, 1920];

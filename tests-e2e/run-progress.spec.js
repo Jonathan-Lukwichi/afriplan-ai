@@ -1,6 +1,6 @@
 // A slow PDF run shows where it is (step, pages, time, the AI's "busy, waiting" note) and a
 // failed one shows the real reason. The API is faked here, so no AI quota is used.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 const PDF = { name: 'set.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') };
 
