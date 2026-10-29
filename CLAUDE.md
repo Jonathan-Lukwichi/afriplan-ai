@@ -52,7 +52,7 @@ Skip the question only if the user's first message already makes the choice clea
 | AI cover note for e-mailing a BoQ | `api/ai/` |
 | React pages (Landing, Login, wizard, Pricing, **Audit a BoQ**) · design system · API client | `src/pages/` · `src/components/ui/` · `src/api/client.js` |
 | Reference projects: manifest committed; raw files + parsed bill LOCAL ONLY | `data/projects/<p>/` |
-| CLIs (verify data, build reference, evaluate, audit, baseline, symbol dataset) | `scripts/` |
+| CLIs (verify data, build reference, evaluate, audit, baseline, symbol dataset, take-off check) | `scripts/` |
 | **DOE workflow** — playbook (rules, lessons) · brain (how to read pages) · execution (`project.py`) | `doe/playbook/` · `doe/brain/` · `doe/execution/` |
 | **BoQ domain knowledge** — how a QS prepares, measures and prices a BoQ; the 4 ways wiring is billed (SA = material by material, convention A) and the route take-off | `doe/knowledge/BOQ_KNOWLEDGE.md` |
 | Baseline index (per-run reports local — client figures) | `reports/baselines/` |
@@ -129,8 +129,11 @@ inside an optimisation loop · push to `main` / deploy without approval · send 
 document to a client before a qualified person has signed it off (who qualifies: `context/about-project.md`).
 
 ## Skills
+- Follow `.claude/rules/three-layer-approach.md` for every AI task (skills: `/estimate-project`,
+  `/check-takeoff`, `/fix-and-learn`; read-only `checker` agent).
+
 `.claude/skills/evaluate-boq/` · `audit-boq/` · `add-reference-project/` · `estimate-project/` · `tdd/` ·
-`karpathy-coding-discipline/` · `prompts/review.md` (fresh-context review).
+`fix-and-learn/` · `check-takeoff/` · `karpathy-coding-discipline/` · `prompts/review.md` (fresh-context review).
 General skills on this PC (this file's rules win over them): `dashboard-qa-gate` before shipping a React
 change · `frontend-design` / `dashboard-ui-kit` for pages, reusing `src/components/ui` · `data-core-engine`
 for heavy work off the request path · `data-app-deploy` for Docker/Render. Never `data-app-init` here.

@@ -6,6 +6,8 @@ Updated: 2026-10-29. Review monthly.
 numbers: `context/current-state.md`.
 
 Candidates for the next piece of work. **Order: owner to set**, so the list is not ranked:
+- **DXF engine drops recognised content silently** (`issues/015-dxf-drops-recognised-content-silently.md`):
+  found by `/check-takeoff`; breaks hard rule 7.
 - **Route take-off** that emits convention-A wiring lines: conduit, GP wire by colour, BCEW,
   boxes, chasing (`doe/knowledge/BOQ_KNOWLEDGE.md` §4–§6).
 - **Building attribution** in the PDF pipeline (`issues/008-pdf-building-attribution.md`).
