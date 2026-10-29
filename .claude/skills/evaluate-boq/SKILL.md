@@ -44,3 +44,6 @@ $PY scripts/evaluate.py --project wedela --boq boq.json --building "Storage" --s
 - Update `reports/baselines/README.md` and the "Current state" block of `CLAUDE.md` with
   percentages only. The per-run report quotes client figures: it is gitignored — never
   force-add it (the repo is public, ADR-0005).
+
+## In the loop
+Step A3 (a DOE run with a reference) or B5 (any change that claims a better score). Next: B6, record the number in `context/current-state.md` and a dated baseline; a regression goes to `fix-and-learn`.

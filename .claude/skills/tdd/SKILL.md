@@ -25,3 +25,6 @@ Rules
 
 Test locations: `tests/<pipeline>/unit/`, `tests/shared/`, and `tests/<layer>_layer/`
 for top-level packages (never `tests/evaluation/` — it would shadow the package).
+
+## In the loop
+Step B3 of `.claude/rules/working-loop.md`. Before: B2 found the layer. Next: B4, the smallest change; then B5, the checks.

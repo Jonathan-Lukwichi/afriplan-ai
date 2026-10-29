@@ -25,3 +25,6 @@ Rules
   confirms it was wrong, and the commit message says so.
 - Never copy a client drawing or its counts out of `data/takeoff_tests/`.
 - Counts must match exactly; lengths within the row's tolerance.
+
+## In the loop
+Step B5 of `.claude/rules/working-loop.md`. PASS → B6, record. FAIL → `fix-and-learn`, then run this again.

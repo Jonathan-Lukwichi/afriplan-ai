@@ -35,3 +35,6 @@ CNN more trustworthy. Ratios need ≥ 3 buildings for a LOO error; a CNN needs 5
 ## Rules
 - Do not "fix" the client's workbook; audit findings are recorded, not corrected.
 - Keep the project's parsed JSON out of any public share — it is client data.
+
+## In the loop
+Step B1 (data work). Next: `evaluate-boq` for the first baselines, then B6, record them.

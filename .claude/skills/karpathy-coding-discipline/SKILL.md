@@ -29,3 +29,6 @@ then make it pass"). For multi-step work state the plan with a check per step:
 In this repo the verifiable goal is usually a number: the full test suite, the
 architecture tests, and — for pipeline work — the Reproduction Score against a committed
 baseline (`evaluate-boq` skill).
+
+## In the loop
+Step B4 of `.claude/rules/working-loop.md`. Next: B5, the checks.

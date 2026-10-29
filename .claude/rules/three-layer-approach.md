@@ -2,6 +2,7 @@
 
 Adapted for AfriPlan from the playbook's `three-layer-check` pack (2026-10-29). It restates
 CLAUDE.md hard rules 4 and 7 as one working method; where they differ, CLAUDE.md wins.
+The order to work in, step by step, is `working-loop.md` (next to this file).
 
 | Layer | What it is | Where it lives in AfriPlan |
 |---|---|---|

@@ -62,3 +62,6 @@ Output in `<folder>/AfriPlan_Output/`: `<Project>_BoQ_<stamp>.xlsx` + `.pdf`, `t
 - E-mail when asked: `$PY doe/execution/send_email.py "<folder>/AfriPlan_Output"` (exit 4 = no mail
   credentials → say so; never paste large attachments by hand).
 - Add anything that surprised you to `doe/playbook/LESSONS.md` (general lessons, no client figures).
+
+## In the loop
+Steps A1–A2 of `.claude/rules/working-loop.md`. Next: A3, ask the read-only `checker` agent to review the bill (and `evaluate-boq` when a reference project exists); then A4, report it as a draft for estimator review.

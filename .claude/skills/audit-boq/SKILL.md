@@ -36,3 +36,6 @@ only for ratios with leave-one-building-out error ≤ 35 %; the rest become gaps
   (NOT_IN_SUMMARY) from defects in the priced bill.
 - New audit rule → test-first in `tests/audit_layer/test_boq_rules.py` with one positive
   and one negative case, and add it to the rule list in `api/audit/boq_rules.py`'s docstring.
+
+## In the loop
+Step A3. Next: A4, report the findings; a defect in our own engine goes to `issues/` (B6).

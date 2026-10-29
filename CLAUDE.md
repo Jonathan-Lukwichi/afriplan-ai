@@ -28,13 +28,27 @@ Before any other work, ask the user (AskUserQuestion) which they want this sessi
 - **Develop the code** → normal engineering work on this repo.
 Skip the question only if the user's first message already makes the choice clear.
 
-## Read first
-- `context.md` — the glossary. Use its exact terms in conversation, plans and code.
-- `docs/architecture.md` — the whole system on one page.
-- `docs/adr/` — decisions that must not be silently re-litigated.
-- `issues/` — the known-defect backlog, each with evidence and acceptance criteria.
-- `context/` — `priorities.md` (what next), `current-state.md` (scores and status), `about-project.md`
-  (users, flow, data rules, open owner questions). `references/` — where the domain and tool notes are.
+## The working loop — follow it in order, every session
+Detail per step (files, commands, "done when", next): `.claude/rules/working-loop.md`. How work is
+split (instructions → agent → engines + check): `.claude/rules/three-layer-approach.md`.
+0. **Orient.** Ask the mode (above). Open `context/priorities.md` (what next) and `context/current-state.md`
+   (scores, status; aim = READING accuracy on **wedela**). Words: `context.md` · system:
+   `docs/architecture.md` · decisions: `docs/adr/` · defects: `issues/` · domain: `references/README.md`.
+
+**A. DOE estimate** (a BoQ from a project folder)
+1. *Instructions:* skill `estimate-project` → `doe/brain/BRAIN.md`, `doe/playbook/`, `doe/knowledge/BOQ_KNOWLEDGE.md`.
+2. *Engines:* `project.py prepare` → you read the pages into forms → `project.py finish`.
+3. *Check:* the read-only `checker` agent; `evaluate-boq` / `audit-boq` when a reference or a bill applies.
+4. *Learn and report:* "draft for estimator review"; corrections → `fix-and-learn` → `doe/playbook/LESSONS.md`.
+
+**B. Develop** (change the code)
+1. *Pick* one item from `context/priorities.md` or `issues/`; plan non-trivial work in `docs/superpowers/plans/`.
+2. *Find the layer:* skill/brain · catalogue/layers/rates · engine (`api/agent/`) · UI (`src/`).
+3. *Failing test first:* skill `tdd` (Python `tests/`, UI `tests-e2e/`, boundaries `tests/architecture/`).
+4. *Smallest change* at that layer: skill `karpathy-coding-discipline`.
+5. *Check:* pytest · `npm run build` · `npx playwright test` · `/check-takeoff` (engines, catalogue, rates)
+   · `evaluate-boq` (score claims) · `dashboard-qa-gate` (UI). A failure → `fix-and-learn` → check again.
+6. *Record:* `context/current-state.md` · `issues/` · `docs/adr/` · commit (no client data) · CI green → back to 0.
 
 ## Where things live
 | Area | Path |
@@ -57,7 +71,8 @@ Skip the question only if the user's first message already makes the choice clea
 | **BoQ domain knowledge** — how a QS prepares, measures and prices a BoQ; the 4 ways wiring is billed (SA = material by material, convention A) and the route take-off | `doe/knowledge/BOQ_KNOWLEDGE.md` |
 | Baseline index (per-run reports local — client figures) | `reports/baselines/` |
 | Project context (priorities, current state, about the project; `about-me.md` local only) · reference signposts, tool connections | `context/` · `references/` |
-| Read-only research helper agent (cheap model) | `.claude/agents/researcher.md` |
+| Working loop + three-layer approach (rules) · skills · agents (`checker`, `researcher`) · settings + hooks | `.claude/rules/` · `.claude/skills/` · `.claude/agents/` · `.claude/settings.json` |
+| Fresh-context review prompt · AutoResearch loop (defined, not running) | `prompts/review.md` · `autoresearch/program.md` |
 
 ## Run, build, test
 Runs on **Windows, macOS and Linux** (Python 3.12+, Node 20+). `$PY` below = the project venv:
@@ -74,16 +89,15 @@ npm run dev                                          # http://127.0.0.1:5180
 $PY doe/execution/project.py prepare "<project folder>"
 $PY doe/execution/project.py finish  "<project folder>" [--reference wedela]
 # Verify (all must pass before a commit)
-$PY -m pytest -q -p no:warnings                      # ~530 tests, no network (pytest.ini: pythonpath=api)
+$PY -m pytest -q -p no:warnings                      # ~575 tests, no network (pytest.ini: pythonpath=api)
+$PY scripts/check_takeoff.py                         # take-off vs hand counts (skill check-takeoff)
 npm run build
 npx playwright test                                  # e2e; audit spec needs the backend + local workbook
 $PY scripts/evaluate.py --project wedela --self-test # RS 100.0% (needs the local Wedela data)
 ```
 A fresh clone skips the tests that need `data/projects/*/raw/` (client data, never in git).
-**CI** (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request:
-architecture rules, the pytest suite, `npm run build`, the Playwright browser tests (the
-audit and DWG-set specs skip there: they need the backend and local client files), and a
-no-client-data-tracked check.
+**CI** (`.github/workflows/ci.yml`) on every push/PR: architecture rules, pytest, build, Playwright
+(audit + DWG-set specs skip without the backend and client files), no-client-data check.
 Test dirs for the new packages end in `_layer` (`tests/evaluation_layer/`) — a
 `tests/evaluation/` package would shadow `evaluation`.
 
@@ -128,16 +142,8 @@ NEVER: commit client data or `.env` · weaken/delete a test to go green · edit 
 inside an optimisation loop · push to `main` / deploy without approval · send a BoQ or tender
 document to a client before a qualified person has signed it off (who qualifies: `context/about-project.md`).
 
-## Skills
-- Follow `.claude/rules/three-layer-approach.md` for every AI task (skills: `/estimate-project`,
-  `/check-takeoff`, `/fix-and-learn`; read-only `checker` agent).
-
-`.claude/skills/evaluate-boq/` · `audit-boq/` · `add-reference-project/` · `estimate-project/` · `tdd/` ·
-`fix-and-learn/` · `check-takeoff/` · `karpathy-coding-discipline/` · `prompts/review.md` (fresh-context review).
-General skills on this PC (this file's rules win over them): `dashboard-qa-gate` before shipping a React
-change · `frontend-design` / `dashboard-ui-kit` for pages, reusing `src/components/ui` · `data-core-engine`
-for heavy work off the request path · `data-app-deploy` for Docker/Render. Never `data-app-init` here.
-
-## Current state and priorities
-Scores and status: `context/current-state.md` (update it when they change). What to work on next:
-`context/priorities.md`. Current aim: **READING accuracy**. Reference project: **wedela**.
+## Skills, agents, rules
+Index in loop order: `.claude/README.md`. Project skills: `estimate-project` · `check-takeoff` ·
+`fix-and-learn` · `tdd` · `evaluate-boq` · `audit-boq` · `add-reference-project` · `karpathy-coding-discipline`.
+General skills on this PC (this file's rules win): `dashboard-qa-gate` · `frontend-design` /
+`dashboard-ui-kit` (reuse `src/components/ui`) · `data-core-engine` · `data-app-deploy`. Never `data-app-init` here.

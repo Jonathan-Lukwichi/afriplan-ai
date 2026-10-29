@@ -26,3 +26,6 @@ Rules
 - Never change a test's expected values to make it pass. Expected counts change only when the user
   confirms a hand count was wrong, and the commit message says so.
 - Ask before anything that costs money or touches client files.
+
+## In the loop
+Entered from A4 or B5 when something fails. Next: back into the check that failed (A3 or B5); after 3 failed attempts, stop and report.
