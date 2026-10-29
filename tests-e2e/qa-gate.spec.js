@@ -15,6 +15,17 @@ async function runDxf(page) {
   await page.getByRole('button', { name: /Run DXF engine/ }).click();
 }
 
+// Opening a page must only read: a run, a comparison or a quote request starts with a POST.
+for (const route of ['landing', 'login', 'welcome', 'upload', 'extraction', 'compare', 'boq', 'pricing', 'audit']) {
+  test(`${route}: loading the page sends no POST to the API`, async ({ page }) => {
+    const writes = [];
+    page.on('request', (r) => { if (r.url().includes('/api/') && r.method() !== 'GET') writes.push(`${r.method()} ${r.url()}`); });
+    await openAuthed(page, route);
+    await page.waitForTimeout(1500);
+    expect(writes).toEqual([]);
+  });
+}
+
 test('server unreachable: Run says so in plain words, not "Failed to fetch"', async ({ page }) => {
   await page.route('**/api/**', (r) => r.abort('connectionrefused'));
   await runDxf(page);
