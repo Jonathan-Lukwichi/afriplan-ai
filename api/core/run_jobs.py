@@ -4,24 +4,14 @@ place that creates a RunRecord and runs its threadpool job, so the
 comparison endpoint (which needs to launch one of each pipeline) and the
 plain single-pipeline endpoint don't duplicate this wiring.
 
-Two execution modes, chosen by ON_VERCEL (Vercel sets VERCEL=1 in every
-deployment automatically — no config needed):
-  - Off Vercel (local dev, Docker/Render): schedule via BackgroundTasks, so
-    the HTTP response returns instantly with status="running" and the
-    frontend polls GET /api/runs/{id} for completion — the original,
-    nicer-feeling UX, safe here because the process keeps running after the
-    response is sent.
-  - On Vercel: BackgroundTasks work is not guaranteed to keep running once
-    a serverless function has sent its response (Python Vercel functions
-    have no post-response execution primitive), so the job is awaited
-    directly instead — the request just stays open until the job resolves.
-    The frontend needs no changes either way: it polls the same endpoint,
-    and on Vercel that first poll simply already sees the final status.
+Jobs are scheduled via BackgroundTasks, so the HTTP response returns
+instantly with status="running" and the frontend polls GET /api/runs/{id}
+for completion — safe because the one server process (local dev,
+Docker/Render) keeps running after the response is sent.
 """
 
 from __future__ import annotations
 
-import os
 import uuid
 
 from typing import Optional
@@ -35,8 +25,6 @@ from core.config import ai_providers_ready, run_slots
 from core.run_progress import clear_progress, set_progress
 from core.run_queue import QueueFull, RunQueue
 from core.run_store import RunRecord, run_store
-
-ON_VERCEL = bool(os.environ.get("VERCEL"))
 
 # Heavy runs take turns (core/run_queue.py): a burst of uploads waits in line instead of
 # running the server out of memory. CAD and PDF have separate lines — a CAD set is
@@ -122,10 +110,7 @@ async def launch_dxf_run(background_tasks: BackgroundTasks, pairs: list[tuple[by
     run_id = uuid.uuid4().hex[:12]
     label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
     run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="running", input_file=label))
-    if ON_VERCEL:
-        await DXF_QUEUE.run(run_id, run_dxf_job, pairs, ai_symbols)
-    else:
-        background_tasks.add_task(DXF_QUEUE.run, run_id, run_dxf_job, pairs, ai_symbols)
+    background_tasks.add_task(DXF_QUEUE.run, run_id, run_dxf_job, pairs, ai_symbols)
     return run_id
 
 
@@ -135,8 +120,5 @@ async def launch_pdf_run(background_tasks: BackgroundTasks, pairs: list[tuple[by
     run_id = uuid.uuid4().hex[:12]
     label = pairs[0][1] if len(pairs) == 1 else f"{len(pairs)} files"
     run_store.put(RunRecord(run_id=run_id, pipeline="pdf", status="running", input_file=label))
-    if ON_VERCEL:
-        await PDF_QUEUE.run(run_id, run_pdf_job, pairs, provider)
-    else:
-        background_tasks.add_task(PDF_QUEUE.run, run_id, run_pdf_job, pairs, provider)
+    background_tasks.add_task(PDF_QUEUE.run, run_id, run_pdf_job, pairs, provider)
     return run_id

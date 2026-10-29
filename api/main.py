@@ -12,17 +12,15 @@ from db.connection import init_db  # noqa: E402
 
 init_db()
 
-# Off Vercel every job runs inside this one process, so a run still marked "running" at
-# start-up died with the previous process (restart, crash, redeploy): say so instead of
-# letting its page poll forever. On Vercel several instances share one database — skip.
-import os  # noqa: E402
+# Every job runs inside this one process, so a run still marked "running" at start-up died
+# with the previous process (restart, crash, redeploy): say so instead of letting its page
+# poll forever.
+from core.compare_store import compare_store  # noqa: E402
+from core.run_store import run_store  # noqa: E402
 
-if not os.environ.get("VERCEL"):
-    from core.compare_store import compare_store  # noqa: E402
-    from core.run_store import run_store  # noqa: E402
-    _RESTARTED = "The server restarted while this run was in progress - please run it again."
-    run_store.fail_interrupted(_RESTARTED)
-    compare_store.fail_interrupted(_RESTARTED)
+_RESTARTED = "The server restarted while this run was in progress - please run it again."
+run_store.fail_interrupted(_RESTARTED)
+compare_store.fail_interrupted(_RESTARTED)
 
 # In production (Docker) the built frontend is copied to api/static and served
 # by this same process — one service, same origin, no CORS. In dev the folder

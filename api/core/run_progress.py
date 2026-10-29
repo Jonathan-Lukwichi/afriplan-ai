@@ -3,8 +3,7 @@ Live progress of running jobs — in memory, beside the run store.
 
 A run writes its progress here many times a second at peak (every page read, every AI
 wait); the SQLite run store only receives the final result. Progress lives in the process
-that runs the job, which is the process that answers the polls (off Vercel); on Vercel the
-job finishes inside the request, so a poll only ever sees the final status.
+that runs the job, which is the process that answers the polls.
 """
 
 from __future__ import annotations

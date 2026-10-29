@@ -27,8 +27,8 @@ fpdf2>=2.7.0
 
 # Persistence (api/db/connection.py): plain stdlib sqlite3 for local dev and
 # the Docker/Render path (DATABASE_URL unset or sqlite://), psycopg for a
-# hosted Postgres (DATABASE_URL=postgresql://... — used on Vercel, since its
-# serverless filesystem can't hold a SQLite file between requests). Every
+# hosted Postgres (DATABASE_URL=postgresql://..., for a host with no persistent
+# disk for a SQLite file). Every
 # table is fundamentally a JSON blob keyed by id, no ORM needed either way.
 psycopg[binary]>=3.1
 

@@ -22,7 +22,7 @@ from fastapi.responses import Response
 from agent.comparison import compare_runs, export_comparison_to_pdf
 from core import run_jobs
 from core.compare_store import CompareRecord, compare_store
-from core.run_jobs import ON_VERCEL, check_room, checked_ai_provider, run_dxf_job, run_pdf_job
+from core.run_jobs import check_room, checked_ai_provider, run_dxf_job, run_pdf_job
 from core.run_progress import get_progress
 from core.run_store import RunRecord, run_store
 
@@ -87,15 +87,10 @@ async def create_comparison(
     compare_store.put(CompareRecord(
         compare_id=compare_id, dxf_run_id=dxf_run_id, pdf_run_id=pdf_run_id, status="running",
     ))
-    if ON_VERCEL:
-        await _run_both_then_compare(compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs, provider)
-    else:
-        background_tasks.add_task(
-            _run_both_then_compare, compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs, provider,
-        )
+    background_tasks.add_task(
+        _run_both_then_compare, compare_id, dxf_run_id, pdf_run_id, dxf_pairs, pdf_pairs, provider,
+    )
 
-    # See runs.py's create_run: report the real status, since on Vercel the
-    # comparison has already been awaited above and may already be resolved.
     status = compare_store.get(compare_id).status
     return {"compare_id": compare_id, "dxf_run_id": dxf_run_id, "pdf_run_id": pdf_run_id, "status": status}
 

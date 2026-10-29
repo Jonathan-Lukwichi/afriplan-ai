@@ -4,11 +4,9 @@ POST /api/runs, GET /api/runs/{run_id} — the keyed run-cache pattern.
 DXF is a no-LLM job over one drawing or a whole drawing set (run as one project). PDF is a multi-file, LLM-backed
 job that can take up to ~60s (vision calls with retry/escalation inside
 PdfLLM.call_with_tool) - both run as threadpool jobs behind the same
-create/poll contract so the frontend doesn't need to know which. Off Vercel
-that threadpool job is scheduled as a BackgroundTask (instant response,
-frontend polls); on Vercel it's awaited directly before responding, since
-Vercel's Python runtime gives no guarantee background work continues after
-a response is sent (see core.run_jobs.ON_VERCEL). The "both, compare" option
+create/poll contract so the frontend doesn't need to know which. The
+threadpool job is scheduled as a BackgroundTask (instant response, frontend
+polls; see core.run_jobs). The "both, compare" option
 lives at /api/compare (routers/compare.py), which launches one of each via
 the same core.run_jobs helpers.
 """
@@ -48,10 +46,6 @@ async def create_run(
         pairs = [(await f.read(), f.filename or "input.pdf") for f in files]
         run_id = await launch_pdf_run(background_tasks, pairs, provider)
 
-    # Off Vercel this is always "running" (the job is still in the
-    # threadpool queue). On Vercel the job has already been awaited above,
-    # so the record may already be "passed"/"failed" by the time we
-    # respond — report the real status rather than a stale hardcoded one.
     return {"run_id": run_id, "status": run_store.get(run_id).status}
 
 

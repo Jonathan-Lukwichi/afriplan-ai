@@ -6,10 +6,8 @@ interface:
     existing Docker/Render deployment. Every row here is fundamentally a
     JSON blob keyed by id, which doesn't benefit from an ORM's relational
     mapping.
-  - postgresql:// (Vercel deployment) — psycopg3, since Vercel's serverless
-    filesystem is ephemeral and doesn't survive between invocations, so
-    SQLite-on-disk can't be the store there. Vercel Postgres injects this
-    as DATABASE_URL automatically.
+  - postgresql:// — psycopg3, for a hosted Postgres when the host has no
+    persistent disk for a SQLite file. Set DATABASE_URL to use it.
 
 Callers never need to know which backend is active: get_connection() always
 yields something with the same .execute(sql, params)/.commit()/.close()
