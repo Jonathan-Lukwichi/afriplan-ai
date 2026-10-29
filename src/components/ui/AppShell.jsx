@@ -155,6 +155,7 @@ function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, s
             <button
               key={page}
               onClick={() => onNavigate(page)}
+              aria-current={active ? 'page' : undefined}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 44,
                 background: active ? '#FFFFFF' : 'transparent',

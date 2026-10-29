@@ -32,6 +32,14 @@ test('landing and login links are real buttons the keyboard reaches', async ({ p
   await expect(page.getByRole('button', { name: /Back to home/ })).toHaveCount(1);
 });
 
+test('the sidebar marks exactly one item as the current page', async ({ page }) => {
+  await openAuthed(page, 'upload');
+  await expect(page.locator('[aria-current="page"]')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Upload/ }).and(page.locator('[aria-current="page"]'))).toHaveCount(1);
+  await page.getByRole('button', { name: /Audit a BoQ/ }).click();
+  await expect(page.locator('[aria-current="page"]')).toHaveText(/Audit a BoQ/);
+});
+
 test('server error without a reason: no status code or API path shown', async ({ page }) => {
   await page.route('**/api/runs', (r) => r.fulfill({ status: 500, body: 'Internal Server Error' }));
   await runDxf(page);
