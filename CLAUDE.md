@@ -80,6 +80,9 @@ npx playwright test                                  # e2e; audit spec needs the
 $PY scripts/evaluate.py --project wedela --self-test # RS 100.0% (needs the local Wedela data)
 ```
 A fresh clone skips the tests that need `data/projects/*/raw/` (client data, never in git).
+**CI** (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request:
+architecture rules, the pytest suite, `npm run build`, and a no-client-data-tracked check.
+Playwright e2e is not in CI (needs the local workbook).
 Test dirs for the new packages end in `_layer` (`tests/evaluation_layer/`) — a
 `tests/evaluation/` package would shadow `evaluation`.
 

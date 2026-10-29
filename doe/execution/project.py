@@ -50,8 +50,10 @@ CAD = (".dwg", ".dxf")
 def discover(folder: Path):
     """(cad files, pdf files, {older file: newer file}) — sorted, outputs excluded."""
     from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
-    files = sorted(p for p in folder.rglob("*") if p.is_file() and OUT_DIR not in p.parts
-                   and p.suffix.lower() in (*CAD, ".pdf"))
+    # sort by the case-folded relative path: Path ordering is case-insensitive on Windows only
+    files = sorted((p for p in folder.rglob("*") if p.is_file() and OUT_DIR not in p.parts
+                    and p.suffix.lower() in (*CAD, ".pdf")),
+                   key=lambda p: p.relative_to(folder).as_posix().lower())
     _, superseded = pick_latest_revisions([p.name for p in files])
     keep = [p for p in files if p.name not in superseded]
     return ([p for p in keep if p.suffix.lower() in CAD], [p for p in keep if p.suffix.lower() == ".pdf"],
