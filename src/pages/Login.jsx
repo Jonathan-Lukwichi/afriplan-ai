@@ -5,8 +5,8 @@ import { Zap } from 'lucide-react';
    authentication. No backend call, no password check, no session token.
    Prefilled credentials; a click signs you in. See CLAUDE.md for what
    upgrading to real per-user accounts would require.
-   Light editorial refresh: full-bleed photo panel with a serif pull quote,
-   form side on paper. No "Forgot password?" or "Continue with Google" —
+   Light editorial refresh: full-bleed photo panel with a condensed-sans pull quote,
+   form side on paper. Headlines carry no single-word accent (2026-10-29). No "Forgot password?" or "Continue with Google" —
    both would be non-functional (this login is demo-only by design), and a
    fake OAuth button would misrepresent what actually happens on click. */
 export default function Login({ onNavigate, onSignIn }) {
@@ -18,7 +18,7 @@ export default function Login({ onNavigate, onSignIn }) {
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(16,26,51,0.10) 0%, rgba(16,26,51,0.78) 100%)' }} />
         <div style={{ position: 'absolute', left: 64, right: 64, bottom: 64, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h2 style={{ fontSize: 42, color: '#FFFFFF', lineHeight: 1.15 }}>
-            A day of take-off,<br /><em>done before lunch.</em>
+            A day of take-off,<br />done before lunch.
           </h2>
           <p style={{ fontSize: 15, lineHeight: 1.7, color: 'rgba(255,255,255,0.82)', maxWidth: 400, margin: 0 }}>
             Upload the drawings, review the quantities, send the quotation.
@@ -41,7 +41,7 @@ export default function Login({ onNavigate, onSignIn }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h1 style={{ fontSize: 46 }}>Welcome <em>back</em></h1>
+          <h1 style={{ fontSize: 46 }}>Welcome back</h1>
           <p style={{ fontSize: 15, color: 'var(--ink-2)', margin: 0 }}>
             Demo credentials are pre-filled — just click Sign in.
           </p>

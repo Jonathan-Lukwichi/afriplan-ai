@@ -26,3 +26,5 @@ runs/
 # Local conversation logs (session-logger) — may quote client details
 sessions/
 
+# Third-party design reference screenshots (BuildVision, Dribbble) — local only, repo is PUBLIC
+design-reference/
