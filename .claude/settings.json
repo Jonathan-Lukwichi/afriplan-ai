@@ -1,4 +1,9 @@
 {
+  "permissions": {
+    "allow": ["Bash(git status)", "Bash(git diff *)", "Bash(git log *)"],
+    "ask":   ["Bash(git push *)"],
+    "deny":  ["Read(./.env)", "Read(./.env.*)", "Read(./api/.env)", "Bash(rm -rf *)"]
+  },
   "hooks": {
     "PostToolUse": [
       {

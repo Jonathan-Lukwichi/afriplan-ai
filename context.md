@@ -18,6 +18,13 @@ The priced list of every item needed to build the electrical installation. In co
 `agent.shared.BillOfQuantities`. A **project** may have several **building bills**
 plus a **summary** that rolls them up, plus **P&Gs**.
 
+### Take-off
+Counting and measuring the quantities off the drawings — the step AfriPlan automates. The
+take-off gives quantities; pricing them is a separate step.
+
+### DQE
+Detailed quantity estimate: another name for a BoQ priced line by line. Say **BoQ**.
+
 ### Building bill
 One sheet of a project BOQ covering one building (Wedela: "Existing Community Hall",
 "Swimming Pool" …). Organised in **bill sections**.
@@ -98,6 +105,12 @@ The explicit graph drawing → evidence → quantity → priced line → total
 `length`, `derived`, `provisional`, `prelims`) and which drawing types carry its
 evidence. It is *not* a trained neural network (ADR-0004).
 
+### Measured · counted · estimated
+The plain words for where a quantity came from. **Measured** (a length off the drawing) and
+**counted** (symbols) are `EXTRACTED`; **estimated** is `INFERRED`, `ASSUMED` or
+`PROVISIONAL`, always with an assumption and a `GapItem` (hard rule 7). Findings rank their
+evidence finer: measured > counted > written > seen > assumed.
+
 ### Legend / LDSE
 A drawing's own symbol key. Legend-Driven Symbol Extraction reads it as ground
 truth for that drawing (`api/agent/shared/legend.py`).
@@ -106,6 +119,10 @@ truth for that drawing (`api/agent/shared/legend.py`).
 A sub-main cable run between two nodes (kiosk → DB, DB → sub-DB). Every feeder
 implies an earth (**BCEW**), two **terminations**, and — underground — trench +
 warning tape.
+
+### Cable route
+The path a feeder takes between two nodes, measured on the electrical site plan
+(`api/agent/shared/routes.py`). For final circuits, say **route** (see Final-circuit wiring).
 
 ### BCEW
 Bare copper earth wire, run alongside a feeder (large sizes) or as a circuit earth

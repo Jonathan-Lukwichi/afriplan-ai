@@ -8,6 +8,12 @@ api/static/
 *.pyc
 .env
 api/.env
+.env.*
+!.env.example
+# personal Claude Code settings and notes (the repo is PUBLIC)
+.claude/settings.local.json
+CLAUDE.local.md
+context/about-me.md
 test-results/
 playwright-report/
 screenshots/

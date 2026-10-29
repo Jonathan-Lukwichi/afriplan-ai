@@ -33,6 +33,8 @@ Skip the question only if the user's first message already makes the choice clea
 - `docs/architecture.md` — the whole system on one page.
 - `docs/adr/` — decisions that must not be silently re-litigated.
 - `issues/` — the known-defect backlog, each with evidence and acceptance criteria.
+- `context/` — `priorities.md` (what next), `current-state.md` (scores and status), `about-project.md`
+  (users, flow, data rules, open owner questions). `references/` — where the domain and tool notes are.
 
 ## Where things live
 | Area | Path |
@@ -47,12 +49,15 @@ Skip the question only if the user's first message already makes the choice clea
 | BOQ rule audit, drawing sufficiency, derived-item completer | `api/audit/` |
 | CNN training-data generator (no model trained — ADR-0004) | `api/ml/` |
 | Live supplier pricing (mock suppliers) · Excel/PDF exports · SQLite | `api/sourcing/` · `api/exports/` · `api/db/` |
+| AI cover note for e-mailing a BoQ | `api/ai/` |
 | React pages (Landing, Login, wizard, Pricing, **Audit a BoQ**) · design system · API client | `src/pages/` · `src/components/ui/` · `src/api/client.js` |
 | Reference projects: manifest committed; raw files + parsed bill LOCAL ONLY | `data/projects/<p>/` |
 | CLIs (verify data, build reference, evaluate, audit, baseline, symbol dataset) | `scripts/` |
 | **DOE workflow** — playbook (rules, lessons) · brain (how to read pages) · execution (`project.py`) | `doe/playbook/` · `doe/brain/` · `doe/execution/` |
 | **BoQ domain knowledge** — how a QS prepares, measures and prices a BoQ; the 4 ways wiring is billed (SA = material by material, convention A) and the route take-off | `doe/knowledge/BOQ_KNOWLEDGE.md` |
 | Baseline index (per-run reports local — client figures) | `reports/baselines/` |
+| Project context (priorities, current state, about the project; `about-me.md` local only) · reference signposts, tool connections | `context/` · `references/` |
+| Read-only research helper agent (cheap model) | `.claude/agents/researcher.md` |
 
 ## Run, build, test
 Runs on **Windows, macOS and Linux** (Python 3.12+, Node 20+). `$PY` below = the project venv:
@@ -86,6 +91,8 @@ Test dirs for the new packages end in `_layer` (`tests/evaluation_layer/`) — a
    `audit`, `sourcing`, `ml`, `routers`, `db`, or `agent.comparison`.
 4. **LLM = eyes, Python = brain** (ADR-0002): strict `tool_use` schemas + retry-with-
    feedback; never hand-parse JSON, never let the LLM do arithmetic or invent a rate.
+   **Nobody invents a quantity or a rate** — not the LLM, not Claude Code, not a default in code:
+   every number comes from a drawing, a rate table or a script run, or is tagged as in rule 7.
 5. **Frozen system prompt** (`api/agent/pdf_pipeline/prompts/system_prompt.py`): no
    timestamps / request IDs / names — it is the cache prefix.
 6. **Model IDs only in `api/core/config.py`.**
@@ -114,44 +121,16 @@ just unit tests; report baseline numbers honestly, including regressions.
 ASK FIRST: new dependency · changing `BillOfQuantities` or any public schema · paid API
 runs (PDF pipeline) · editing the scorer/taxonomy · force-push · deleting branches.
 NEVER: commit client data or `.env` · weaken/delete a test to go green · edit the scorer
-inside an optimisation loop · push to `main` / deploy without approval.
+inside an optimisation loop · push to `main` / deploy without approval · send a BoQ or tender
+document to a client before a qualified person has signed it off (who qualifies: `context/about-project.md`).
 
 ## Skills
-`.claude/skills/evaluate-boq/` · `audit-boq/` · `add-reference-project/` · `tdd/` ·
+`.claude/skills/evaluate-boq/` · `audit-boq/` · `add-reference-project/` · `estimate-project/` · `tdd/` ·
 `karpathy-coding-discipline/` · `prompts/review.md` (fresh-context review).
+General skills on this PC (this file's rules win over them): `dashboard-qa-gate` before shipping a React
+change · `frontend-design` / `dashboard-ui-kit` for pages, reusing `src/components/ui` · `data-core-engine`
+for heavy work off the request path · `data-app-deploy` for Docker/Render. Never `data-app-init` here.
 
-## Current state (update when it changes)
-- Reference project: **wedela** (7 billed buildings). Baselines (`reports/baselines/README.md`),
-  project-level Reproduction Score (2026-09-27): **DXF 44.6 %** (45.3 % with completer),
-  **PDF 27.1 %** (Opus 5, pages read in parallel, ~5 min; the Wedela PDF set has no site plan, so its feeder lengths stay assumed).
-- Optional **AI symbol names** (ADR-0007): loose-line-work symbols are grouped into shapes
-  (`dxf_pipeline/passes/shapes.py`, no LLM), named once by `api/assist/symbol_namer.py`
-  from a fixed catalogue (`agent/shared/symbol_catalogue.py`), remembered in `symbol_names`;
-  Wedela DXF 44.8 % → **46.2 %** (49.2 % with completer) for ~R 1.
-- A DWG/DXF **set** runs as one project (`run_dxf_project`): feeders from every SLD are
-  measured on the electrical site plan (`agent/shared/routes.py` + each pipeline's
-  `passes/site_routes.py`); the PDF pipeline measures vector site-plan PDFs the same way.
-- **One bill from both readers** (ADR-0008): each engine states *findings* (`agent/shared/findings.py`,
-  with evidence: measured > counted > written > seen > assumed) priced by ONE pricer
-  (`agent/shared/pricing.py`). `api/consolidate/combine.py` merges the two readers' findings
-  (PDF pages paired with CAD sheets by shared words, `agent/shared/sheets.py`); names Python cannot
-  pair go to the injected AI matcher `api/assist/finding_matcher.py`. Wedela combined **47.2 %**.
-- **DOE workflow** (2026-10-02, `doe/execution/project.py` + skill `estimate-project`): PDF pages
-  read by Claude Code on the subscription → Wedela PDF **47.5 %** (Claude API 27.1 %, Gemini free
-  40.2 %); combined with the DWG set **55.8 % — the best so far**. Forms are saved per page so every
-  result can be reproduced; a missing or invalid form stops `finish`. With the 2026-10-02 form
-  boxes: **58.5 %** (CAD alone 48.7 %, PDF alone 50.6 %).
-- **Accuracy report** (`docs/accuracy-metrics.md`): `finish --reference <p>` writes
-  `accuracy_report.md/.json` — every reader's metrics and the missing points split by item, cause
-  and kind of fix (`evaluation/gaps.py`); dated copies in `reports/accuracy/` (gitignored). Wedela's
-  biggest gaps: feeder cable sizes, boards counted twice, derived material not produced, trench length.
-- **Current aim = READING accuracy** (`evaluation/reading.py`, pricing judged later): only items counted or
-  measured on the uploaded drawings, weighted by the real bill, our rates never enter. Wedela DOE combined
-  **67.5 %** (CAD 53.2 %, PDF 59.7 %). Recheck each loss against the drawing — the reference is a priced
-  bill: part of the loss is the bill differing from the drawing, not misreading. Next: a drawing ground truth.
-  A person checked 20 items of Claude's own drawing reading (6 Oct): **19 correct, 0 wrong, 1 blank**. Verdict and
-  data plan (5 projects from 3+ consulting firms) in `docs/accuracy-metrics.md` §2c.
-- Biggest levers next: building attribution (008), a second reference project (014),
-  tag→symbol attribution on site plans (leader lines), site-lighting double counts across
-  PDF sheets (flagged, not yet merged).
-- Streamlit app retired 2026-09-26; its final state is the tag `archive/legacy-streamlit-2026-09-26`.
+## Current state and priorities
+Scores and status: `context/current-state.md` (update it when they change). What to work on next:
+`context/priorities.md`. Current aim: **READING accuracy**. Reference project: **wedela**.
