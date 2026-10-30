@@ -108,7 +108,8 @@ def test_free_issue_item_is_install_only_and_fixed_price_item_is_kept():
 def test_wire_is_priced_per_metre_by_size():
     w = WireFinding(description="1.5mm2 lighting reticulation wire — circuit L1", size_key="1.5mm2",
                     metres=42.5, circuit="L1", evidence=Evidence.MEASURED)
-    [line] = price_findings(Findings(wires=[w]), pipeline="dxf").line_items
+    lines = price_findings(Findings(wires=[w]), pipeline="dxf").line_items
+    [line] = [ln for ln in lines if "reticulation" in ln.description]   # a measured route also derives conduit
     material = constants.CABLE_PRICES.get("surfix_1.5mm2_3c", 0.0)
     assert line.unit_price_zar == round(build_rate(material_cost=material, install_labour=25.0).combined_rate, 2)
     assert line.qty == 42.5 and line.unit == "m" and line.circuit_details == "L1"

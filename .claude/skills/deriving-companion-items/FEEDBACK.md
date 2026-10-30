@@ -46,3 +46,17 @@ item keys only.
 - Observed: chasing has no definition of a "drop" or the height bands; straight joints have no trigger (e.g. run longer than a drum); unclear whether sleeve seals go when sleeves are excluded
 - Verdict: unclear
 - Status: open — needs evidence from a bill that prices chasing / joints
+
+### 2026-10-30 · Wedela DXF re-score (route take-off task 1, branch feat/route-takeoff) · CO-C1, CO-C3
+- Observed: CO-C1 with R = the DXF's measured wiring (per circuit) gave conduit ≈ 2.85 × the bill's
+  `conduit|20mm`; RS unchanged (44.8 %), coverage +1.9 pts, precision +0.4, quantity accuracy −2.2.
+  In the bill, `gp_wire` (1.5 + 2.5 mm²) ≈ 5.0 × `conduit|20mm`; our drawn route ≈ 0.57 × the bill's GP wire.
+- Expected: CO-C3 says GP conductors ≈ 2.0–2.2 × conduit.
+- Evidence: Wedela's bill also prices trunking, so part of the wiring runs in trunking, not conduit:
+  conduit ≠ every route, and GP wire ÷ conduit is inflated. The DXF's drawn wiring is neither the conduit
+  route nor the conductor length. Also a code fault: DXF `WireFinding.building` holds the circuit label,
+  so drops (wall points, filed by building) never matched — D was 0.
+- Verdict: contradicts (CO-C3 ratio where trunking carries part of the wiring) · code (building field)
+- Status: open — before CO-C1/C3 can be used: (1) DXF wires carry the real building; (2) split the route
+  by containment (conduit vs trunking/tray) from the drawing's layers/legend; (3) re-score. CO-C3's ratio
+  should state "conduit-only installations".

@@ -18,6 +18,7 @@ from agent.shared.boq import (
     ItemConfidence,
     LineKind,
 )
+from agent.shared.companions import companion_findings
 from agent.shared.findings import BoardFinding, FeederFinding, Findings, ItemFinding, WireFinding
 from core import constants
 from core.rate_model import (
@@ -66,12 +67,15 @@ def price_findings(
         lines.append(_item_line(it, params))
     for w in findings.wires:
         lines.append(_wire_line(w, crew, params, config))
+    derived = companion_findings(findings)          # convention-A wiring lines from the route
+    for it in derived:
+        lines.append(_item_line(it, params))
     for ln in lines:
         ln.total_zar = round(ln.qty * ln.unit_price_zar, 2)
     number_lines(lines)
     boq = BillOfQuantities(
         project_name=project_name, pipeline=pipeline, run_id=run_id,
-        line_items=lines, gaps=findings.all_gaps(),
+        line_items=lines, gaps=[*findings.all_gaps(), *(g for it in derived for g in it.gaps)],
         contingency_pct=params.contingency_pct * 100, vat_pct=params.vat_pct * 100,
     )
     finalise_totals(boq, params)
