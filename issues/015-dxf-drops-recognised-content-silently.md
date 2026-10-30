@@ -1,7 +1,8 @@
 # 015 — DXF engine read Windows-saved DXFs as empty; unnamed symbols were priced silently
 
-> **Status:** PARTLY FIXED 2026-10-29. Parts 1–2 fixed; part 3 open (needs the owner's OK: it
-> changes the symbol catalogue, and must be checked against the Wedela baseline).
+> **Status:** FIXED 2026-10-30. Parts 1–2 on 2026-10-29, part 3 on 2026-10-30 (owner approved).
+> `/check-takeoff` on the sample: PASS (11 / 13 / 1 / 34.25 m, all exact). Wedela DXF baseline
+> unchanged before/after part 3 (project-level RS 44.8 %, 45.5 % with completer).
 
 **Priority:** P1 · **Opened:** 2026-10-29 by `/check-takeoff` on the synthetic sample (no client data)
 
@@ -25,7 +26,15 @@ line with no `GapItem` (hard rule 7).
 ("27 electrical symbols AfriPlan could not name (blocks: DB_MAIN ×1, …)"). Quantities and prices
 unchanged. Test: `test_symbols_it_cannot_name_are_listed_for_the_estimator_by_block_name`.
 
-## 3. Block names joined by underscores are not classified (OPEN)
+## 3. Block names joined by underscores are not classified (FIXED)
+**Fix.** `patterns._classify_by_words`, the last step of `classify_block_name`: runs only when every
+other rule missed, so no existing classification can change. Splits the name on `_ - space $ . /`;
+"switch" → switch (so `LIGHT_SWITCH` is not a light); "socket" + "double" → double socket; else a
+word in `EXACT_BLOCK_MAP`, and two words naming different fittings → None (`EM_EXIT`). Tests in
+`test_patterns.py`; the sample's strict xfail passed and its marker was removed.
+**Baseline.** Wedela DXF, before and after, identical apart from run ids and timings.
+
+Original analysis:
 **Evidence.** `patterns.classify_block_name` returns None for `LIGHT_DOWNLIGHT`, `SOCKET_DOUBLE`,
 `DB_MAIN`. The regex fallbacks use word boundaries (`\bdownlight\b`), and `_` is a word character,
 so `light_downlight` never matches; the exact map has `downlight` and `db` but is only tried on the

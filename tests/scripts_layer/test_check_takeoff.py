@@ -6,7 +6,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 _spec = importlib.util.spec_from_file_location("check_takeoff", ROOT / "scripts" / "check_takeoff.py")
@@ -68,9 +67,6 @@ def test_the_sample_drawing_wiring_is_measured_exactly(tmp_path):
     assert rows["gp_wire|2.5mm2"].ok and rows["gp_wire|2.5mm2"].found == 34.25
 
 
-@pytest.mark.xfail(strict=True, reason="issue 015 (open part): block names joined by underscores "
-                   "(LIGHT_DOWNLIGHT, SOCKET_DOUBLE, DB_MAIN) are not classified, so 27 symbols bill "
-                   "as one 'unclassified' line, now with a gap")
 def test_the_sample_drawing_take_off_matches_its_hand_counts(tmp_path):
     drawing, expected = ct.write_sample(tmp_path)
     result = ct.check_case(drawing, expected)

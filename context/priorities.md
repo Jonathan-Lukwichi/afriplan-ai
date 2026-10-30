@@ -6,8 +6,6 @@ Updated: 2026-10-29. Review monthly.
 numbers: `context/current-state.md`.
 
 Candidates for the next piece of work. **Order: owner to set**, so the list is not ranked:
-- **Underscore block names not classified** (`issues/015-dxf-drops-recognised-content-silently.md`,
-  part 3; parts 1–2 fixed 2026-10-29): needs the owner's OK and a Wedela baseline re-run.
 - **Route take-off** that emits convention-A wiring lines: conduit, GP wire by colour, BCEW,
   boxes, chasing (`doe/knowledge/BOQ_KNOWLEDGE.md` §4–§6).
 - **Building attribution** in the PDF pipeline (`issues/008-pdf-building-attribution.md`).

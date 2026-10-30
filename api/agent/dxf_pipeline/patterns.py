@@ -271,4 +271,21 @@ def classify_block_name(name: str) -> Optional[FixtureSpec]:
         if regex.search(norm):
             return spec
 
-    return None
+    return _classify_by_words(norm)
+
+
+_DOUBLE_SOCKET = REGEX_BLOCK_PATTERNS[0][1]          # "Double Socket Outlet"
+
+
+def _classify_by_words(norm: str) -> Optional[FixtureSpec]:
+    """Last resort for names the rules above miss, e.g. LIGHT_DOWNLIGHT, SOCKET_DOUBLE, DB_MAIN:
+    '_' is a word character, so the regexes' \\b never splits them (issue 015). Runs only when
+    nothing else matched, so it cannot change an existing classification. Never guesses: two words
+    naming different fittings give None."""
+    words = {w for w in re.split(r"[_\-\s$./]+", norm) if w and not w.isdigit()}
+    if "switch" in words:                            # LIGHT_SWITCH is a switch, not a light
+        return EXACT_BLOCK_MAP["sw"]
+    if "socket" in words and words & {"double", "twin", "2gang"}:
+        return _DOUBLE_SOCKET
+    specs = {EXACT_BLOCK_MAP[w].canonical_name: EXACT_BLOCK_MAP[w] for w in words if w in EXACT_BLOCK_MAP}
+    return next(iter(specs.values())) if len(specs) == 1 else None

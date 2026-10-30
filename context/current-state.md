@@ -36,6 +36,12 @@ in `context/priorities.md`.
 - **Wiring** (2026-10-29): final-circuit wiring is billed four ways; South African bills use
   convention A (material by material), which neither engine produces yet
   (`doe/knowledge/BOQ_KNOWLEDGE.md` §6).
-- **CI** (GitHub Actions, `.github/workflows/ci.yml`) is on branch `ci/github-actions`, green,
+- **CI** (GitHub Actions, `.github/workflows/ci.yml`: Python, build, browser tests, client-data check) is on
+  branches `ci/github-actions` and `chore/claude-playbook`, green,
   not yet merged into `main` (2026-10-26).
+- **Take-off check** (2026-10-30, `scripts/check_takeoff.py`, skill `check-takeoff`): the synthetic
+  sample PASSES (11 downlights, 13 double sockets, 1 board, 34.25 m wiring, exact, identical twice).
+  Getting there fixed issue 015: Windows-saved (CRLF) DXFs were read as empty drawings, unnamed
+  symbols were priced without a gap, underscore block names were not classified. Wedela DXF
+  unchanged (44.8 % project-level). Next: real drawings with hand counts in `data/takeoff_tests/`.
 - Streamlit app retired 2026-09-26; its final state is the tag `archive/legacy-streamlit-2026-09-26`.

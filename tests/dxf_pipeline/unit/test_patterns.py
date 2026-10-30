@@ -46,6 +46,21 @@ def test_regex_fallback_distribution_board():
     assert spec.category == FixtureCategory.DISTRIBUTION
 
 
+def test_block_names_joined_by_underscores_classify_by_their_words():
+    """'_' is a word character, so LIGHT_DOWNLIGHT never matched \\bdownlight\\b (issue 015)."""
+    assert classify_block_name("LIGHT_DOWNLIGHT").canonical_name == "LED Downlight"
+    assert classify_block_name("SOCKET_DOUBLE").canonical_name == "Double Socket Outlet"
+    assert classify_block_name("DB_MAIN").category == FixtureCategory.DISTRIBUTION
+
+
+def test_a_light_switch_is_a_switch_not_a_light():
+    assert classify_block_name("LIGHT_SWITCH").category == FixtureCategory.SWITCH
+
+
+def test_words_that_point_to_two_different_fittings_are_not_guessed():
+    assert classify_block_name("EM_EXIT") is None          # emergency light or exit sign?
+
+
 def test_unknown_block_returns_none():
     assert classify_block_name("Some_Custom_Thing_42") is None
     assert classify_block_name("ZZZZZ") is None
