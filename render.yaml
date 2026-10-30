@@ -8,7 +8,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     branch: main
-    autoDeploy: true                 # every push to main redeploys
+    autoDeployTrigger: checksPass    # a push to main redeploys only after GitHub CI passes (.github/workflows/ci.yml)
     plan: standard                   # 2 GB RAM: a 17-DWG set peaks ~1.1 GB (docs/deploy-render.md)
     healthCheckPath: /api/health
     disk:                            # keeps the SQLite database (runs, profile) across deploys
