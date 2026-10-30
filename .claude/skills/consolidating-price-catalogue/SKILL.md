@@ -49,12 +49,20 @@ overwrites. Read `data/catalogue/README.md` for the user-facing side.
    many skipped rows means the parser is wrong — fix before using it.
 6. Log the source and anything surprising in `FEEDBACK.md` (skill `improving-boq-skills`).
 
-## Linking prices to BoQ lines (web app — not done yet, ask first)
-The catalogue is not yet read by the pricer: `agent/shared/pricing.py` / `core/rate_model.py` still use
-`core/constants.py`, and `sourcing` has a planned `price_list` channel (`sourcing/__init__.py`). Linking
-changes every bill's rates and every baseline, so **ask first**, then: match a line by family + key
-attributes (poles, amps, kA, mm², cores), prefer override > newest price list > estimate, write the
-`item_id` and `price_date` into the line's assumption, re-run all baselines and report the change.
+## Linking prices to BoQ lines (web app)
+**Step A — done (compare, don't change):** `sourcing/suppliers/price_list.py` offers each catalogue
+supplier as "<supplier> list price (<date>)" on the Live Pricing page (`routers/pricing.py` `_quote_panel`).
+Availability is `unknown`, so the engine never recommends or auto-applies a list price; a person may pick
+it. Matching is strict: family + every stated attribute (A, poles, kA ≥), accessories excluded, median of
+the matches. Only protective devices (MCB, MCCB, earth leakage, surge) are matched — see PC-13.
+
+**Step B — ask first:** price matched lines in the pricer (`agent/shared/pricing.py`) from the catalogue,
+with the contractor's trade discount; write `item_id` + `price_date` into the line's assumption; re-run all
+baselines and report. It changes every bill's rates, so it needs the owner's approval.
+
+| ID | Rule |
+|---|---|
+| PC-13 | Sockets and switches are matched only once product ranges are mapped (SANS 164 domestic vs industrial CEE; light switches vs control selector switches). Untested matching on the real list priced a "1-Lever Switch" as a selector head and a "Data Socket" as a 16 A power socket. No quote beats a wrong quote. |
 
 ## Common mistakes
 | Mistake | Fix |
@@ -67,3 +75,5 @@ attributes (poles, amps, kA, mm², cores), prefer override > newest price list >
 v1 · 2026-10-29 · Schneider 2026 list, AfriPlan estimates (Feb 2026), Sparks supplier directory (Sept 2019).
 
 v2 · 2026-10-29 · span reader (45 min → 32 s), repeats kept, glued cells split, automation family; see FEEDBACK.md.
+
+v3 · 2026-10-30 · Live Pricing step A: list-price supplier for protective devices; PC-13.

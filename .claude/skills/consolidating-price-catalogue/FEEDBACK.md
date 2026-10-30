@@ -33,3 +33,9 @@ item keys only.
 ### 2026-10-29 · first real build · PC-6
 - Observed: an HMI "Connection Cable" was family `cable`; drives / PLCs / SCADA fell into `other`
 - Status: applied v2 — `automation` family checked first. `other` still 1 226 (meters, capacitors, relays, accessories) — open: add families when the pricer needs them
+
+### 2026-10-30 · Live Pricing step A, matched against the real catalogue · NEW → PC-13
+- Observed: protective devices matched well (20A 1P MCB → iC60H 1P 20A; 63A 2P 30mA ELCB → iID RCCB; 250A 3P 36kA MCCB → NSX250 75kA; surge → iPRD); wiring devices did not ("1-Lever Switch" → selector switch head, "16A Single Switched Socket" → industrial panel socket, "Data Socket (CAT6)" and "Floor Box Socket" → 16A power wall socket)
+- Verdict: new-pattern
+- Status: applied v3 — only protective devices are quoted; sockets/switches open until ranges are mapped
+- Also open: "MCB 63A 3P 6kA" gets no quote — most list descriptions do not state kA, so a stated kA filters everything out; needs kA per range

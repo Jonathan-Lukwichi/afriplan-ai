@@ -160,6 +160,6 @@ which a PostToolUse hook (`scripts/hooks/skill_feedback_reminder.py`) triggers a
   PDF sheets (flagged, not yet merged).
 - **Price catalogue** (2026-10-29): 13.5k dated items — Schneider 2026 list prices (excl. VAT, before trade
   discount), the AfriPlan estimates and 58 supplier names; user prices in `data/catalogue/price_overrides.csv`.
-  Not yet read by the pricer: first shown beside each line as a `price_list` supplier, then (with approval)
-  used for matched items with a contractor discount.
+  Shown on Live Pricing as a dated "list price" supplier for breakers / earth leakage / surge (never
+  auto-applied); not yet read by the pricer — that step changes every bill's rates and needs approval.
 - Streamlit app retired 2026-09-26; its final state is the tag `archive/legacy-streamlit-2026-09-26`.

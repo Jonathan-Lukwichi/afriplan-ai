@@ -24,6 +24,13 @@ from routers.pricing import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _no_local_catalogue(tmp_path, monkeypatch):
+    """The panel must not depend on whether this machine has built data/catalogue/."""
+    import routers.pricing as pricing
+    monkeypatch.setattr(pricing, "CATALOGUE_PATH", tmp_path / "none.csv")
+
+
 def _seed_run(run_id: str) -> BillOfQuantities:
     # A real DxfEstimatorRun - run_store now round-trips every record through
     # JSON (SQLite-backed, Phase 11), so a fake stand-in without
@@ -59,6 +66,31 @@ def test_request_quotes_produces_a_report():
     assert report["suppliers_contacted"] == 4
     for res in report["results"]:
         assert len(res["quotes"]) == 4
+
+
+def test_a_built_catalogue_adds_a_dated_list_price_supplier_that_is_never_recommended(tmp_path, monkeypatch):
+    import routers.pricing as pricing
+    from sourcing import catalogue as cat
+    path = tmp_path / "price_catalogue.csv"
+    cat.write_csv([cat._item(item_id="schneider:M1", supplier="Schneider Electric", brand="Schneider Electric",
+                             part_no="M1", description="iC60N MCB 1P 20A C 6kA",
+                             list_price_zar_excl_vat=90.0, price_date="2026-09-08")], path)
+    monkeypatch.setattr(pricing, "CATALOGUE_PATH", path)
+
+    run_id = "pricing-test-6"
+    boq = BillOfQuantities(project_name="Pricing Test", pipeline="dxf", run_id=run_id, line_items=[
+        BQLineItem(item_no=1, section=BQSection.DISTRIBUTION, description="20A 1P MCB", qty=12,
+                   unit_price_zar=85.0, total_zar=1020.0, source=ItemConfidence.EXTRACTED)],
+        subtotal_zar=1020.0, total_excl_vat_zar=1020.0, total_incl_vat_zar=1173.0, items_extracted=1)
+    run_store.put(RunRecord(run_id=run_id, pipeline="dxf", status="passed", input_file="test.dxf",
+                            result=DxfEstimatorRun(run_id=run_id, input_file="test.dxf", boq=boq, success=True)))
+
+    data = get_requests(run_id)
+    assert "Schneider Electric list price (2026-09-08)" in [s["name"] for s in data["suppliers"]]
+    report = request_quotes(run_id, QuoteRequestBody(item_refs=[r["item_ref"] for r in data["requests"]]))
+    [mcb] = report["results"]
+    assert any(q["channel"] == "price_list" and q["unit_price_zar"] == 90.0 for q in mcb["quotes"])
+    assert not mcb["recommended_supplier_id"].startswith("pricelist:")
 
 
 def test_apply_quotes_writes_sourced_boq_and_export_uses_it():
