@@ -41,7 +41,9 @@ reliable it is**.
    the real bill with the frozen scorer.
 8. **Report** — tell the owner the totals and the most serious things to check; e-mail the
    Excel + PDF when asked (needs mail credentials in `api/.env`).
-9. **Learn** — write what surprised us into `doe/playbook/LESSONS.md` (new drawing
+9. **Learn** — skill `improving-boq-skills`: log each gap or correction against the BoQ skill rule it
+   concerns (that skill's `FEEDBACK.md`) and change a rule only when the evidence allows. Also
+   write what surprised us into `doe/playbook/LESSONS.md` (new drawing
    conventions, wrong matches, missing items). Never tune prices to one project.
 
 ## 4. Hard rules

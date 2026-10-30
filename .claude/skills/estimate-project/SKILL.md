@@ -62,3 +62,6 @@ Output in `<folder>/AfriPlan_Output/`: `<Project>_BoQ_<stamp>.xlsx` + `.pdf`, `t
 - E-mail when asked: `$PY doe/execution/send_email.py "<folder>/AfriPlan_Output"` (exit 4 = no mail
   credentials → say so; never paste large attachments by hand).
 - Add anything that surprised you to `doe/playbook/LESSONS.md` (general lessons, no client figures).
+- Then run `improving-boq-skills`: log each gap or correction in the `FEEDBACK.md` of the BoQ skill
+  whose rule it concerns. While reading pages, follow `reading-scope-modifiers` (notes first) and
+  `reading-drawing-symbols`; before delivering, `checking-boq-completeness`.

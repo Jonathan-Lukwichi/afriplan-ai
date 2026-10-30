@@ -11,6 +11,16 @@
             "statusMessage": "Checking architecture rules..."
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(command -v python || command -v python3)\" \"$CLAUDE_PROJECT_DIR/scripts/hooks/skill_feedback_reminder.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

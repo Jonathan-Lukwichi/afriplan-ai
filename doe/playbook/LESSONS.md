@@ -25,7 +25,7 @@ consultant's drawings? No client rand figures here (this file is committed).
   switch. Geysers and A/C units stay as warnings (their connection is the isolator).
 - **A CAD count can miss copies; it never invents them.** When the designer's printed schedule
   is HIGHER than the CAD count on the same sheet, the schedule is priced (and flagged); when it is
-  lower, the count stands. Wedela: vapour-proof 44 counted vs 67 scheduled.
+  lower, the count stands. Wedela: the vapour-proof schedule was about 1.5× the CAD count.
 - **Write bill wording.** "Vapour-Proof" (hyphen) was not recognised as a vapour-proof light;
   item names now follow bill spelling ("Vapour Proof Light"); older saved names still resolve.
 - **Biggest remaining losses (Wedela):** feeder cable lengths/sizes and earth wire (~14 % of the
