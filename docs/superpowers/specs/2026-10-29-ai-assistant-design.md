@@ -1,7 +1,7 @@
 # AI assistant with memory — design
 
 - **Date:** 2026-10-29
-- **Status:** waiting for the owner's approval (questions answered 2026-10-29)
+- **Status:** approved by the owner 2026-10-30 (Sonnet 5 for the chat, built in three stages, §11)
 - **Asked for by:** Jonathan / Hervé
 - **Needs:** a new ADR (ADR-0009) before code. It adds an AI loop that can *start* work and
   a store the pipelines learn from; ADR-0002, ADR-0006 and ADR-0007 do not cover that.
@@ -265,7 +265,8 @@ recent within a token budget, summarise older ones or drop them); the build orde
 
 ## 9. Owner's answers (2026-10-29)
 
-- **The chat runs on Claude only** (`ASSIST_MODEL` in `core/config.py`). Gemini for the chat is out
+- **The chat runs on Claude only**, model **Sonnet 5** (`ASSIST_MODEL = SONNET_5` in `core/config.py`;
+  Opus 5 stays for reading drawings). Estimated about R 1.40 a message against R 3.50 on Opus. Gemini for the chat is out
   of scope for v1. No monthly cap was set: the panel shows the cost of every turn and the job's
   running total. A cap can be switched on later with `AFRIPLAN_ASSIST_MONTHLY_CAP_ZAR`; unset means no
   cap (the designer's call). When it is set, a turn that would pass it is refused with a plain reason.
@@ -284,3 +285,17 @@ recent within a token budget, summarise older ones or drop them); the build orde
    fact shows at once.
 6. Code says `job`, screen says *project*, to keep clear of *reference project*.
 7. No monthly chat-spend cap by default; it can be set by an environment variable.
+
+## 11. Delivery in three stages (approved 2026-10-30)
+
+Each stage ships on its own and can be demonstrated.
+
+1. **Explain.** The chat panel and the read tools of §7.5 (`job_overview` works on a single
+   run until stage 2 adds jobs), the rate build-up, the method cards, the invented-figure check,
+   the chat stored per run, and the cost per turn. No action tools.
+2. **Projects and re-run.** Jobs, stored drawings with the 800 MB rule, reopening a project,
+   `propose_rerun` + Confirm, and the diff card.
+3. **Memory.** Changes and their overlay, office memory (symbol meanings and rates),
+   `propose_change` / `propose_remember`, the memory drawer and Clear memory.
+
+ADR-0009 is written before stage 1's code.
