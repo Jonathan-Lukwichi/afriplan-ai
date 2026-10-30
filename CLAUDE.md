@@ -46,7 +46,7 @@ Skip the question only if the user's first message already makes the choice clea
 | Ground truth, ItemKey taxonomy, layered BOQ network, ratios, **frozen scorer** | `api/evaluation/` |
 | BOQ rule audit, drawing sufficiency, derived-item completer | `api/audit/` |
 | CNN training-data generator (no model trained — ADR-0004) | `api/ml/` |
-| Live supplier pricing (mock suppliers) · Excel/PDF exports · SQLite | `api/sourcing/` · `api/exports/` · `api/db/` |
+| Live supplier pricing (mock suppliers) + **price catalogue** (`sourcing/catalogue.py`, built by `scripts/build_price_catalogue.py` into `data/catalogue/`, local only) · Excel/PDF exports · SQLite | `api/sourcing/` · `api/exports/` · `api/db/` |
 | React pages (Landing, Login, wizard, Pricing, **Audit a BoQ**) · design system · API client | `src/pages/` · `src/components/ui/` · `src/api/client.js` |
 | Reference projects: manifest committed; raw files + parsed bill LOCAL ONLY | `data/projects/<p>/` |
 | CLIs (verify data, build reference, evaluate, audit, baseline, symbol dataset) | `scripts/` |
@@ -117,8 +117,12 @@ NEVER: commit client data or `.env` · weaken/delete a test to go green · edit 
 inside an optimisation loop · push to `main` / deploy without approval.
 
 ## Skills
-`.claude/skills/evaluate-boq/` · `audit-boq/` · `add-reference-project/` · `tdd/` ·
-`karpathy-coding-discipline/` · `prompts/review.md` (fresh-context review).
+`.claude/skills/estimate-project/` · `evaluate-boq/` · `audit-boq/` · `add-reference-project/` · `tdd/` ·
+`karpathy-coding-discipline/` · `prompts/review.md` at the repo root (fresh-context review).
+**BoQ domain skills** (rule IDs + confidence, each with a `FEEDBACK.md` log): `reading-scope-modifiers/` ·
+`reading-drawing-symbols/` · `deriving-companion-items/` (rules in `RULES.md`) · `writing-sa-bill-lines/` ·
+`checking-boq-completeness/` · `consolidating-price-catalogue/`. They learn through `improving-boq-skills/`,
+which a PostToolUse hook (`scripts/hooks/skill_feedback_reminder.py`) triggers after every scored run.
 
 ## Current state (update when it changes)
 - Reference project: **wedela** (7 billed buildings). Baselines (`reports/baselines/README.md`),
@@ -154,4 +158,8 @@ inside an optimisation loop · push to `main` / deploy without approval.
 - Biggest levers next: building attribution (008), a second reference project (014),
   tag→symbol attribution on site plans (leader lines), site-lighting double counts across
   PDF sheets (flagged, not yet merged).
+- **Price catalogue** (2026-10-29): 13.5k dated items — Schneider 2026 list prices (excl. VAT, before trade
+  discount), the AfriPlan estimates and 58 supplier names; user prices in `data/catalogue/price_overrides.csv`.
+  Not yet read by the pricer: first shown beside each line as a `price_list` supplier, then (with approval)
+  used for matched items with a contractor discount.
 - Streamlit app retired 2026-09-26; its final state is the tag `archive/legacy-streamlit-2026-09-26`.
