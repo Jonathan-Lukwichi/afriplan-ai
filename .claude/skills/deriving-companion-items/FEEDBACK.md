@@ -60,3 +60,14 @@ item keys only.
 - Status: open — before CO-C1/C3 can be used: (1) DXF wires carry the real building; (2) split the route
   by containment (conduit vs trunking/tray) from the drawing's layers/legend; (3) re-score. CO-C3's ratio
   should state "conduit-only installations".
+
+### 2026-10-30 · Wedela DXF re-score (route take-off step 2) · CO-C1
+- Observed: Wedela draws wiring on one layer, mostly as point-to-point arcs (about 3 arcs per line), with no
+  trunking layer, so a containment split by layer is not possible there. Measuring the route as straight
+  chords (BOQ_KNOWLEDGE §4) and leaving out sheets read or titled as an SLD: conduit ≈ 1.6 × the bill's
+  `conduit|20mm` (was 2.85 ×); project RS 44.8 % → 45.6 %, quantity accuracy 70.9 % → 72.0 %, precision 89.2 %.
+- Expected: CO-C1 = R + D, with R the straight route.
+- Evidence: per sheet, arcs are 1.2–2.0 × their chords; one sheet titled SLD carried ~18 % of the drawn wiring.
+- Verdict: confirms (CO-C1 with R as straight runs) · code (route measured as drawn; SLD lines counted)
+- Status: applied in feat/route-takeoff (not yet in main). Remaining excess (~1.6 ×) unexplained — candidates:
+  drops over-counted, routes shared by circuits counted per circuit, part of the wiring in trunking.

@@ -85,8 +85,8 @@ def companion_findings(findings: Findings, cfg: CompanionConfig = DEFAULT_COMPAN
     """The derived lines for these findings, one set per building with a measured route."""
     route: Dict[str, float] = {}
     for w in findings.wires:
-        if w.evidence == Evidence.MEASURED and w.metres > 0:
-            route[w.building] = route.get(w.building, 0.0) + w.metres
+        if w.evidence == Evidence.MEASURED and w.route_m > 0:      # the straight route, not the drawn length
+            route[w.building] = route.get(w.building, 0.0) + w.route_m
     out: List[ItemFinding] = []
     for building, route_m in route.items():
         if not _counted(findings, building, "conduit"):

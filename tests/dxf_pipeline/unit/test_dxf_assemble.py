@@ -70,6 +70,26 @@ def test_conduit_counts_a_drop_for_each_socket_once_wires_and_sockets_share_a_bu
     assert conduit.qty == pytest.approx(10.0)
 
 
+def test_dxf_wires_carry_the_straight_route_and_a_schematic_sheet_carries_none():
+    from agent.dxf_pipeline.passes.assemble import findings_from_recognition
+    rec = recognise(_doc_with_electrical())
+    [w] = findings_from_recognition(rec).wires
+    assert w.route_m == pytest.approx(rec.route_length_m_by_circuit["L1"]) and w.route_m > 0
+    [s] = findings_from_recognition(rec, schematic=True).wires
+    assert s.route_m == 0.0 and s.metres == w.metres     # the wire line itself is unchanged
+
+
+@pytest.mark.parametrize("name, sld_found, expected", [
+    ("WD-OL-001 SLD 100425.dwg", False, True),      # titled SLD, nothing read: still a schematic
+    ("WD-AB-01-SLD 050425.dwg", True, True),
+    ("WD-AB-01-LIGHTING 250325.dwg", False, False),
+    ("Sledge house plan.dxf", False, False),        # "sld" only as a whole word
+])
+def test_a_sheet_is_a_schematic_when_read_or_titled_as_an_sld(name, sld_found, expected):
+    from agent.dxf_pipeline.passes.run import is_schematic_sheet
+    assert is_schematic_sheet(name, sld_found=sld_found) is expected
+
+
 def test_symbols_it_cannot_name_are_listed_for_the_estimator_by_block_name():
     """Hard rule 7: counted but unnamed symbols must not be priced silently (issue 015)."""
     doc = ezdxf.new(setup=True)

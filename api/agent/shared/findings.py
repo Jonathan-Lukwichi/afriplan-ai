@@ -97,6 +97,8 @@ class WireFinding(_Finding):
     description: str
     size_key: str = "2.5mm2"
     metres: float = 0.0
+    route_m: float = 0.0                 # the straight horizontal route (drawn arcs as chords) — what the
+                                         # conduit follows; 0 = no route (a schematic sheet, or not measured)
     circuit: str = ""
 
 

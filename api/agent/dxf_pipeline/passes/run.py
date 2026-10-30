@@ -15,6 +15,7 @@ external DWG→DXF conversion, which is itself reproducible). No LLM, R0.00.
 from __future__ import annotations
 
 import io
+import re
 import logging
 import time
 import uuid
@@ -130,7 +131,8 @@ def run_dxf_estimator(
     if routes is None:
         own = read_site_routes(doc)          # the drawing may itself be the site plan
         routes = own if own.found else None
-    findings = findings_from_recognition(a.rec, sld=a.sld, routes=routes)
+    findings = findings_from_recognition(a.rec, sld=a.sld, routes=routes,
+                                         schematic=is_schematic_sheet(file_name, sld_found=a.sld.found))
     # Mode 3 — count exploded-line-work legend symbols by template matching.
     findings.items += _template_findings(doc, a.legend)
     findings.gaps += _legend_coverage_gaps(findings, a.legend)
@@ -157,6 +159,15 @@ def run_dxf_estimator(
 
 
 # ─── shared per-drawing steps ────────────────────────────────────────
+
+_SLD_WORD = re.compile(r"(?<![A-Za-z])SLD(?![A-Za-z])", re.I)
+
+
+def is_schematic_sheet(file_name: str, *, sld_found: bool) -> bool:
+    """An SLD is a schematic: its lines are not a physical cable route. True when the SLD reader
+    found boards/feeders on it, or its title says SLD (a sheet can be titled SLD and read nothing)."""
+    return sld_found or bool(_SLD_WORD.search(Path(file_name).stem))
+
 
 def _load(file_bytes: bytes, file_name: str):
     """bytes → (ezdxf document | None, converted_from_dwg, error)."""
@@ -297,7 +308,8 @@ def run_dxf_project(
     board_names = [b.name for b in sld.boards]
     billed_boards = list(board_names)          # grows: a board tagged on two layouts is billed once
     for doc, name, a in analyses:
-        part = findings_from_recognition(a.rec, known_boards=billed_boards)
+        part = findings_from_recognition(a.rec, known_boards=billed_boards,
+                                         schematic=is_schematic_sheet(name, sld_found=a.sld.found))
         billed_boards += a.rec.db_refs()
         part.items += _template_findings(doc, a.legend, skip=ai_items)
         stem = Path(name).stem

@@ -13,10 +13,10 @@ def _hall(with_wiring: bool = True) -> Findings:
     f = Findings()
     if with_wiring:
         f.wires.append(WireFinding(description="1.5mm2 lighting reticulation wire — circuit L1",
-                                   size_key="1.5mm2", metres=40.0, circuit="L1", building="Hall",
+                                   size_key="1.5mm2", metres=52.0, route_m=40.0, circuit="L1", building="Hall",
                                    evidence=Evidence.MEASURED))
         f.wires.append(WireFinding(description="2.5mm2 power reticulation wire — circuit P1",
-                                   size_key="2.5mm2", metres=30.0, circuit="P1", building="Hall",
+                                   size_key="2.5mm2", metres=39.0, route_m=30.0, circuit="P1", building="Hall",
                                    evidence=Evidence.MEASURED))
     f.items.append(ItemFinding(description="Double Socket Outlet — Hall", item="Double Socket Outlet",
                                qty=4, building="Hall", evidence=Evidence.COUNTED))
@@ -61,3 +61,12 @@ def test_conduit_a_reader_already_counted_wins():
     f = _hall()
     f.items.append(ItemFinding(description="20mm PVC conduit — Hall", qty=12.0, unit="m", building="Hall"))
     assert _conduit(companion_findings(f)) == []
+
+
+def test_conduit_follows_the_straight_route_not_the_drawn_length():
+    """Wiring drawn as arcs is longer than the route; a schematic sheet has no route (route_m 0)."""
+    f = _hall()
+    f.wires.append(WireFinding(description="schematic", size_key="2.5mm2", metres=500.0, route_m=0.0,
+                               building="Hall", evidence=Evidence.MEASURED))
+    [c] = _conduit(companion_findings(f))
+    assert c.qty == pytest.approx(85.1)          # 40 + 30 route + 15.1 drops; the 500 m adds nothing

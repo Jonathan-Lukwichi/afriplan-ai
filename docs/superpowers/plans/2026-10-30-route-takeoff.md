@@ -7,7 +7,9 @@
 > circuit label as their building, so drops were 0. Logged in `deriving-companion-items/FEEDBACK.md`.
 > **Before task 2:** (a) DXF wires carry the real building — **done 2026-10-30** (c7d53ad; no score
 > change, drops now counted); (b) split the route by containment (conduit vs trunking) from
-> layers/legend; (c) re-score task 1. Not merged into `main`.
+> layers/legend — **not possible on Wedela** (one wiring layer, no trunking layer); instead
+> **done 2026-10-30:** route = straight chords (§4), SLD sheets excluded → RS 44.8 → 45.6 %;
+> (c) conduit still ≈ 1.6 × the bill — next: find why before task 2. Not merged into `main`.
 
 Spec: `docs/superpowers/specs/2026-10-30-route-takeoff-design.md` (approved 2026-10-30: findings
 schema may be extended; precision may drop for a higher RS, measured; H rules first).

@@ -117,9 +117,11 @@ def findings_from_recognition(
     sld: Optional[SldFacts] = None,
     routes: Optional[RouteNetwork] = None,
     known_boards: Iterable[str] = (),
+    schematic: bool = False,
 ) -> Findings:
     """What this drawing shows, unpriced. `known_boards`: boards already found on an SLD
-    elsewhere in the project — a layout's circuit tags must not add them a second time."""
+    elsewhere in the project — a layout's circuit tags must not add them a second time.
+    `schematic`: the sheet is an SLD — its lines are not a physical route (route_m 0)."""
     out = Findings()
     if sld is not None and sld.boards:
         out.boards += [_sld_board(b) for b in sld.boards]      # the SLD is the authority on boards
@@ -128,7 +130,7 @@ def findings_from_recognition(
     if sld is not None and sld.feeders:
         _sld_feeders(out, sld, config, routes=routes)
     _fittings(out, rec, config)
-    _wiring(out, rec, config)
+    _wiring(out, rec, config, schematic=schematic)
     return out
 
 
@@ -281,7 +283,7 @@ def _fittings(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> Non
 
 # ─── Section 4 — reticulation cable (MEASURED per circuit, not assumed) ─
 
-def _wiring(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
+def _wiring(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig, *, schematic: bool = False) -> None:
     # the drawing's building, as its symbols carry it (the spatial pass sets one per drawing)
     names = [s.building for s in rec.symbols if s.building]
     building = max(set(names), key=names.count) if names else ""
@@ -295,6 +297,7 @@ def _wiring(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
         out.wires.append(WireFinding(
             description=f"{size} {kind} reticulation wire — circuit {label}",
             size_key=size, metres=length_m, circuit=circuit, building=building, sheet="DXF geometry",
+            route_m=0.0 if schematic else rec.route_length_m_by_circuit.get(circuit, 0.0),
             evidence=Evidence.MEASURED,
             notes="Cable length MEASURED from DXF polylines/arcs (exact, not assumed).",
         ))

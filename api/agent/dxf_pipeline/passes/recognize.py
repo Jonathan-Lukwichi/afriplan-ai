@@ -86,6 +86,8 @@ class DxfRecognition:
 
     cable_length_m_by_layer: Dict[str, float] = field(default_factory=dict)
     cable_length_m_by_circuit: Dict[str, float] = field(default_factory=dict)
+    # the same wiring as straight runs: a drawn arc counts its chord (BOQ_KNOWLEDGE §4, the route)
+    route_length_m_by_circuit: Dict[str, float] = field(default_factory=dict)
     electrical_cable_length_m: float = 0.0
 
     unrecognised_blocks: List[str] = field(default_factory=list)
@@ -176,6 +178,12 @@ def _arc_len(e) -> float:
     return math.radians(ang) * float(e.dxf.radius)
 
 
+def _arc_chord(e) -> float:
+    """Straight distance between an arc's ends (DXF arcs run counter-clockwise start → end)."""
+    sweep = math.radians((e.dxf.end_angle - e.dxf.start_angle) % 360.0)
+    return 2.0 * float(e.dxf.radius) * math.sin(sweep / 2.0)
+
+
 def _entity_midpoint(e) -> Optional[Tuple[float, float]]:
     k = e.dxftype()
     try:
@@ -201,6 +209,7 @@ def recognise(doc: Drawing) -> DxfRecognition:
 
     room_layer_re = re.compile(r"room\s*name|room", re.I)
     wire_segments: List[Tuple[float, Tuple[float, float]]] = []  # (length_m, midpoint)
+    route_segments: List[Tuple[float, Tuple[float, float]]] = []  # (straight route m, midpoint)
 
     for e in msp:
         try:
@@ -244,6 +253,7 @@ def recognise(doc: Drawing) -> DxfRecognition:
                     mp = _entity_midpoint(e)
                     if mp:
                         wire_segments.append((length_m, mp))
+                        route_segments.append((_arc_chord(e) * u2m, mp))
 
             # ── TEXT / MTEXT: circuit tags + room labels ──
             elif kind in ("TEXT", "MTEXT"):
@@ -276,25 +286,30 @@ def recognise(doc: Drawing) -> DxfRecognition:
                 mp = _entity_midpoint(e)
                 if mp:
                     wire_segments.append((length_m, mp))
+                    route_segments.append((length_m, mp))
 
         except Exception as ex:  # noqa: BLE001 — never crash on a malformed entity
             rec.warnings.append(f"Skipped {e.dxftype()}: {ex}")
 
-    _assign_cable_to_circuits(rec, wire_segments)
+    _assign_cable_to_circuits(rec, wire_segments, route_segments)
     rec.electrical_cable_length_m = round(rec.electrical_cable_length_m, 3)
     rec.cable_length_m_by_layer = {k: round(v, 3) for k, v in rec.cable_length_m_by_layer.items()}
     rec.unrecognised_blocks = sorted(set(rec.unrecognised_blocks))
     return rec
 
 
-def _assign_cable_to_circuits(rec: DxfRecognition, wire_segments) -> None:
-    """Assign each wire segment's length to its nearest circuit tag (by midpoint)."""
+def _assign_cable_to_circuits(rec: DxfRecognition, wire_segments, route_segments=()) -> None:
+    """Assign each wire segment's length (and its straight route) to its nearest circuit tag."""
     tags = [t for t in rec.circuit_tags if t.circuit_id]
     if not tags:
         rec.cable_length_m_by_circuit = {"unassigned": round(rec.electrical_cable_length_m, 3)}
+        rec.route_length_m_by_circuit = {"unassigned": round(sum(m for m, _ in route_segments), 3)}
         return
-    for length_m, (mx, my) in wire_segments:
-        nearest = min(tags, key=lambda t: math.hypot(t.x - mx, t.y - my))
-        key = nearest.circuit_id or "unassigned"
-        rec.cable_length_m_by_circuit[key] = rec.cable_length_m_by_circuit.get(key, 0.0) + length_m
+    for segments, out in ((wire_segments, rec.cable_length_m_by_circuit),
+                          (route_segments, rec.route_length_m_by_circuit)):
+        for length_m, (mx, my) in segments:
+            nearest = min(tags, key=lambda t: math.hypot(t.x - mx, t.y - my))
+            key = nearest.circuit_id or "unassigned"
+            out[key] = out.get(key, 0.0) + length_m
     rec.cable_length_m_by_circuit = {k: round(v, 3) for k, v in rec.cable_length_m_by_circuit.items()}
+    rec.route_length_m_by_circuit = {k: round(v, 3) for k, v in rec.route_length_m_by_circuit.items()}
