@@ -5,8 +5,9 @@
 > precision +0.4, quantity accuracy −2.2): the DXF's drawn wiring ≈ 2.85 × the bill's conduit, and the
 > bill's GP wire ≈ 5.0 × its conduit (part of the wiring runs in trunking). Also DXF wires file the
 > circuit label as their building, so drops were 0. Logged in `deriving-companion-items/FEEDBACK.md`.
-> **Before task 2:** (a) DXF wires carry the real building; (b) split the route by containment
-> (conduit vs trunking) from layers/legend; (c) re-score task 1. Not merged into `main`.
+> **Before task 2:** (a) DXF wires carry the real building — **done 2026-10-30** (c7d53ad; no score
+> change, drops now counted); (b) split the route by containment (conduit vs trunking) from
+> layers/legend; (c) re-score task 1. Not merged into `main`.
 
 Spec: `docs/superpowers/specs/2026-10-30-route-takeoff-design.md` (approved 2026-10-30: findings
 schema may be extended; precision may drop for a higher RS, measured; H rules first).
