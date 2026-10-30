@@ -21,6 +21,17 @@ What Claude Code loads for this project, and where each piece sits in the workin
 | B5 | `skills/check-takeoff/` | compare the take-off with hand counts (`scripts/check_takeoff.py`) |
 | A4 · B5 | `skills/fix-and-learn/` | fix a failure at the right layer and write the lesson down |
 
+**BoQ domain skills** (rule tables with confidence; each logs corrections in its `FEEDBACK.md`):
+| Step | Skill | Use it to |
+|---|---|---|
+| A1–A2 | `skills/reading-scope-modifiers/` | read notes, legend, spec and scope pages first |
+| A1–A2 | `skills/reading-drawing-symbols/` | read layout and SLD pages into forms; symbol naming |
+| B2–B4 | `skills/deriving-companion-items/` | derived lines (conduit, GP wire, earth, boxes…); rules in `RULES.md` |
+| B2–B4 | `skills/writing-sa-bill-lines/` | descriptions, units, sections and order of bill lines |
+| A3 · B5 | `skills/checking-boq-completeness/` | is the bill complete and plausible before it goes out |
+| B2 | `skills/consolidating-price-catalogue/` | add or change supplier prices and the catalogue |
+| A4 · B6 | `skills/improving-boq-skills/` | log what a scored run or a correction taught (a hook reminds) |
+
 General skills installed on this PC (not in this folder): `dashboard-qa-gate` (B5, UI) ·
 `frontend-design`, `dashboard-ui-kit` (B4, UI) · `data-core-engine` · `data-app-deploy`.
 

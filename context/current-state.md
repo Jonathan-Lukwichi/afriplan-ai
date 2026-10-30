@@ -44,4 +44,8 @@ in `context/priorities.md`.
   Getting there fixed issue 015: Windows-saved (CRLF) DXFs were read as empty drawings, unnamed
   symbols were priced without a gap, underscore block names were not classified. Wedela DXF
   unchanged (44.8 % project-level). Next: real drawings with hand counts in `data/takeoff_tests/`.
+- **Price catalogue** (2026-10-29): 13.5k dated items — Schneider 2026 list prices (excl. VAT, before trade
+  discount), the AfriPlan estimates and 58 supplier names; user prices in `data/catalogue/price_overrides.csv`.
+  Shown on Live Pricing as a dated "list price" supplier for breakers / earth leakage / surge (never
+  auto-applied); not yet read by the pricer — that step changes every bill's rates and needs approval.
 - Streamlit app retired 2026-09-26; its final state is the tag `archive/legacy-streamlit-2026-09-26`.

@@ -35,8 +35,12 @@ test('server unreachable: Run says so in plain words, not "Failed to fetch"', as
 
 test('landing and login links are real buttons the keyboard reaches', async ({ page }) => {
   await page.goto('/#landing');
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(2);   // header + footer
-  await expect(page.getByRole('button', { name: 'Get started' })).toHaveCount(1);
+  // no clickable text: an onClick the app sets on a span/div means a control Tab cannot reach
+  // (React's own no-op onclick on #root is not counted)
+  const clickableText = await page.evaluate(() => [...document.querySelectorAll('span, div')]
+    .filter((e) => Object.keys(e).some((k) => k.startsWith('__reactProps') && e[k].onClick)).length);
+  expect(clickableText).toBe(0);
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#login$/);

@@ -1,10 +1,8 @@
-import Navbar from '../components/ui/Navbar';
-import heroSwitchgear from '../assets/images/hero-switchgear.jpg';
-import solarInstall from '../assets/images/solar-install.jpg';
-import loginPanel from '../assets/images/login-panel-electrician.jpg';
-import trustImage from '../assets/images/trust-strip-site-team.jpg';
-import rebarSite from '../assets/images/rebar-site.jpg';
-import goldenHour from '../assets/images/header-banner-goldenhour.jpg';
+import { Check, FileText, FileSpreadsheet, Ruler, Hash, ScrollText, Eye, CircleHelp } from 'lucide-react';
+import Navbar, { scrollToSection } from '../components/ui/Navbar';
+import HeroTakeoff from '../components/landing/HeroTakeoff';
+import SavingsCalculator from '../components/landing/SavingsCalculator';
+import '../styles/landing.css';
 
 import symCircuitSchedule from '../assets/images/symbols/glyph-circuit-schedule.png';
 import symDistributionBoard from '../assets/images/symbols/glyph-distribution-board.png';
@@ -15,282 +13,300 @@ import symEarth from '../assets/images/symbols/glyph-earth.png';
 import symContainment from '../assets/images/symbols/glyph-containment.png';
 import symSolar from '../assets/images/symbols/glyph-solar.png';
 
-/* Public marketing page — light editorial refresh (structure/layout from
-   the Lovable "afriplan-refresh" bundle), with copy corrected to match what
-   the product actually does today: SANS 10142-1:2017, South Africa, ZAR.
-   The bundle's original copy claimed multi-currency support across 14
-   African markets and a fabricated "we timed eleven engineers" study —
-   neither is true of this backend, so both were rewritten rather than
-   shipped as-is. */
+/* Public marketing page, 2026-10-29 rebuild. Section order modelled on the
+   BuildVision AI landing page (local screenshots in design-reference/,
+   gitignored), but every claim is AfriPlan's own and true today: SANS
+   10142-1:2017, South Africa, rand, PDF + DWG/DXF, evidence on every line
+   (ADR-0008). No logo wall, ratings or testimonials — we have none to show. */
 
-const PANORAMA_TOP = [heroSwitchgear, solarInstall, loginPanel, trustImage, rebarSite, goldenHour];
-const PANORAMA_BOTTOM = [trustImage, goldenHour, heroSwitchgear, rebarSite, solarInstall, loginPanel];
-
-const HERO_POINTS = [
-  'Reads DXF, DWG and PDF drawing sets',
-  'Two engines cross-check every quantity',
-  'Checked against SANS 10142-1:2017 automatically',
-];
-
-const STATS = [
-  { value: 'R 0.00', label: 'DXF engine cost per run' },
-  { value: '2', label: 'Independent extraction engines' },
-  { value: '10142-1', label: 'SANS standard, checked automatically' },
-  { value: '5-sheet', label: 'Tender-grade export document' },
-];
+const HERO_FACTS = ['PDF, DWG and DXF drawing sets', 'Checked against SANS 10142-1:2017', 'Excel and PDF tender bill, in rand'];
 
 const STEPS = [
-  { n: '01', title: 'Upload the drawings', body: 'A DXF or DWG export, a PDF drawing set, or both together.' },
-  { n: '02', title: 'Watch the take-off', body: 'Symbols counted, cable measured, legend resolved — live as it lands.' },
-  { n: '03', title: 'Review the BoQ', body: 'Every line labelled extracted, inferred or assumed. Nothing hidden.' },
-  { n: '04', title: 'Send the quotation', body: 'Your margin, your markup, your letterhead — Excel and PDF.' },
+  {
+    title: 'Upload the drawing set',
+    body: 'PDFs, DWG or DXF files, one sheet or the whole set: layouts, single-line diagrams, the site plan.',
+    visual: 'files',
+  },
+  {
+    title: 'Two readers take it off',
+    body: 'The CAD reader measures the geometry. The drawing reader reads each PDF page. Their findings merge into one bill.',
+    visual: 'readers',
+  },
+  {
+    title: 'Check what is missing',
+    body: 'Anything the drawings do not show is listed as a gap, never quietly guessed: a feeder with no size, a run with no length.',
+    visual: 'gaps',
+  },
+  {
+    title: 'Export the tender bill',
+    body: 'Priced from your own rates and markup, set out by section with subtotals. Excel and PDF, ready to attach.',
+    visual: 'export',
+  },
+];
+
+const EVIDENCE = [
+  { icon: Ruler, name: 'Measured', body: 'Taken off CAD geometry or a vector site plan, to scale.', eg: '186 m of 2.5 mm² wire' },
+  { icon: Hash, name: 'Counted', body: 'Symbols matched to the legend and counted, sheet by sheet.', eg: '17 LED panels on WD-01' },
+  { icon: ScrollText, name: 'Written', body: 'Read from a schedule, a single-line diagram or a drawing note.', eg: 'DB-1, 24-way, from the DB schedule' },
+  { icon: Eye, name: 'Seen', body: 'Recognised on the page, but not something that can be counted exactly.', eg: 'Cable tray shown on the riser' },
+  { icon: CircleHelp, name: 'Assumed', body: 'Not on the drawings. Priced from a stated assumption and listed as a gap.', eg: 'Surge protection, Type 2' },
 ];
 
 const READS = [
   { img: symCircuitSchedule, label: 'Circuit schedules' },
   { img: symDistributionBoard, label: 'Distribution boards' },
-  { img: symCable, label: 'Cable runs & lengths' },
+  { img: symCable, label: 'Cable runs and lengths' },
   { img: symLuminaire, label: 'Luminaires' },
   { img: symSocket, label: 'Socket outlets' },
-  { img: symEarth, label: 'Earthing & bonding' },
+  { img: symEarth, label: 'Earthing and bonding' },
   { img: symContainment, label: 'Containment' },
-  { img: symSolar, label: 'Solar & backup' },
+  { img: symSolar, label: 'Solar and backup' },
 ];
 
-const NOTES = [
+const COMPARE = [
+  { what: 'Counting symbols', manual: 'By hand, with a highlighter on a printed sheet', afp: 'Matched to the legend and counted on every sheet' },
+  { what: 'Cable and conduit lengths', manual: 'Scale rule, or an estimate per point', afp: 'Measured on the CAD geometry or vector site plan' },
+  { what: 'Where a number came from', manual: 'In the estimator’s notes, if anywhere', afp: 'Shown on every line: measured, counted, written, seen or assumed' },
+  { what: 'Information the drawings lack', manual: 'Found on site, after the tender is won', afp: 'Listed in a gap report before you price' },
+  { what: 'The tender document', manual: 'Retyped into a spreadsheet', afp: 'Excel and PDF bill, by section, with subtotals' },
+];
+
+const FAQ = [
   {
-    meta: 'PRODUCTIVITY',
-    title: 'Where manual take-off actually loses you time',
-    body: 'Counting symbols, measuring cable runs and retyping schedules into a spreadsheet is the least valuable part of the job — and the easiest to automate.',
+    q: 'How accurate is the first draft?',
+    a: 'Treat it as a first draft you check, not a finished bill. Every line shows its evidence, so you know where to look first, and every assumed line is in the gap report. AfriPlan is tested against real, human-priced South African projects.',
   },
   {
-    meta: 'ENGINES',
-    title: 'When the DXF and the PDF disagree',
-    body: 'A layer-naming inconsistency in the drawing is the most common cause of a cable-length variance between the two engines. How to read the comparison panel.',
+    q: 'Which files can I upload?',
+    a: 'PDF drawing sets, DWG and DXF. CAD files give measured lengths; PDF pages are read one by one. Upload both and the two readers’ findings are combined into one bill.',
   },
   {
-    meta: 'COMPLIANCE',
-    title: 'What SANS 10142-1:2017 actually checks',
-    body: 'Circuit limits, ELCB requirements and spare-way margins — the specific rules AfriPlan validates every bill against, automatically.',
+    q: 'Which standard does it check against?',
+    a: 'SANS 10142-1:2017: circuit limits, earth leakage protection and spare ways on distribution boards. Each bill is checked automatically.',
+  },
+  {
+    q: 'Whose rates are used?',
+    a: 'Yours. Keep your own rate library and markup default; every line is priced from it in rand, and you can change any rate before you export.',
+  },
+  {
+    q: 'What do I get at the end?',
+    a: 'A Bill of Quantities in Excel and PDF, set out by section with subtotals, plus the gap report of everything that was assumed.',
   },
 ];
 
-export default function Landing({ onNavigate }) {
+function StepVisual({ kind }) {
+  if (kind === 'files') {
+    return (
+      <ul className="lp-step-vis lp-files">
+        {['WD-01 Lighting.pdf', 'WD-02 Power.dwg', 'SLD-01 Main board.pdf', 'Site plan.dxf'].map((f) => (
+          <li key={f}><FileText size={14} aria-hidden="true" /> {f}</li>
+        ))}
+      </ul>
+    );
+  }
+  if (kind === 'readers') {
+    return (
+      <div className="lp-step-vis lp-readers">
+        <div><span>CAD reader</span><span className="lp-bar"><span style={{ width: '100%' }} /></span><span className="num">4 of 4 sheets</span></div>
+        <div><span>Drawing reader</span><span className="lp-bar"><span style={{ width: '75%' }} /></span><span className="num">9 of 12 pages</span></div>
+      </div>
+    );
+  }
+  if (kind === 'gaps') {
+    return (
+      <ul className="lp-step-vis lp-gaps">
+        <li><span className="lp-chip lp-chip-assumed">gap</span> Feeder DB-1 to DB-2: cable size not shown</li>
+        <li><span className="lp-chip lp-chip-assumed">gap</span> Site lighting: trench length not dimensioned</li>
+      </ul>
+    );
+  }
   return (
-    <div style={{ background: 'var(--paper)', minHeight: '100vh', overflowX: 'hidden' }}>
-      <Navbar onNavigate={onNavigate} />
-
-      {/* ─── Hero ───────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 'var(--space-lg)', alignItems: 'end',
-          padding: 'clamp(48px, 8vw, 96px) clamp(20px, 6vw, 104px) 0',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.16em', color: 'var(--circuit)' }}>
-              DRAWING → BoQ → QUOTATION
-            </span>
-            <h1 style={{ fontSize: 'var(--text-2xl)' }}>
-              <em style={{ display: 'block' }}>Drawings in.</em>
-              Quotations out.
-            </h1>
-            <p style={{ fontSize: 'var(--text-lg)', lineHeight: 1.6, color: 'var(--ink-2)', maxWidth: 520, margin: 0, textWrap: 'pretty' }}>
-              AfriPlan reads your electrical plan drawings, builds the Bill of Quantities
-              line by line and prices it into a client-ready quotation — no manual
-              take-off required.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 8 }}>
-            {HERO_POINTS.map((point) => (
-              <div key={point} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 17 }}>
-                <span style={tickStyle}>✓</span>
-                <span style={{ color: 'var(--ink-2)' }}>{point}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap', paddingTop: 14 }}>
-              <button onClick={() => onNavigate('login')} className="btn-gradient" style={{ fontSize: 16, minHeight: 54, padding: '0 34px' }}>
-                Start your BoQ
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Moving panorama */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden', padding: 'clamp(40px, 6vw, 64px) 0 clamp(48px, 7vw, 96px)' }}>
-          <div className="afp-panorama-strip" style={{ display: 'flex', gap: 18, width: 'max-content', animation: 'afp-pan-left 52s linear infinite' }}>
-            {[...PANORAMA_TOP, ...PANORAMA_TOP].map((src, i) => (
-              <img key={`t${i}`} src={src} alt="" style={{ width: 420, height: 264, objectFit: 'cover', borderRadius: 10 }} />
-            ))}
-          </div>
-          <div className="afp-panorama-strip" style={{ display: 'flex', gap: 18, width: 'max-content', animation: 'afp-pan-right 64s linear infinite' }}>
-            {[...PANORAMA_BOTTOM, ...PANORAMA_BOTTOM].map((src, i) => (
-              <img key={`b${i}`} src={src} alt="" style={{ width: 300, height: 180, objectFit: 'cover', borderRadius: 10 }} />
-            ))}
-          </div>
-        </div>
-
-        {/* ─── Stats band ─────────────────────────────────────────── */}
-        <div style={{ padding: '0 clamp(20px, 6vw, 104px) clamp(56px, 8vw, 104px)' }}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            borderTop: '1px solid var(--hairline)', borderBottom: '1px solid var(--hairline)',
-          }}>
-            {STATS.map((s) => (
-              <div key={s.label} style={{ padding: '34px 28px', display: 'flex', flexDirection: 'column', gap: 8, borderRight: '1px solid var(--hairline)' }}>
-                <span style={{ fontFamily: 'var(--serif)', fontSize: 38, fontWeight: 700, color: 'var(--ink)' }}>{s.value}</span>
-                <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ─── Where the hours go ─────────────────────────────────── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'clamp(40px, 6vw, 80px)',
-          padding: '0 clamp(20px, 6vw, 104px) clamp(56px, 8vw, 110px)', alignItems: 'center',
-        }}>
-          <div style={{ position: 'relative', minHeight: 360 }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'var(--paper-edge)', borderRadius: '200px 200px 24px 200px' }} />
-            <img src={rebarSite} alt="Electrical site work" style={{ position: 'relative', left: 40, top: 36, width: 'calc(100% - 80px)', height: 288, objectFit: 'cover', borderRadius: 12 }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-            <h2 style={{ fontSize: 'var(--text-xl)' }}>Where the <em>hours go</em></h2>
-            <p style={{ fontSize: 16, lineHeight: 1.75, color: 'var(--ink-2)', maxWidth: 460, margin: 0, textWrap: 'pretty' }}>
-              Counting symbols. Measuring cable runs. Retyping schedules into a spreadsheet.
-              Chasing the rate you used last month. It is the least valuable part of an
-              electrical engineer&rsquo;s week. AfriPlan does the counting, the measuring and
-              the pricing — you review, adjust and send.
-            </p>
-            <div style={{ width: 64, height: 2, background: 'var(--blueprint)' }} />
-          </div>
-        </div>
-
-        {/* ─── Four steps ─────────────────────────────────────────── */}
-        <div style={{ padding: '0 clamp(20px, 6vw, 104px) clamp(56px, 8vw, 110px)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-          <h2 style={{ fontSize: 'var(--text-xl)' }}>Four steps, <em>one sitting</em></h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 28 }}>
-            {STEPS.map((s, i) => (
-              <div key={s.n} style={{
-                display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 20,
-                borderTop: `2px solid ${i === 0 ? 'var(--blueprint)' : 'var(--hairline-2)'}`,
-              }}>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: i === 0 ? 'var(--blueprint)' : 'var(--ink-muted)' }}>{s.n}</span>
-                <h3 style={{ fontSize: 19 }}>{s.title}</h3>
-                <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--ink-2)', margin: 0 }}>{s.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ─── What it reads ──────────────────────────────────────── */}
-        <div style={{ padding: '0 clamp(20px, 6vw, 104px) clamp(56px, 8vw, 110px)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-          <h2 style={{ fontSize: 'var(--text-xl)', textAlign: 'center' }}>What it <em>reads</em></h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '28px 24px' }}>
-            {READS.map((r) => (
-              <div key={r.label} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{
-                  height: 150, borderRadius: 10, background: 'var(--card-bg-2)',
-                  border: '1px solid rgba(16,26,51,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <img src={r.img} alt={`${r.label} symbol`} style={{ height: 88, width: 'auto', objectFit: 'contain' }} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--hairline)', paddingBottom: 10 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--blueprint)' }}>{r.label}</span>
-                  <span style={{ color: 'var(--ink-muted)' }}>›</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Built for South African electrical contractors ───────── */}
-      <div style={{ background: 'var(--paper-2)' }}>
-        <div style={{
-          maxWidth: 1440, margin: '0 auto', padding: 'clamp(56px, 8vw, 104px) clamp(20px, 6vw, 104px)',
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'clamp(40px, 6vw, 90px)', alignItems: 'center',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-            <h2 style={{ fontSize: 'var(--text-xl)' }}>
-              Built for South African<br />
-              <em style={{ borderBottom: '2px solid var(--blueprint)', paddingBottom: 4 }}>electrical contractors</em>
-            </h2>
-            <p style={{ fontSize: 16, lineHeight: 1.75, color: 'var(--ink-2)', maxWidth: 440, margin: 0, textWrap: 'pretty' }}>
-              From site teams to tender desks — real drawings, real SANS 10142-1:2017
-              compliance, real numbers in rand. Keep your own rate library and markup
-              defaults, and let the two engines cross-check every quantity before it
-              goes into a client quotation.
-            </p>
-            <button onClick={() => onNavigate('login')} className="btn-ghost" style={{ alignSelf: 'flex-start' }}>
-              About AfriPlan
-            </button>
-          </div>
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 16, top: 16, width: '100%', height: '100%', background: 'var(--blueprint)', borderRadius: 14 }} />
-            <img src={trustImage} alt="Electrical site team" style={{ position: 'relative', width: '100%', height: 340, objectFit: 'cover', borderRadius: 14, display: 'block' }} />
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Field notes ──────────────────────────────────────────── */}
-      <div style={{ background: 'var(--paper-edge)' }}>
-        <div style={{ maxWidth: 1440, margin: '0 auto', padding: 'clamp(48px, 7vw, 96px) clamp(20px, 6vw, 104px)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
-            <h2 style={{ fontSize: 'var(--text-xl)', borderBottom: '2px solid var(--blueprint)', paddingBottom: 8 }}>Field <em>notes</em></h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 44 }}>
-            {NOTES.map((n) => (
-              <div key={n.title} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '0.1em', color: 'var(--ink-muted)' }}>{n.meta}</span>
-                <h3 style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, lineHeight: 1.3 }}>{n.title}</h3>
-                <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--ink-2)', margin: 0 }}>{n.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Footer ───────────────────────────────────────────────── */}
-      <div style={{ background: 'var(--paper-2)' }}>
-        <div style={{
-          maxWidth: 1440, margin: '0 auto', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 6vw, 104px) 40px',
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 60,
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <h2 style={{ fontSize: 34 }}>Price your <em>next job</em></h2>
-            <button type="button" className="link-button" style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 20, color: 'var(--blueprint)', alignSelf: 'flex-start' }} onClick={() => onNavigate('login')}>
-              Get started
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <span style={footerHeading}>MENU</span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', fontSize: 14, color: 'var(--ink-2)' }}>
-              <span>Product</span>
-              <span>How it works</span>
-              <button type="button" className="link-button" onClick={() => onNavigate('login')}>Sign in</button>
-            </div>
-          </div>
-        </div>
-        <div style={{
-          maxWidth: 1440, margin: '0 auto', padding: '24px clamp(20px, 6vw, 104px) 40px',
-          borderTop: '1px solid var(--hairline)', display: 'flex', justifyContent: 'space-between',
-          gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--ink-muted)',
-        }}>
-          <span>AfriPlan Electrical.</span>
-          <span style={{ fontFamily: 'var(--mono)' }}>DRAWING · BoQ · QUOTATION</span>
-        </div>
-      </div>
+    <div className="lp-step-vis lp-exports">
+      <span><FileSpreadsheet size={16} aria-hidden="true" /> BoQ.xlsx</span>
+      <span><FileText size={16} aria-hidden="true" /> BoQ.pdf</span>
     </div>
   );
 }
 
-const tickStyle = {
-  width: 22, height: 22, borderRadius: '50%', background: 'var(--ink)', color: '#fff',
-  fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-};
+export default function Landing({ onNavigate }) {
+  const start = () => onNavigate('login');
 
-const footerHeading = {
-  fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--ink-muted)',
-};
+  return (
+    <div className="lp">
+      <Navbar onNavigate={onNavigate} />
+
+      <main>
+        {/* ─── Hero ─────────────────────────────────────────────── */}
+        <section className="lp-hero lp-wrap" aria-labelledby="lp-hero-title">
+          <div className="lp-hero-copy">
+            <h1 id="lp-hero-title">Hand it the drawings. Get back a Bill of Quantities you can tender with.</h1>
+            <div className="lp-hero-side">
+              <p className="lp-lead">
+                AfriPlan counts the symbols, measures the cable runs and prices each line from your own
+                rates, in rand. Every quantity shows where it came from, so you check the bill instead
+                of building it.
+              </p>
+              <div className="lp-actions">
+                <button type="button" className="btn-gradient" onClick={start}>Start a BoQ</button>
+                <button type="button" className="btn-ghost" onClick={() => scrollToSection('how')}>See how a bill is built</button>
+              </div>
+              <ul className="lp-facts">
+                {HERO_FACTS.map((f) => (
+                  <li key={f}><Check size={15} strokeWidth={2.5} aria-hidden="true" /> {f}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <HeroTakeoff />
+        </section>
+
+        {/* ─── What it reads ────────────────────────────────────── */}
+        <section className="lp-reads" aria-labelledby="lp-reads-title">
+          <div className="lp-wrap">
+            <h2 id="lp-reads-title" className="lp-h-small">What it picks up on an electrical drawing</h2>
+            <ul className="lp-reads-list">
+              {READS.map((r) => (
+                <li key={r.label}>
+                  <img src={r.img} alt="" />
+                  <span>{r.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ─── How it works (a real sequence, so it is numbered) ── */}
+        <section id="how" className="lp-section lp-wrap" aria-labelledby="lp-how-title">
+          <div className="lp-section-head">
+            <h2 id="lp-how-title">From drawing set to tender bill, in one sitting</h2>
+            <p>No new way of working. Upload what the consultant sent, check what AfriPlan found, export the bill.</p>
+          </div>
+          <ol className="lp-steps">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="lp-step">
+                <span className="lp-step-n num" aria-hidden="true">{i + 1}</span>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+                <StepVisual kind={s.visual} />
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* ─── Evidence ladder ──────────────────────────────────── */}
+        <section id="evidence" className="lp-section lp-evidence" aria-labelledby="lp-ev-title">
+          <div className="lp-wrap lp-evidence-grid">
+            <div className="lp-section-head">
+              <h2 id="lp-ev-title">Every quantity says where it came from</h2>
+              <p>
+                A bill you can defend at tender. Each line carries one of five kinds of evidence, strongest
+                first. When the two readers disagree, the stronger evidence wins.
+              </p>
+            </div>
+            <ol className="lp-ladder">
+              {EVIDENCE.map((e, i) => (
+                <li key={e.name} className={`lp-rung lp-rung-${e.name.toLowerCase()}`}>
+                  <span className="lp-rung-meter" aria-hidden="true">
+                    {EVIDENCE.map((_, j) => <span key={j} className={j < EVIDENCE.length - i ? 'on' : ''} />)}
+                  </span>
+                  <e.icon size={20} aria-hidden="true" className="lp-rung-icon" />
+                  <div>
+                    <h3>{e.name}</h3>
+                    <p>{e.body}</p>
+                  </div>
+                  <span className="lp-rung-eg">{e.eg}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* ─── Savings calculator (the cyanotype band) ──────────── */}
+        <section id="savings" className="lp-cyan" aria-labelledby="lp-calc-title">
+          <div className="lp-wrap lp-cyan-inner">
+            <div className="lp-section-head lp-on-dark">
+              <h2 id="lp-calc-title">What take-off costs you now</h2>
+              <p>Four numbers from your own office. Move the sliders and see the time a first draft gives back.</p>
+            </div>
+            <SavingsCalculator />
+          </div>
+        </section>
+
+        {/* ─── Side by side ─────────────────────────────────────── */}
+        <section className="lp-section lp-wrap" aria-labelledby="lp-cmp-title">
+          <div className="lp-section-head">
+            <h2 id="lp-cmp-title">Manual take-off and AfriPlan, side by side</h2>
+          </div>
+          <div className="lp-cmp" role="table" aria-label="Manual take-off compared with AfriPlan">
+            <div className="lp-cmp-row lp-cmp-headrow" role="row">
+              <span role="columnheader"><span className="lp-visually-hidden">Task</span></span>
+              <span role="columnheader">By hand</span>
+              <span role="columnheader">With AfriPlan</span>
+            </div>
+            {COMPARE.map((c) => (
+              <div key={c.what} className="lp-cmp-row" role="row">
+                <span role="rowheader" className="lp-cmp-what">{c.what}</span>
+                <span role="cell" className="lp-cmp-manual"><span className="lp-cmp-label" aria-hidden="true">By hand</span>{c.manual}</span>
+                <span role="cell" className="lp-cmp-afp"><span className="lp-cmp-label" aria-hidden="true">With AfriPlan</span>{c.afp}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── FAQ ──────────────────────────────────────────────── */}
+        <section id="faq" className="lp-section lp-wrap lp-faq" aria-labelledby="lp-faq-title">
+          <div className="lp-section-head">
+            <h2 id="lp-faq-title">Questions contractors ask first</h2>
+          </div>
+          <div className="lp-faq-list">
+            {FAQ.map((f) => (
+              <details key={f.q}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── Closing call to action ───────────────────────────── */}
+        <section className="lp-final lp-wrap" aria-labelledby="lp-final-title">
+          <h2 id="lp-final-title">Price your next tender from the drawings.</h2>
+          <p>Upload a set and see the first draft of the bill, with every gap listed.</p>
+          <div className="lp-actions">
+            <button type="button" className="btn-gradient" onClick={start}>Start a BoQ</button>
+            <button type="button" className="btn-ghost" onClick={start}>Sign in</button>
+          </div>
+        </section>
+      </main>
+
+      <footer className="lp-footer">
+        <div className="lp-wrap lp-footer-inner">
+          <div className="lp-footer-brand">
+            <strong>AfriPlan Electrical</strong>
+            <p>Bills of Quantities from South African electrical drawings: counted, measured and priced in rand.</p>
+          </div>
+          <nav aria-label="Footer">
+            <h2 className="lp-footer-h">Product</h2>
+            <ul>
+              <li><button type="button" onClick={() => scrollToSection('how')}>How it works</button></li>
+              <li><button type="button" onClick={() => scrollToSection('evidence')}>Where numbers come from</button></li>
+              <li><button type="button" onClick={() => scrollToSection('savings')}>Time saved</button></li>
+              <li><button type="button" onClick={() => scrollToSection('faq')}>Questions</button></li>
+            </ul>
+          </nav>
+          <nav aria-label="Account">
+            <h2 className="lp-footer-h">Account</h2>
+            <ul>
+              <li><button type="button" onClick={start}>Sign in</button></li>
+              <li><button type="button" onClick={start}>Start a BoQ</button></li>
+            </ul>
+          </nav>
+        </div>
+        <div className="lp-wrap lp-footer-base">
+          <span>© 2026 AfriPlan Electrical, by JLWanalytics.</span>
+          <span>Drawings in, priced Bill of Quantities out.</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

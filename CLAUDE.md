@@ -1,7 +1,6 @@
 # CLAUDE.md — AfriPlan Electrical (FastAPI + React)
 
-Read at the start of every session. PUSH context: only always-true, high-value facts.
-Situational procedures live in `.claude/skills/` (PULL context).
+Read at the start of every session: only always-true facts (PUSH); procedures live in `.claude/skills/` (PULL).
 
 ## What this project is
 A South African electrical **Bill of Quantities (BOQ)** estimator for contractors and
@@ -62,7 +61,7 @@ split (instructions → agent → engines + check): `.claude/rules/three-layer-a
 | Ground truth, ItemKey taxonomy, layered BOQ network, ratios, **frozen scorer** | `api/evaluation/` |
 | BOQ rule audit, drawing sufficiency, derived-item completer | `api/audit/` |
 | CNN training-data generator (no model trained — ADR-0004) | `api/ml/` |
-| Live supplier pricing (mock suppliers) · Excel/PDF exports · SQLite | `api/sourcing/` · `api/exports/` · `api/db/` |
+| Live supplier pricing (mock suppliers) + **price catalogue** (`sourcing/catalogue.py`, built by `scripts/build_price_catalogue.py` into `data/catalogue/`, local only) · Excel/PDF exports · SQLite | `api/sourcing/` · `api/exports/` · `api/db/` |
 | AI cover note for e-mailing a BoQ | `api/ai/` |
 | React pages (Landing, Login, wizard, Pricing, **Audit a BoQ**) · design system · API client | `src/pages/` · `src/components/ui/` · `src/api/client.js` |
 | Reference projects: manifest committed; raw files + parsed bill LOCAL ONLY | `data/projects/<p>/` |
@@ -143,7 +142,8 @@ inside an optimisation loop · push to `main` / deploy without approval · send 
 document to a client before a qualified person has signed it off (who qualifies: `context/about-project.md`).
 
 ## Skills, agents, rules
-Index in loop order: `.claude/README.md`. Project skills: `estimate-project` · `check-takeoff` ·
-`fix-and-learn` · `tdd` · `evaluate-boq` · `audit-boq` · `add-reference-project` · `karpathy-coding-discipline`.
-General skills on this PC (this file's rules win): `dashboard-qa-gate` · `frontend-design` /
-`dashboard-ui-kit` (reuse `src/components/ui`) · `data-core-engine` · `data-app-deploy`. Never `data-app-init` here.
+Index in loop order: `.claude/README.md`. Project skills: `estimate-project` · `check-takeoff` · `fix-and-learn` ·
+`tdd` · `evaluate-boq` · `audit-boq` · `add-reference-project` · `karpathy-coding-discipline`. **BoQ domain skills**
+(rule IDs + confidence, each logs `FEEDBACK.md`, improved by `improving-boq-skills` via a hook): `reading-scope-modifiers`
+· `reading-drawing-symbols` · `deriving-companion-items` · `writing-sa-bill-lines` · `checking-boq-completeness` ·
+`consolidating-price-catalogue`. General (this file wins): `dashboard-qa-gate` · `frontend-design` · `data-app-deploy`.

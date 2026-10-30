@@ -2,14 +2,14 @@
    Token NAMES are unchanged from the previous dark theme on purpose: every
    component that already reads var(--paper)/var(--ink)/var(--card-bg)/etc.
    re-themes automatically. Only the values changed, plus the type stack
-   (Playfair Display display serif + IBM Plex Sans/Mono) and the button and
+   (IBM Plex Sans Condensed display + IBM Plex Sans/Mono, 2026-10-29) and the button and
    card primitives, which are now flat and hairline-bordered instead of
    glassy and glowing. */
 :root {
   /* Backgrounds — cool near-white paper + a lavender-tinted band */
   --paper:        #FCFCFD;
-  --paper-2:      #F4F3FA;
-  --paper-edge:   #EDECF6;
+  --paper-2:      #F3F5F8;
+  --paper-edge:   #E8ECF2;
 
   /* Text — navy ink on light */
   --ink:          #101A33;
@@ -28,6 +28,12 @@
   --emerald:      #0F8A5F;
   --rose:         #C6423C;
 
+  /* Drawing-sheet accents — the estimator's highlighter on a printed sheet,
+     and the cyanotype blue of an old blueprint (the one dark band). */
+  --highlighter:  #FFD84D;
+  --cyanotype:    #0E2A6E;
+  --cyanotype-2:  #163A8C;
+
   --hairline:     rgba(16, 26, 51, 0.10);
   --hairline-2:   rgba(16, 26, 51, 0.16);
 
@@ -42,7 +48,10 @@
   --gradient-primary: linear-gradient(0deg, var(--blueprint), var(--blueprint));
   --gradient-text:    linear-gradient(0deg, var(--blueprint), var(--blueprint));
 
-  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* Display face is IBM Plex Sans Condensed — the lettering of a drawing's
+     title block. --serif is kept as an alias so older call sites still work. */
+  --display: 'IBM Plex Sans Condensed', 'IBM Plex Sans', 'Arial Narrow', system-ui, sans-serif;
+  --serif: var(--display);
   --sans:  'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
   --mono:  'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
 
@@ -108,7 +117,7 @@
   font-weight: 600;
   font-size: 15px;
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   box-shadow: none;
   transition: background 0.15s ease, transform 0.15s ease;
@@ -129,7 +138,7 @@
   font-weight: 600;
   font-size: 14px;
   border: 1px solid rgba(16, 26, 51, 0.22);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -163,15 +172,15 @@ body {
 a { color: var(--blueprint); text-decoration: none; }
 a:hover { color: var(--blueprint-3); }
 
-/* Display type is the serif; h3 and below stay in the sans so dense app
-   panels don't turn into a magazine. */
+/* Display type is the condensed sans; h3 and below stay in the regular sans
+   so dense app panels stay calm. */
 h1, h2 {
-  font-family: var(--serif);
+  font-family: var(--display);
   color: var(--ink);
   margin: 0;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 h3 {
   font-family: var(--sans);
@@ -180,9 +189,12 @@ h3 {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-h1 em, h2 em { font-weight: 500; }
+h1 em, h2 em { font-style: normal; }
 
 input, select, textarea { font-family: var(--sans); }
+
+:focus-visible { outline: 2px solid var(--blueprint); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
 
 /* Landing hero panorama — two bands panning in opposite directions. */
 @keyframes afp-pan-left  { from { transform: translateX(0); }    to { transform: translateX(-50%); } }

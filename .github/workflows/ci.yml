@@ -2,6 +2,7 @@
 # The hook (scripts/hooks/check_architecture.py) only fires inside local Claude Code
 # sessions; this runs the same rules on every push, whoever or whatever made the change.
 # A fresh clone has no client data (ADR-0005), so the tests that need it skip themselves.
+# Render deploys main only after these checks pass (render.yaml: autoDeployTrigger checksPass).
 
 name: CI
 
@@ -21,6 +22,7 @@ jobs:
   backend:
     name: Python tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -43,6 +45,7 @@ jobs:
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -55,6 +58,7 @@ jobs:
   e2e:
     name: Browser tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -71,6 +75,7 @@ jobs:
   client-data:
     name: No client data or secrets tracked
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
       # The repo is PUBLIC (hard rule 9, ADR-0005): mirrors the .gitignore client-data rules.

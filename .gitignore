@@ -24,6 +24,15 @@ data/**/raw/
 data/ml/
 data/projects/*/reference_boq.json
 data/projects/*/ratio_model.json
+# Third-party knowledge sources (tender bills, price lists, video transcripts) — other firms' documents,
+# kept local; doe/knowledge/SOURCES.md says where each came from. Our own notes (BOQ_KNOWLEDGE.md) are committed.
+doe/knowledge/example_boqs/
+doe/knowledge/price_lists/
+doe/knowledge/youtube_*/
+# Price catalogue built from supplier price lists (scripts/build_price_catalogue.py) — commercial
+# prices and the user's own overrides stay local; only the README is committed.
+data/catalogue/*
+!data/catalogue/README.md
 reports/baselines/*-wedela-*.md
 reports/audits/wedela-*.md
 reports/accuracy/*
@@ -32,3 +41,5 @@ runs/
 # Local conversation logs (session-logger) — may quote client details
 sessions/
 
+# Third-party design reference screenshots (BuildVision, Dribbble) — local only, repo is PUBLIC
+design-reference/

@@ -25,8 +25,17 @@ from sourcing import SourcingEngine, apply_quotes, build_requests
 from sourcing.models import SourcingReport, SupplierInfo
 from sourcing.rfq import QuoteParser, draft_rfq
 from sourcing.suppliers.mock import default_mock_suppliers
+from sourcing.suppliers.price_list import DEFAULT_CATALOGUE, default_price_list_suppliers
 
 router = APIRouter(prefix="/api/pricing", tags=["pricing"])
+
+CATALOGUE_PATH = DEFAULT_CATALOGUE   # data/catalogue/price_catalogue.csv (scripts/build_price_catalogue.py)
+
+
+def _quote_panel():
+    """The wholesalers plus one dated list-price supplier per catalogue supplier, when the catalogue
+    is built on this machine. List prices are never recommended or auto-applied (availability unknown)."""
+    return default_mock_suppliers() + default_price_list_suppliers(CATALOGUE_PATH)
 
 _reports: Dict[str, SourcingReport] = {}
 _lock = threading.Lock()
@@ -57,7 +66,7 @@ def get_requests(run_id: str):
     """Material lines available to source, plus the supplier panel."""
     boq = _base_boq_for(run_id)
     reqs = build_requests(boq)
-    suppliers = default_mock_suppliers()
+    suppliers = _quote_panel()
     return {
         "requests": [r.model_dump(mode="json") for r in reqs],
         "suppliers": [s.info.model_dump(mode="json") for s in suppliers],
@@ -76,7 +85,7 @@ def request_quotes(run_id: str, body: QuoteRequestBody):
     if not reqs:
         raise HTTPException(400, "none of the given item_refs match this BoQ's material lines")
 
-    engine = SourcingEngine(default_mock_suppliers())
+    engine = SourcingEngine(_quote_panel())
     report = engine.request_quotes(reqs, project_name=boq.project_name, boq_run_id=boq.run_id)
     with _lock:
         _reports[run_id] = report
