@@ -247,27 +247,29 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
 # ─── Section 5/6 — fittings (exact counts from blocks + geometry) ────
 
 def _fittings(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
-    # group by (canonical, building_block) so the take-off is per-room/building
+    # one line per (fitting, building, room): building in `building`, room in `location`, as the
+    # shared findings contract and the PDF engine have it
     grouped: Dict[tuple, int] = {}
     unnamed: Dict[tuple, Dict[str, int]] = {}        # block names behind each "unclassified" group
     for s in rec.symbols:
-        bldg = s.room or s.building or ""
-        grouped[(s.canonical_name, bldg)] = grouped.get((s.canonical_name, bldg), 0) + 1
+        key = (s.canonical_name, s.building or "", s.room or "")
+        grouped[key] = grouped.get(key, 0) + 1
         if s.canonical_name == _UNCLASSIFIED_ELEC.canonical_name:
-            names = unnamed.setdefault((s.canonical_name, bldg), {})
+            names = unnamed.setdefault(key, {})
             names[s.raw_name or "?"] = names.get(s.raw_name or "?", 0) + 1
 
-    for (canonical, bldg), qty in sorted(grouped.items(), key=lambda kv: (-kv[1], kv[0][0])):
+    for (canonical, bldg, room), qty in sorted(grouped.items(), key=lambda kv: (-kv[1], kv[0][0])):
+        where = room or bldg
         out.items.append(ItemFinding(
-            description=f"{canonical} — {bldg}" if bldg else canonical,
+            description=f"{canonical} — {where}" if where else canonical,
             section=_CATEGORY_TO_SECTION.get(_category_of(canonical), BQSection.FINAL_CABLES),
             item=canonical if catalogue_item(canonical) else "",
             qty=float(qty), material_zar=_fitting_material_price(canonical),
-            install_zar=cfg.default_point_install_labour, building=bldg, sheet="DXF",
+            install_zar=cfg.default_point_install_labour, building=bldg, location=room, sheet="DXF",
             evidence=Evidence.COUNTED, notes="Exact count from DXF blocks/geometry.",
         ))
-        if (canonical, bldg) in unnamed:             # counted, but not named: never silent (rule 7)
-            blocks = ", ".join(f"{n} ×{c}" for n, c in sorted(unnamed[(canonical, bldg)].items()))
+        if (canonical, bldg, room) in unnamed:       # counted, but not named: never silent (rule 7)
+            blocks = ", ".join(f"{n} ×{c}" for n, c in sorted(unnamed[(canonical, bldg, room)].items()))
             out.items[-1].gaps.append(GapItem(
                 section=out.items[-1].section, building_block=bldg,
                 description=f"{int(qty)} electrical symbols AfriPlan could not name (blocks: {blocks})",
@@ -280,6 +282,9 @@ def _fittings(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> Non
 # ─── Section 4 — reticulation cable (MEASURED per circuit, not assumed) ─
 
 def _wiring(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
+    # the drawing's building, as its symbols carry it (the spatial pass sets one per drawing)
+    names = [s.building for s in rec.symbols if s.building]
+    building = max(set(names), key=names.count) if names else ""
     for circuit, length_m in sorted(rec.cable_length_m_by_circuit.items()):
         if length_m <= 0:
             continue
@@ -289,7 +294,7 @@ def _wiring(out: Findings, rec: DxfRecognition, cfg: DxfAssembleConfig) -> None:
         label = circuit if circuit != "unassigned" else "unassigned circuits"
         out.wires.append(WireFinding(
             description=f"{size} {kind} reticulation wire — circuit {label}",
-            size_key=size, metres=length_m, circuit=circuit, building=label, sheet="DXF geometry",
+            size_key=size, metres=length_m, circuit=circuit, building=building, sheet="DXF geometry",
             evidence=Evidence.MEASURED,
             notes="Cable length MEASURED from DXF polylines/arcs (exact, not assumed).",
         ))

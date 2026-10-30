@@ -44,6 +44,32 @@ def _bill():
     return build_boq_from_recognition(recognise(_doc_with_electrical()), project_name="T")
 
 
+def test_dxf_findings_file_the_building_and_the_room_separately():
+    """The shared findings contract (as the PDF engine): building = the drawing's building,
+    location = the room; a wire's circuit stays in `circuit`, never in `building`."""
+    from agent.dxf_pipeline.passes.assemble import findings_from_recognition
+    rec = recognise(_doc_with_electrical())
+    for s in rec.symbols:
+        s.building, s.room = "Hall", "Kitchen"
+    f = findings_from_recognition(rec)
+    assert {i.building for i in f.items} == {"Hall"}
+    assert {i.location for i in f.items} == {"Kitchen"}
+    assert f.wires and {w.building for w in f.wires} == {"Hall"}
+    assert {w.circuit for w in f.wires} == {"L1"}
+
+
+def test_conduit_counts_a_drop_for_each_socket_once_wires_and_sockets_share_a_building():
+    """Route take-off step 1: 5 m measured on L1 + 2 sockets × (3.0 − 0.5) m = 10 m of conduit."""
+    from agent.dxf_pipeline.passes.assemble import findings_from_recognition
+    from agent.shared.pricing import price_findings
+    rec = recognise(_doc_with_electrical())
+    for s in rec.symbols:
+        s.building, s.room = "Hall", "Kitchen"
+    boq = price_findings(findings_from_recognition(rec), pipeline="dxf")
+    [conduit] = [l for l in boq.line_items if "conduit" in l.description.lower()]
+    assert conduit.qty == pytest.approx(10.0)
+
+
 def test_symbols_it_cannot_name_are_listed_for_the_estimator_by_block_name():
     """Hard rule 7: counted but unnamed symbols must not be priced silently (issue 015)."""
     doc = ezdxf.new(setup=True)
