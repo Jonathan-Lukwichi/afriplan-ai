@@ -17,6 +17,7 @@ export default function ExtractionAccuracyPanel({ runId }) {
   }, [runId]);
 
   if (!reading?.available) return null;
+  const confirmed = reading.if_queries_confirmed;
   const facts = [
     ['Items found', `${reading.items_found} of ${reading.items_judged}`],
     ['Share of value found', pct(reading.coverage)],
@@ -33,6 +34,12 @@ export default function ExtractionAccuracyPanel({ runId }) {
       <p style={{ fontSize: 13, color: 'var(--ink-muted)', margin: '0 0 12px' }}>
         Only what is counted or measured on the drawings, compared with the real priced bill for {reading.project}. Prices are not part of this score.
       </p>
+      {confirmed && (
+        <p style={{ fontSize: 14, margin: '0 0 12px' }} data-testid="accuracy-if-confirmed">
+          <strong>{pct(confirmed.score)}</strong> if the bill is wrong on the items below, which is not yet confirmed.
+          <span style={{ display: 'block', fontSize: 13, color: 'var(--ink-muted)' }}>{confirmed.items.join(' ')}</span>
+        </p>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
         {facts.map(([label, value]) => (
           <div key={label}>

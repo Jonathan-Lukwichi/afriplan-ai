@@ -58,6 +58,14 @@ def project_reference(ref: ReferenceBoq) -> ReferenceBoq:
     return ReferenceBoq(project=ref.project, buildings=[RefBuilding(name=PROJECT, sheet="*", lines=lines, in_summary=True)])
 
 
+def _bill_queries(project: str) -> List[dict]:
+    """Items where the bill looks wrong against the drawings, unconfirmed: [{key, note}], in the
+    project's local bill_queries.json (client data, never in git). They give a second number
+    beside the scorer's; the reference and the scorer's own number never change."""
+    path = DATA_ROOT / project / "bill_queries.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
+
+
 def reading_summary(boq: BillOfQuantities, project: str, *, pipeline: str) -> dict:
     """What the page shows: how much of what is drawn was read, and the biggest misses. No money."""
     ref = load_reference(project)
@@ -69,7 +77,13 @@ def reading_summary(boq: BillOfQuantities, project: str, *, pipeline: str) -> di
     r = reading_accuracy(card)
     misses: List[dict] = [{"item": i["label"], "verdict": i["verdict"], "points_lost": i["points_lost"]}
                           for i in r["items"][:_BIGGEST_MISSES] if i["points_lost"] > 0]
+    queries = _bill_queries(project)
+    queried = {q["key"] for q in queries}
     return {
+        "if_queries_confirmed": ({
+            "score": r["reading_score"] + sum(i["points_lost"] for i in r["items"] if i["key"] in queried),
+            "items": [q["note"] for q in queries],
+        } if queries else None),
         "project": project, "reading_score": r["reading_score"], "coverage": r["coverage"],
         "qty_accuracy": r["qty_accuracy"], "items_judged": r["items_judged"], "items_found": r["items_found"],
         "items_within_10pct": r["items_within_10pct"], "item_precision": r["item_precision"],

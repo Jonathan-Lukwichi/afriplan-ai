@@ -42,6 +42,14 @@ test('a project with a real bill shows its extraction accuracy', async ({ page }
   await panel.screenshot({ path: 'test-results/extraction-accuracy.png' });
 });
 
+test('a queried bill shows a second number, labelled as unconfirmed', async ({ page }) => {
+  await openRun(page, { ...READING, if_queries_confirmed: { score: 0.9, items: ['The bill may count this cable twice.'] } });
+  await expect(page.getByTestId('extraction-accuracy')).toHaveText('74.0 %');
+  const second = page.getByTestId('accuracy-if-confirmed');
+  await expect(second).toContainText('90.0 %');
+  await expect(second).toContainText('not yet confirmed');
+});
+
 test('a project with no real bill shows no accuracy at all', async ({ page }) => {
   await openRun(page, { available: false });
   await expect(page.getByRole('button', { name: /View Bill of Quantities/ })).toBeVisible();

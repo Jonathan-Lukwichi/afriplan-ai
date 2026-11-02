@@ -206,13 +206,26 @@ def _sld_board(b) -> BoardFinding:
 
 # ─── feeders: length from the SLD text, the site-plan route, or assumed ─
 
+def _measured_route(fd, routes: Optional[RouteNetwork]):
+    """(route, name of the board it was measured from when not the SLD's). The SLD names the
+    cable; where the site plan draws it from another board, the plan shows where it runs."""
+    if routes is None or not routes.found:
+        return None, ""
+    drawn_from = routes.fed_from.get(equipment_key(fd.to_db))
+    if drawn_from and drawn_from != equipment_key(fd.from_source):
+        match = routes.route(drawn_from, fd.to_db)
+        if match is not None:
+            return match, routes.names.get(drawn_from, drawn_from)
+    return routes.route(fd.from_source, fd.to_db), ""
+
+
 def _feeder_order(feeders, routes: Optional[RouteNetwork] = None) -> list:
     """Upstream feeders first, then shorter routes first, so a trench shared along
     the way is billed with the feeder that runs along it before branching off."""
     parent = {equipment_key(f.to_db): equipment_key(f.from_source) for f in feeders}
 
     def route_m(f) -> float:
-        r = routes.route(f.from_source, f.to_db) if routes is not None and routes.found else None
+        r, _ = _measured_route(f, routes)
         return r.length_m if r is not None else float("inf")
 
     def depth(k: str) -> int:
@@ -229,10 +242,13 @@ def _feeder_order(feeders, routes: Optional[RouteNetwork] = None) -> list:
 def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
                  routes: Optional[RouteNetwork] = None) -> None:
     claimed: Set[int] = set()                        # route edges whose trench is already billed
+    phases = {equipment_key(b.name): b.phases for b in sld.boards}
     for fd in _feeder_order(sld.feeders, routes):
         gaps: list = []
         ref = fd.source or "SLD (DXF)"
-        match = routes.route(fd.from_source, fd.to_db) if routes is not None and routes.found else None
+        match, measured_from = _measured_route(fd, routes)
+        # an SLD rarely writes the core count: a single-phase board takes L, N and E
+        single_phase = not fd.cores_stated and phases.get(equipment_key(fd.to_db)) == 1
         if fd.length_annotated and fd.length_m > 0:
             length, trench, note = fd.length_m, fd.length_m, ""
             src, ev = ItemConfidence.EXTRACTED, Evidence.WRITTEN
@@ -243,6 +259,8 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
             src, ev = ItemConfidence.INFERRED, Evidence.MEASURED
             note = (f"Route measured {match.length_m:.1f} m on the site plan, "
                     f"+{cfg.route_slack_pct:g}% and {cfg.route_end_allowance_m:g} m at each end.")
+            if measured_from:
+                note += f" Measured from {measured_from} as the site plan draws it."
             gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
                 description=f"Feeder {fd.from_source}→{fd.to_db} length taken from the site-plan route",
@@ -273,9 +291,12 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
                                   if on_plan else "Measure the route on the site plan (upload it) or confirm on site."),
                 severity="high", drawing_ref=ref,
             ))
+        if single_phase:
+            note = f"{note} 3-core: the board it feeds is single-phase.".strip()
         out.feeders.append(FeederFinding(
             from_board=fd.from_source, to_board=fd.to_db, cable_size_mm2=fd.cable_size_mm2,
-            cable_cores=fd.cable_cores, underground=fd.is_underground, length_m=length, trench_m=trench,
+            cable_cores=3 if single_phase else fd.cable_cores, underground=fd.is_underground,
+            length_m=length, trench_m=trench,
             sheet=ref, evidence=ev, confidence=src, assumption=note, gaps=gaps,
         ))
 

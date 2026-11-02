@@ -26,6 +26,35 @@ def test_a_board_number_set_apart_in_its_header_still_names_the_board():
     assert [f.to_db for f in sld.feeders] == ["DB-HPS1"]
 
 
+def test_boards_laid_out_in_a_grid_keep_their_own_breakers():
+    """Two rows, two columns; a header sits at the left end of its row of breakers, and the two
+    left headers are not quite in line. Each breaker belongs to the block it is drawn in."""
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    t = lambda s, x, y: msp.add_text(s, dxfattribs={"layer": "0"}).set_placement((x, y))   # noqa: E731
+    blocks = {"DB-A": (1000, 6000, 3), "DB-B": (900, 2000, 5), "DB-C": (20000, 6000, 2), "DB-D": (20000, 2000, 4)}
+    for name, (x, y, n) in blocks.items():
+        t(f"{name} 400V, 100A, 15kA, 50Hz, 3PH+N+E", x, y)
+        for i in range(n):
+            t("20A", x + 1500 + i * 2500, y - 1000)
+    boards = {b.name: len(b.circuits) for b in read_sld(doc).boards}
+    assert boards == {"DB-A": 3, "DB-B": 5, "DB-C": 2, "DB-D": 4}
+
+
+def test_boards_stacked_in_rows_keep_their_own_breakers_though_their_headers_are_offset():
+    """The second board's header sits well to the right of the first's: its row decides, not its side."""
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    t = lambda s, x, y: msp.add_text(s, dxfattribs={"layer": "0"}).set_placement((x, y))   # noqa: E731
+    t("DB-A 400V, 100A, 15kA, 50Hz, 3PH+N+E", 3000, 6000)
+    t("DB-B 400V, 100A, 15kA, 50Hz, 3PH+N+E", 25000, 3000)
+    for i in range(6):
+        t("20A", i * 8000, 5500)
+    for i in range(2):
+        t("10A", 30000 + i * 3000, 2500)
+    assert {b.name: len(b.circuits) for b in read_sld(doc).boards} == {"DB-A": 6, "DB-B": 2}
+
+
 def _sld_doc():
     doc = ezdxf.new()
     msp = doc.modelspace()

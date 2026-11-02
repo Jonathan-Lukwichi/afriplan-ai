@@ -47,6 +47,8 @@ _ISOLATOR = re.compile(r"^\s*ISO\s*\d+\s*$|ISOLATOR", re.I)
 _MASTER = re.compile(r"(MASTER|MAIN)\s+SWITCH", re.I)
 _FOUR_CORE = re.compile(r"\d+(?:\.\d+)?\s*mm.*?X\s*4\s*C\b", re.I | re.S)
 _SUPPLY_CABLE = re.compile(r"(?P<size>\d+(?:\.\d+)?)\s*mm.*?(?P<cores>\d)\s*CORE.*?SWA", re.I | re.S)
+_HEADER_SLACK = 0.05             # share of the headers' width: a part this far left is still its header's
+_ROW_SLACK = 0.15                # share of the headers' height: headers this close are one row
 
 
 def _norm_db(name: str) -> str:
@@ -79,6 +81,7 @@ class SldFeeder:
     to_db: str
     cable_size_mm2: float
     cable_cores: int = 4
+    cores_stated: bool = False      # the sheet wrote the core count; else it follows the board fed
     length_m: float = 0.0
     length_annotated: bool = False
     is_underground: bool = True
@@ -171,20 +174,20 @@ def read_sld(doc: Drawing, sheet_name: str = "") -> SldFacts:
     if mini_sub and supply_cable and anon in boards and ("MINI-SUB", anon) not in seen_feeders:
         facts.feeders.insert(0, SldFeeder(
             from_source="MINI-SUB", to_db=anon, cable_size_mm2=supply_cable[0],
-            cable_cores=supply_cable[1], source=sheet_name))
+            cable_cores=supply_cable[1], cores_stated=True, source=sheet_name))
     if facts.boards:
-        # Boards drawn side by side own the breaker COLUMN below their header: assign
-        # along the layout axis (plain Euclidean distance pulls the lower breakers of one
-        # column towards the neighbouring header).
+        # Boards sit in rows, alone or side by side, so a grid and a stack read the same way: a
+        # part belongs to the row of headers nearest its height, then to the last header at or
+        # left of it (plain Euclidean distance pulls a long board's far breakers to a neighbour).
         xs = [bd.x for bd in facts.boards]
         ys = [bd.y for bd in facts.boards]
-        by_x = (max(xs) - min(xs)) >= (max(ys) - min(ys))
+        width, height = max(xs) - min(xs), max(ys) - min(ys)
 
         def nearest(x: float, y: float) -> SldBoard:
-            if len(facts.boards) == 1:
-                return facts.boards[0]
-            return min(facts.boards, key=lambda bd: (abs(bd.x - x), abs(bd.y - y)) if by_x
-                       else (abs(bd.y - y), abs(bd.x - x)))
+            row_y = min(ys, key=lambda v: abs(v - y))
+            row = [bd for bd in facts.boards if abs(bd.y - row_y) <= height * _ROW_SLACK]
+            left = [bd for bd in row if bd.x <= x + width * _HEADER_SLACK] or row
+            return max(left, key=lambda bd: bd.x)
         for amps, x, y in breakers:
             nearest(x, y).circuits.append((amps, 1))
         for x, y in spares:

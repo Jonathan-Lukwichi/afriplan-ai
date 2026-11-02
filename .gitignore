@@ -24,6 +24,7 @@ data/**/raw/
 data/ml/
 data/projects/*/reference_boq.json
 data/projects/*/ratio_model.json
+data/projects/*/bill_queries.json
 # Third-party knowledge sources (tender bills, price lists, video transcripts) — other firms' documents,
 # kept local; doe/knowledge/SOURCES.md says where each came from. Our own notes (BOQ_KNOWLEDGE.md) are committed.
 doe/knowledge/example_boqs/

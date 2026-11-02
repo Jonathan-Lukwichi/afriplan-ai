@@ -483,6 +483,7 @@ def _route_gaps(routes: RouteNetwork, sld: SldFacts, sheet: str) -> List[GapItem
     """What the site plan says that the SLDs don't — never silent."""
     gaps: List[GapItem] = []
     sld_source = {equipment_key(fd.to_db): equipment_key(fd.from_source) for fd in sld.feeders}
+    sld_name = {equipment_key(fd.to_db): fd.from_source for fd in sld.feeders}
     for w in routes.warnings:
         if w.startswith(_NOT_ON_ROUTE) and set(w[len(_NOT_ON_ROUTE):].split(", ")) <= set(sld_source):
             continue                          # the feeder's own "no drawn route" gap says this already
@@ -494,8 +495,8 @@ def _route_gaps(routes: RouteNetwork, sld: SldFacts, sheet: str) -> List[GapItem
             gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=routes.names.get(to, to),
                 description=(f"Site plan says {routes.names.get(to, to)} is fed from "
-                             f"{routes.names.get(frm, frm)}; the SLD says from {sld_source[to]}"),
-                assumption="Priced as the SLD shows (the SLD names the cable).",
+                             f"{routes.names.get(frm, frm)}; the SLD says from {sld_name[to]}"),
+                assumption="Cable as the SLD names it; length measured as the site plan draws it.",
                 suggested_action="Confirm the supply arrangement with the designer.",
                 severity="medium", drawing_ref=sheet,
             ))

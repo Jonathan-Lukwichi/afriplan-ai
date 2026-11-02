@@ -73,6 +73,22 @@ def test_the_summary_says_how_much_was_read_with_no_money_in_it(scored):
     assert "zar" not in json.dumps(out).lower() and "ref_value" not in json.dumps(out)
 
 
+def test_no_bill_queries_means_no_second_number(scored):
+    boq = BillOfQuantities(project_name="demo", pipeline="dxf", line_items=[])
+    assert scored.reading_summary(boq, "demo", pipeline="dxf")["if_queries_confirmed"] is None
+
+
+def test_a_queried_item_stops_counting_against_the_second_number_only(scored, tmp_path, monkeypatch):
+    """The bill may be wrong on an item: the scorer's own number never moves."""
+    monkeypatch.setattr(scored, "DATA_ROOT", tmp_path)
+    (tmp_path / "demo" / "bill_queries.json").write_text(
+        json.dumps([{"key": "light_panel", "note": "Bill differs from the drawing"}]), encoding="utf-8")
+    boq = BillOfQuantities(project_name="demo", pipeline="dxf", line_items=[])
+    out = scored.reading_summary(boq, "demo", pipeline="dxf")
+    assert out["reading_score"] == 0.0
+    assert out["if_queries_confirmed"] == {"score": pytest.approx(1.0), "items": ["Bill differs from the drawing"]}
+
+
 def test_the_projects_folder_can_be_elsewhere(monkeypatch, tmp_path):
     """A git worktree has no client data: its app reads the bills in the main checkout."""
     import importlib
