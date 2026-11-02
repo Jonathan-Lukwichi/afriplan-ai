@@ -36,10 +36,10 @@ export default function Audit() {
   const s = result?.summary;
 
   return (
-    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-lg) clamp(16px, 3vw, 32px)' }}>
       <PageHeader
         title="Audit a Bill of Quantities"
-        subtitle="Upload a priced BOQ workbook. Every line is checked — arithmetic, priced lines missing from totals, unpriced items, duplicates, section roll-ups, contingency, sheets missing from the summary, feeders without earth or terminations — and ranked by the money at risk."
+        subtitle="Upload a priced BoQ workbook. Every line is checked — arithmetic, priced lines missing from totals, unpriced items, duplicates, section roll-ups, contingency, sheets missing from the summary, feeders without earth or terminations — and ranked by the money at risk."
       />
 
       <div className="glass-card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>

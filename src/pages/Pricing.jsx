@@ -108,9 +108,9 @@ export default function Pricing({ runId, onNavigate }) {
   };
 
   return (
-    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-lg) clamp(16px, 3vw, 32px)' }}>
       <PageHeader
-        eyebrow="OPTIONAL · LIVE PRICING"
+        eyebrow="Optional"
         title="Get real supplier prices for your BoQ"
         subtitle="Request live pricing, availability and lead times from multiple suppliers per item, then apply the best quote straight into the bill."
       />

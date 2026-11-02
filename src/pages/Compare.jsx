@@ -41,7 +41,7 @@ export default function Compare({ compareId, onNavigate }) {
   }
 
   return (
-    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-lg) clamp(16px, 3vw, 32px)' }}>
       <PageHeader title="Cross-engine comparison" />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}

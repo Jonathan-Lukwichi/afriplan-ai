@@ -98,7 +98,7 @@ export default function Upload({ onNavigate, onRunCreated, onCompareCreated }) {
   const activeInfo = PIPELINE_INFO[pipeline];
 
   return (
-    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-lg) clamp(16px, 3vw, 32px)' }}>
       <PageHeader
         title="Upload a drawing"
         subtitle="Run a DXF, a PDF drawing set, or both — and see exactly where the two engines agree, where they disagree, and by how much."

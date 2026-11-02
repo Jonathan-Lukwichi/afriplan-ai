@@ -55,6 +55,28 @@ test('the sidebar marks exactly one item as the current page', async ({ page }) 
   await expect(page.locator('[aria-current="page"]')).toHaveText(/Audit a BoQ/);
 });
 
+test('the landing page shows the site photos, loaded, each with a description', async ({ page }) => {
+  await page.goto('/#landing');
+  const photos = page.locator('.lp-site img');
+  await expect(photos).toHaveCount(5);
+  for (const photo of await photos.all()) {
+    await photo.scrollIntoViewIfNeeded();
+    await expect(photo).toHaveAttribute('alt', /\w/);
+    await expect.poll(() => photo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  }
+  await expect(page.locator('.lp-final-photo')).toBeVisible();
+});
+
+test('sign out says so in words, not only with an icon', async ({ page }) => {
+  await openAuthed(page, 'welcome');
+  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toHaveText('Sign out');
+});
+
+test('the top bar names the page you are on', async ({ page }) => {
+  await openAuthed(page, 'audit');
+  await expect(page.locator('.app-topbar-title')).toHaveText('Audit a BoQ');
+});
+
 test('sign out asks once before signing out', async ({ page }) => {
   await openAuthed(page, 'welcome');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();

@@ -93,7 +93,7 @@ export default function Boq({ runId, onNavigate }) {
   };
 
   return (
-    <div style={{ maxWidth: 1440, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 1440, padding: 'var(--space-lg) clamp(16px, 3vw, 32px)' }}>
       <PageHeader title="BoQ & quotation" subtitle="Set your margin and tax, review the SANS 10142-1 checked bill, then send the quotation from here." />
 
       {error && <p style={{ color: 'var(--rose)' }}>{error}</p>}

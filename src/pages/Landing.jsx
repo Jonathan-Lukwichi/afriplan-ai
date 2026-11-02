@@ -4,6 +4,13 @@ import HeroTakeoff from '../components/landing/HeroTakeoff';
 import SavingsCalculator from '../components/landing/SavingsCalculator';
 import '../styles/landing.css';
 
+import photoSwitchgear from '../assets/images/hero-switchgear.jpg';
+import photoPanel from '../assets/images/login-panel-electrician.jpg';
+import photoSolar from '../assets/images/solar-install.jpg';
+import photoTrench from '../assets/images/trust-strip-site-team.jpg';
+import photoSite from '../assets/images/rebar-site.jpg';
+import photoClosing from '../assets/images/header-banner-goldenhour.jpg';
+
 import symCircuitSchedule from '../assets/images/symbols/glyph-circuit-schedule.png';
 import symDistributionBoard from '../assets/images/symbols/glyph-distribution-board.png';
 import symCable from '../assets/images/symbols/glyph-cable.png';
@@ -61,6 +68,15 @@ const READS = [
   { img: symEarth, label: 'Earthing and bonding' },
   { img: symContainment, label: 'Containment' },
   { img: symSolar, label: 'Solar and backup' },
+];
+
+// Each photo is work a bill has to price, captioned with what AfriPlan takes off for it.
+const SITE_PHOTOS = [
+  { img: photoSwitchgear, cls: 'lp-site-wide', alt: 'A long row of switchgear panels in an electrical room', title: 'Boards and breakers', body: 'Read from the single-line diagram, board by board.' },
+  { img: photoPanel, cls: 'lp-site-tall', alt: 'An electrician in a blue hard hat checking the wiring inside a panel', title: 'Circuits', body: 'Every circuit on the schedule, tied to its board.' },
+  { img: photoSolar, cls: 'lp-site-tall', alt: 'An installer crimping a cable beside solar panels on a roof', title: 'Solar and backup', body: 'Picked up wherever the drawing set shows them.' },
+  { img: photoTrench, cls: '', alt: 'A crew in hi-vis vests joining a cable in a trench', title: 'Feeders and trenches', body: 'Routes measured on the site plan.' },
+  { img: photoSite, cls: '', alt: 'Two site workers marking up steel at a slab', title: 'The crew on site', body: 'One bill, set out by section, for the buyer and the team.' },
 ];
 
 const COMPARE = [
@@ -175,6 +191,24 @@ export default function Landing({ onNavigate }) {
           </div>
         </section>
 
+        {/* ─── The site: what the bill is for ───────────────────── */}
+        <section className="lp-site lp-wrap" aria-labelledby="lp-site-title">
+          <div className="lp-section-head">
+            <h2 id="lp-site-title">From the sheet to the site</h2>
+            <p>Every line in the bill is work someone has to buy, carry and install. This is what AfriPlan takes off for it.</p>
+          </div>
+          <ul className="lp-site-grid">
+            {SITE_PHOTOS.map((p) => (
+              <li key={p.title} className={p.cls}>
+                <figure>
+                  <img src={p.img} alt={p.alt} loading="lazy" decoding="async" />
+                  <figcaption><strong>{p.title}</strong> {p.body}</figcaption>
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         {/* ─── How it works (a real sequence, so it is numbered) ── */}
         <section id="how" className="lp-section lp-wrap" aria-labelledby="lp-how-title">
           <div className="lp-section-head">
@@ -269,12 +303,15 @@ export default function Landing({ onNavigate }) {
         </section>
 
         {/* ─── Closing call to action ───────────────────────────── */}
-        <section className="lp-final lp-wrap" aria-labelledby="lp-final-title">
-          <h2 id="lp-final-title">Price your next tender from the drawings.</h2>
-          <p>Upload a set and see the first draft of the bill, with every gap listed.</p>
-          <div className="lp-actions">
-            <button type="button" className="btn-gradient" onClick={start}>Start a BoQ</button>
-            <button type="button" className="btn-ghost" onClick={start}>Sign in</button>
+        <section className="lp-final-photo" aria-labelledby="lp-final-title">
+          <img src={photoClosing} alt="" loading="lazy" decoding="async" />
+          <div className="lp-wrap lp-final-inner">
+            <h2 id="lp-final-title">Price your next tender from the drawings.</h2>
+            <p>Upload a set and see the first draft of the bill, with every gap listed.</p>
+            <div className="lp-actions">
+              <button type="button" className="btn-gradient" onClick={start}>Start a BoQ</button>
+              <button type="button" className="btn-ghost" onClick={start}>Sign in</button>
+            </div>
           </div>
         </section>
       </main>

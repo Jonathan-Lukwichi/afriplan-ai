@@ -7,9 +7,9 @@ import PageHeader from '../components/ui/PageHeader';
    full-bleed wrapper needed. */
 export default function Welcome({ onNavigate }) {
   return (
-    <div style={{ maxWidth: 720, padding: 'var(--space-xl) var(--space-md)' }}>
+    <div style={{ maxWidth: 720, padding: 'var(--space-lg) clamp(16px, 3vw, 32px)' }}>
       <PageHeader
-        eyebrow="AFRIPLAN ELECTRICAL"
+       
         title="Start a new Bill of Quantities"
         subtitle="Upload a drawing and we'll run it through the DXF engine — a deterministic, zero-cost parser that reads block counts, circuits and cable lengths straight off the CAD geometry."
       />

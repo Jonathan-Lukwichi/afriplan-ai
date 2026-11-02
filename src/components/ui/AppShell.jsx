@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
 import {
-  ChevronLeft, FileText, Home, Layers, LogOut, Menu, ShieldCheck, Upload as UploadIcon, Wallet, X, Zap,
+  FileText, Home, Layers, LogOut, Menu, ShieldCheck, Upload as UploadIcon, Wallet, X, Zap,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { page: 'welcome', label: 'Welcome', step: '01', icon: Home },
-  { page: 'upload', label: 'Upload', step: '02', icon: UploadIcon },
-  { page: 'extraction', label: 'Take-off', step: '03', icon: Layers },
-  // No Compare entry: "Both, compare" on Upload opens that page with its result.
-  { page: 'boq', label: 'BoQ', step: '04', icon: FileText },
-  { page: 'pricing', label: 'Pricing', step: '05', icon: Wallet },
-  { page: 'audit', label: 'Audit a BoQ', step: '06', icon: ShieldCheck },
+// Only pricing a job is a sequence, so only its steps are numbered.
+const NAV_GROUPS = [
+  { items: [{ page: 'welcome', label: 'Welcome', icon: Home }] },
+  {
+    title: 'Price a job',
+    items: [
+      { page: 'upload', label: 'Upload', step: 1, icon: UploadIcon },
+      { page: 'extraction', label: 'Take-off', step: 2, icon: Layers },
+      // No Compare entry: "Both, compare" on Upload opens that page with its result.
+      { page: 'boq', label: 'BoQ', step: 3, icon: FileText },
+      { page: 'pricing', label: 'Pricing', step: 4, icon: Wallet },
+    ],
+  },
+  { title: 'Check a bill', items: [{ page: 'audit', label: 'Audit a BoQ', icon: ShieldCheck }] },
 ];
+
+const PAGE_TITLES = {
+  ...Object.fromEntries(NAV_GROUPS.flatMap((g) => g.items).map((i) => [i.page, i.label])),
+  compare: 'Compare',
+};
 
 const STORAGE_KEY = 'afriplan.sidebarOpen';
 
@@ -45,7 +56,7 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)', display: 'flex' }}>
       {sidebarOpen && (
-        <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} onCollapse={onToggle} className="app-sidebar" />
+        <Sidebar activePage={activePage} onNavigate={go} onSignOut={onSignOut} className="app-sidebar" />
       )}
 
       {drawerOpen && (
@@ -61,44 +72,19 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
       )}
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          height: 52, flexShrink: 0, background: '#16203C',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 16, padding: '0 clamp(16px, 3vw, 36px)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, minWidth: 0 }}>
-            <button
-              onClick={onToggle}
-              aria-label={sidebarOpen ? 'Hide menu' : 'Show menu'}
-              title={sidebarOpen ? 'Hide menu' : 'Show menu'}
-              style={{
-                width: 30, height: 30, borderRadius: 7, flexShrink: 0,
-                border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)',
-                color: '#FCFCFD', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.15s ease',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-            >
-              <Menu size={16} />
-            </button>
-            <span style={{
-              fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.12em', color: '#9FB0D6',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              TAKE-OFF ENGINE
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-            <span style={{
-              fontFamily: 'var(--mono)', fontSize: 12, color: '#9FB0D6',
-              border: '1px solid rgba(255,255,255,0.18)', borderRadius: 6, padding: '4px 10px',
-            }}>
-              ZAR
-            </span>
-            <span className="navbar-link-wide" style={{ fontSize: 13, color: '#C7CEE2' }}>Demo Engineer</span>
-          </div>
-        </div>
+        <header className="app-topbar">
+          <button
+            type="button"
+            className="app-topbar-menu"
+            onClick={onToggle}
+            aria-label={sidebarOpen ? 'Hide menu' : 'Show menu'}
+            title={sidebarOpen ? 'Hide menu' : 'Show menu'}
+          >
+            <Menu size={17} aria-hidden="true" />
+          </button>
+          <span className="app-topbar-title">{PAGE_TITLES[activePage] || 'AfriPlan'}</span>
+          <span className="app-topbar-note navbar-link-wide">Prices in rand, excl. VAT</span>
+        </header>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {children}
@@ -108,7 +94,7 @@ export default function AppShell({ activePage, onNavigate, onSignOut, children }
   );
 }
 
-function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, showClose, onCollapse }) {
+function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, showClose }) {
   // Sign out asks once: the first click arms it, a second click within 4 s signs out.
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   useEffect(() => {
@@ -138,70 +124,46 @@ function Sidebar({ activePage, onNavigate, onSignOut, className = '', onClose, s
             <X size={20} />
           </button>
         )}
-        {!showClose && onCollapse && (
-          <button
-            onClick={onCollapse}
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar"
-            style={{
-              background: 'none', border: '1px solid var(--hairline)', borderRadius: 7, width: 26, height: 26,
-              color: 'var(--ink-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, transition: 'background 0.15s ease, color 0.15s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,26,51,0.05)'; e.currentTarget.style.color = 'var(--ink)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--ink-muted)'; }}
-          >
-            <ChevronLeft size={15} />
-          </button>
-        )}
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-        {NAV_ITEMS.map(({ page, label, step, icon: Icon }) => {
-          const active = page === activePage;
-          return (
-            <button
-              key={page}
-              onClick={() => onNavigate(page)}
-              aria-current={active ? 'page' : undefined}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', minHeight: 44,
-                background: active ? '#FFFFFF' : 'transparent',
-                border: active ? '1px solid rgba(46,91,232,0.28)' : '1px solid transparent',
-                boxShadow: active ? '0 1px 2px rgba(16,26,51,0.05)' : 'none',
-                color: active ? 'var(--ink)' : 'var(--ink-2)',
-                borderRadius: 'var(--radius-sm)', fontFamily: 'var(--sans)', fontSize: 15,
-                fontWeight: active ? 600 : 400, cursor: 'pointer', textAlign: 'left',
-                transition: 'background 0.15s ease',
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'rgba(16,26,51,0.035)'; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: active ? 'var(--blueprint)' : 'var(--ink-muted)' }}>{step}</span>
-              <Icon size={17} strokeWidth={2} />
-              {label}
-            </button>
-          );
-        })}
+      <nav className="app-nav" aria-label="Main">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.title || 'home'}>
+            {group.title && <div className="app-nav-group">{group.title}</div>}
+            {group.items.map(({ page, label, step, icon: Icon }) => (
+              <button
+                key={page}
+                type="button"
+                className="app-nav-item"
+                onClick={() => onNavigate(page)}
+                aria-current={page === activePage ? 'page' : undefined}
+              >
+                <Icon size={17} strokeWidth={2} aria-hidden="true" />
+                <span>{label}</span>
+                {step && <span className="app-nav-step" aria-hidden="true">{step}</span>}
+              </button>
+            ))}
+          </div>
+        ))}
       </nav>
 
-      <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, color: '#fff', flexShrink: 0 }}>
-          DE
+      <div className="app-user">
+        <div className="app-user-who">
+          <span className="app-user-avatar" aria-hidden="true">DE</span>
+          <span>
+            <strong>Demo Engineer</strong>
+            <small>Demo mode</small>
+          </span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Demo Engineer</div>
-          <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Demo mode</div>
-        </div>
-        {confirmSignOut ? (
-          <button onClick={onSignOut} className="btn-ghost" style={{ minHeight: 32, padding: '0 10px', fontSize: 13 }}>
-            Confirm sign out
-          </button>
-        ) : (
-          <button onClick={() => setConfirmSignOut(true)} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: 6 }} aria-label="Sign out">
-            <LogOut size={17} />
-          </button>
-        )}
+        {/* The arrow points away from the door: leaving. Lucide's own LogOut reads as "go in". */}
+        <button
+          type="button"
+          className={`app-signout${confirmSignOut ? ' is-armed' : ''}`}
+          onClick={confirmSignOut ? onSignOut : () => setConfirmSignOut(true)}
+        >
+          <LogOut size={16} aria-hidden="true" style={{ transform: 'scaleX(-1)' }} />
+          {confirmSignOut ? 'Confirm sign out' : 'Sign out'}
+        </button>
       </div>
     </aside>
   );
