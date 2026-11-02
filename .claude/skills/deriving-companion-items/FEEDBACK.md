@@ -104,3 +104,24 @@ item keys only.
 - Evidence: bill items `conduit`, `trunking`; a total only. One trunk can carry several circuits, so this suggests a cause without proving it.
 - Verdict: unclear
 - Status: open. Trunking is a question for the person, not a reading.
+
+### 2026-11-02 · Wedela Small Guard House, hand measurement from the drawing · CO-C1, CO-C3, CO-C4
+- Observed: measured point to point, conductors per run from how the circuits are wired: wire ÷ conduit about 2.2 on lighting and 2.0 on power; earth = conduit.
+- Expected: CO-C3 2.0 × conduit; CO-C4 earth = conductors ÷ 2.
+- Evidence: hand sheet (local, `data/takeoff_tests/wedela-small-guard-house/raw/`). A measurement that does not start from any bill. A person has not checked it yet.
+- Verdict: confirms (pending the person's check)
+- Status: open. Not a third source until a person checks it.
+
+### 2026-11-02 · Wedela Small Guard House · CO-C1 (conduit against the bill)
+- Observed: the bill's conduit is about 2.4 × the hand figure at a 3 m ceiling, 1.9 × at 4 m, in a building about 4.7 × 2.5 m. The bill's wire is 2.0 × its conduit and its earth equals its conduit: internally exact, so it looks like an allowance taken through these ratios, not a measurement.
+- Expected: the guard houses at under half the bill looked like a shortfall of ours.
+- Evidence: hand sheet, bill lines for that building. Only this building was measured.
+- Verdict: bill-vs-drawing
+- Status: open; a rule does not change. Small buildings may be billed by allowance, which a person should confirm.
+
+### 2026-11-02 · Wedela, all layouts · code (label bubbles counted as wiring)
+- Observed: the small loops drawn around tags such as a board and circuit label sit on the wiring layer, so they are measured as cable and as conduit route. On the Small Guard House sheets they are about 30 % of the route. Across the project, closed loops under 2 m wide are about 19 % of measured wiring, an estimate: checked by eye on one building only.
+- Expected: R = the route between points.
+- Evidence: hand sheet; a count of loops left after pruning loose ends. Without them our conduit would be about 0.95 × the bill's conduit plus trunking, estimated, not run.
+- Verdict: code
+- Status: open, next change to the reader.

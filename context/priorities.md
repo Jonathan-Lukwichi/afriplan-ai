@@ -12,6 +12,8 @@ Order set by the owner, 2026-11-02:
    the rules step 5 will use.
 3. An answer on each thing to check, stored with the bill, that updates it, with its rand impact.
 4. Measure one guard house by hand, a person checks it: the one check independent of the bill.
+   Measured 2026-11-02; waiting for a person's check. It found two reader faults to fix first in
+   step 5: label bubbles measured as wiring, and a labelled switch billed twice.
 5. Complete the bill: conduit labour, wire by size, boxes, chasing, draw wire, marked allowances,
    sleeves, manholes, trench rate. A feeder with no route keeps its cable; its trench is an open
    question with a rand value, outside the total until answered.

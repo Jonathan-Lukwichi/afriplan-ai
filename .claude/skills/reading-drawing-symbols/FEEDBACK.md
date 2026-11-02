@@ -57,3 +57,16 @@ item keys only.
 - Evidence: site sheet WD-OL-001, SLD headers, bill sheets Swimming Pool, Storage, Large Guard House. A person has not confirmed which is right.
 - Verdict: bill-vs-drawing
 - Status: open, no rule changed; queried in the local `bill_queries.json`.
+
+### 2026-11-02 · Wedela Small Guard House, hand measurement · NEW (a labelled switch counted twice)
+- Observed: a day/night switch is drawn with a plain switch block beside its `D/N` label, so it is billed as a day/night switch and as a 1-lever switch. The bill has no 1-lever switch in that building.
+- Expected: one device, one line. A label beside a block names that block.
+- Evidence: sheet WD-SGH-01-LIGHTING, tag S21; local case `wedela-small-guard-house`, which fails on this one item only.
+- Verdict: code
+- Status: open.
+
+### 2026-11-02 · Wedela Small Guard House · bill-vs-drawing (vapour-proof lights)
+- Observed: plan, legend QTY and the SLD's circuit note agree with each other and all differ from the bill (the bill is 0.5 × them).
+- Evidence: sheet WD-SGH-01-LIGHTING, SLD circuit L1, bill sheet Small Guard House.
+- Verdict: bill-vs-drawing
+- Status: open, a question on the hand sheet.
