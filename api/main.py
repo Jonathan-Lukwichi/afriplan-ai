@@ -47,7 +47,7 @@ def health():
     return {"status": "ok"}
 
 
-from routers import audit, compare, export, pricing, providers, runs, symbols  # noqa: E402
+from routers import audit, compare, export, pricing, providers, review, runs, symbols  # noqa: E402
 
 app.include_router(runs.router)
 app.include_router(providers.router)
@@ -56,6 +56,7 @@ app.include_router(export.router)
 app.include_router(pricing.router)
 app.include_router(audit.router)
 app.include_router(symbols.router)
+app.include_router(review.router)
 
 # Registered as each later phase lands:
 # app.include_router(profile.router)

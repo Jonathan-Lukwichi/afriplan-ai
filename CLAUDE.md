@@ -52,7 +52,7 @@ split (instructions → agent → engines + check): `.claude/rules/three-layer-a
 ## Where things live
 | Area | Path |
 |---|---|
-| Thin HTTP layer (runs, compare, export, pricing, **audit**) | `api/routers/` |
+| Thin HTTP layer (runs, compare, export, pricing, **audit**, review) | `api/routers/` |
 | Shared BOQ contract, legend spec | `api/agent/shared/` |
 | PDF pipeline — 5-pass estimator (`run_pdf_estimator`) | `api/agent/pdf_pipeline/passes/` |
 | DXF pipeline (`run_dxf_estimator`, `run_dxf_project` for a set), SLD reader, site routes, DWG conversion | `api/agent/dxf_pipeline/passes/`, `dwg.py` |
@@ -60,6 +60,7 @@ split (instructions → agent → engines + check): `.claude/rules/three-layer-a
 | Rate model (crew×hours, DB build-up), prices, config, run store/jobs | `api/core/` |
 | Ground truth, ItemKey taxonomy, layered BOQ network, ratios, **frozen scorer** | `api/evaluation/` |
 | BOQ rule audit, drawing sufficiency, derived-item completer | `api/audit/` |
+| Things to check as questions: answers kept apart from what was read, re-priced by the one pricer | `api/review/`, `api/db/review_answers.py` |
 | CNN training-data generator (no model trained — ADR-0004) | `api/ml/` |
 | Live supplier pricing (mock suppliers) + **price catalogue** (`sourcing/catalogue.py`, built by `scripts/build_price_catalogue.py` into `data/catalogue/`, local only) · Excel/PDF exports · SQLite | `api/sourcing/` · `api/exports/` · `api/db/` |
 | AI cover note for e-mailing a BoQ | `api/ai/` |

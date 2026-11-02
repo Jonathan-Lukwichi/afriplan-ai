@@ -86,6 +86,19 @@ def _schema_statements(is_postgres: bool) -> list[str]:
             named_by TEXT NOT NULL
         )
         """,
+        # A person's answer to a thing to check. Kept apart from the runs, so what a reader found
+        # is never changed; tied to a project and to the drawings it was given on.
+        """
+        CREATE TABLE IF NOT EXISTS review_answers (
+            project_key TEXT NOT NULL,
+            question_id TEXT NOT NULL,
+            values_json TEXT NOT NULL,
+            answered_by TEXT NOT NULL,
+            answered_at TEXT NOT NULL,
+            drawings TEXT NOT NULL,
+            PRIMARY KEY (project_key, question_id)
+        )
+        """,
     ]
 
 

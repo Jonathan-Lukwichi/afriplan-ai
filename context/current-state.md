@@ -37,6 +37,10 @@ in `context/priorities.md`.
   Next: a drawing ground truth.
   A person checked 20 items of Claude's own drawing reading (6 Oct): **19 correct, 0 wrong, 1 blank**. Verdict and
   data plan (5 projects from 3+ consulting firms) in `docs/accuracy-metrics.md` §2c.
+- **Review** (2026-11-02, `api/review/`): each thing to check is a question; an answer updates the bill through
+  the one pricer. Answers live in `review_answers`, by project and tied to the drawings they were given on:
+  revised or changed drawings ask again. The stored run never changes, so accuracy still judges the reader alone.
+  Web only so far: `finish` and its exports do not apply answers.
 - **Wiring** (2026-10-29): final-circuit wiring is billed four ways; South African bills use
   convention A (material by material), which neither engine produces yet
   (`doe/knowledge/BOQ_KNOWLEDGE.md` §6).

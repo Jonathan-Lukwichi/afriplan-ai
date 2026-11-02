@@ -96,6 +96,15 @@ export const api = {
     ratioModel: (signal) => request('/api/audit/ratio-model', { signal }),
   },
 
+  review: {
+    get: (runId, signal) => request(`/api/review/${runId}`, { signal }),
+    answer: (runId, questionId, values) => request(`/api/review/${runId}/answers`, {
+      method: 'PUT', body: { question_id: questionId, values },
+    }),
+    undo: (runId, questionId) => request(
+      `/api/review/${runId}/answers?${new URLSearchParams({ question_id: questionId })}`, { method: 'DELETE' }),
+  },
+
   pricing: {
     getRequests: (runId, signal) => request(`/api/pricing/requests/${runId}`, { signal }),
     requestQuotes: (runId, itemRefs) => request(`/api/pricing/quotes/${runId}`, { method: 'POST', body: { item_refs: itemRefs } }),

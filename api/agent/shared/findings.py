@@ -41,6 +41,7 @@ class _Finding(BaseModel):
     building: str = ""                   # building / room / board it belongs to
     evidence: Evidence = Evidence.WRITTEN
     confidence: ItemConfidence = ItemConfidence.EXTRACTED   # how the bill line is flagged
+    source_label: str = ""               # where the line came from, when the flag alone would mislead
     assumption: str = ""
     notes: str = ""
     gaps: List[GapItem] = Field(default_factory=list)   # things to check about THIS finding —
@@ -76,6 +77,7 @@ class FeederFinding(_Finding):
     underground: bool = True
     length_m: float = 0.0
     trench_m: float = 0.0                # trench billed with THIS feeder (0: shared, billed upstream)
+    length_options: Dict[str, float] = Field(default_factory=dict)   # where the drawings give two lengths
 
 
 class ItemFinding(_Finding):
@@ -109,6 +111,8 @@ class Findings(BaseModel):
     wires: List[WireFinding] = Field(default_factory=list)
     gaps: List[GapItem] = Field(default_factory=list)        # about the drawing set, not one finding
     sheet_words: Dict[str, List[str]] = Field(default_factory=dict)   # sheet → words printed on it
+    ceiling_m: Dict[str, float] = Field(default_factory=dict)         # building → ceiling height a person gave
+    conduit_install_zar: float = 0.0     # conduit install labour per metre, when a person gave one
 
     def all(self) -> list:
         return [*self.boards, *self.feeders, *self.items, *self.wires]

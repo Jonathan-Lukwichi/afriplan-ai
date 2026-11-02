@@ -247,6 +247,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
         gaps: list = []
         ref = fd.source or "SLD (DXF)"
         match, measured_from = _measured_route(fd, routes)
+        options: Dict[str, float] = {}
         # an SLD rarely writes the core count: a single-phase board takes L, N and E
         single_phase = not fd.cores_stated and phases.get(equipment_key(fd.to_db)) == 1
         if fd.length_annotated and fd.length_m > 0:
@@ -261,6 +262,11 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
                     f"+{cfg.route_slack_pct:g}% and {cfg.route_end_allowance_m:g} m at each end.")
             if measured_from:
                 note += f" Measured from {measured_from} as the site plan draws it."
+                as_sld = routes.route(fd.from_source, fd.to_db)
+                options["As the site plan draws it"] = round(length, 2)
+                if as_sld is not None:
+                    options[f"As the SLD says, from {fd.from_source}"] = round(
+                        as_sld.length_m * (1 + cfg.route_slack_pct / 100) + 2 * cfg.route_end_allowance_m, 2)
             gaps.append(GapItem(
                 section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
                 description=f"Feeder {fd.from_source}→{fd.to_db} length taken from the site-plan route",
@@ -269,6 +275,8 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
                 severity="low", drawing_ref=ref,
             ))
             if match.stated_m and abs(match.stated_m - match.length_m) > cfg.label_conflict_pct / 100 * match.length_m:
+                options.setdefault("As the site plan draws it", round(length, 2))
+                options["Written on the site plan"] = round(match.stated_m, 2)
                 gaps.append(GapItem(
                     section=BQSection.SUBMAIN_CABLES, building_block=fd.to_db,
                     description=(f"Feeder {fd.from_source}→{fd.to_db}: lengths written on the site plan "
@@ -296,7 +304,7 @@ def _sld_feeders(out: Findings, sld: SldFacts, cfg: DxfAssembleConfig,
         out.feeders.append(FeederFinding(
             from_board=fd.from_source, to_board=fd.to_db, cable_size_mm2=fd.cable_size_mm2,
             cable_cores=3 if single_phase else fd.cable_cores, underground=fd.is_underground,
-            length_m=length, trench_m=trench,
+            length_m=length, trench_m=trench, length_options=options,
             sheet=ref, evidence=ev, confidence=src, assumption=note, gaps=gaps,
         ))
 

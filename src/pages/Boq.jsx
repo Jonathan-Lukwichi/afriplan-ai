@@ -5,6 +5,7 @@ import PageHeader from '../components/ui/PageHeader';
 import MetricTile from '../components/ui/MetricTile';
 import LineItemsTable from '../components/ui/LineItemsTable';
 import GapReport from '../components/ui/GapReport';
+import ReviewPanel from '../components/ui/ReviewPanel';
 import ExtractionAccuracyPanel from '../components/ui/ExtractionAccuracyPanel';
 import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
 import EmptyState from '../components/ui/EmptyState';
@@ -36,6 +37,7 @@ export default function Boq({ runId, onNavigate }) {
   const [priced, setPriced] = useState(null);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [review, setReview] = useState(null);
 
   const [emailTo, setEmailTo] = useState('');
   const [emailName, setEmailName] = useState('');
@@ -63,6 +65,16 @@ export default function Boq({ runId, onNavigate }) {
   };
 
   useEffect(() => { refreshPreview(); }, [runId, complete]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!runId) return;
+    api.review.get(runId).then(setReview).catch(() => setReview(null));
+  }, [runId]);
+
+  const reviewChanged = (next) => {
+    setReview(next);
+    refreshPreview();
+  };
 
   useEffect(() => {
     if (activeTab !== 'audit' || !runId || audit) return;
@@ -137,7 +149,7 @@ export default function Boq({ runId, onNavigate }) {
             tabs={[
               { id: 'overview', label: 'Overview' },
               { id: 'items', label: 'Line items', count: priced.total_items },
-              { id: 'gaps', label: 'Things to check', count: toCheck(priced.gaps).length },
+              { id: 'gaps', label: 'Things to check', count: review?.available ? review.open : toCheck(priced.gaps).length },
               { id: 'audit', label: 'Audit', count: audit?.summary?.count },
               { id: 'export', label: 'Export & email' },
             ]}
@@ -181,7 +193,12 @@ export default function Boq({ runId, onNavigate }) {
 
           {activeTab === 'gaps' && (
             <div>
-              {priced.gaps?.length ? (
+              {review?.available && review.groups.length > 0 ? (
+                <>
+                  <ReviewPanel runId={runId} review={review} onChange={reviewChanged} />
+                  <GapReport gaps={priced.gaps} notesOnly />
+                </>
+              ) : priced.gaps?.length ? (
                 <GapReport gaps={priced.gaps} />
               ) : (
                 <p style={{ fontSize: 14, color: 'var(--ink-muted)' }}>Nothing to check — every line was read from the drawings or worked out from them.</p>

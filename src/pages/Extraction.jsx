@@ -17,8 +17,14 @@ import EmptyState from '../components/ui/EmptyState';
    same page; it doesn't get rebuilt from scratch. */
 export default function Extraction({ runId, onNavigate }) {
   const [run, setRun] = useState(null);
+  const [review, setReview] = useState(null);
   const [error, setError] = useState(null);
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (run?.status !== 'passed') return;
+    api.review.get(runId).then(setReview).catch(() => setReview(null));
+  }, [run?.status, runId]);
 
   useEffect(() => {
     if (!runId) return;
@@ -49,10 +55,11 @@ export default function Extraction({ runId, onNavigate }) {
   }
 
   const boq = run?.result?.boq;
+  const total = review?.available ? review.total_incl_vat_zar : boq?.total_incl_vat_zar;
   const summary = boq ? [
     { label: 'Line items', value: boq.total_items },
-    { label: 'Things to check', value: toCheck(boq.gaps).length },
-    { label: 'Total incl. VAT', value: `R ${boq.total_incl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}` },
+    { label: 'Things to check', value: review?.available ? review.open : toCheck(boq.gaps).length },
+    { label: 'Total incl. VAT', value: `R ${total.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}` },
   ] : null;
 
   return (

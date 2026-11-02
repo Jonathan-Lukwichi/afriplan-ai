@@ -367,7 +367,9 @@ def run_pdf_estimator(
     legend = build_pdf_legend(facts, sheet_ref=project_name)
     if boq is not None:
         billed = billed_canonical_items(l.description for l in boq.line_items)
-        boq.gaps.extend(coverage_gaps(legend, billed))
+        legend_gaps = coverage_gaps(legend, billed)
+        boq.gaps.extend(legend_gaps)
+        findings.gaps.extend(legend_gaps)        # kept with the findings: a review re-prices from them
 
     all_costs = list(classify_costs) + list(pass_costs)
     run = EstimatorRun(

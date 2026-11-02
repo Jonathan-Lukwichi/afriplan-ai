@@ -50,34 +50,40 @@ def _counted(findings: Findings, building: str, word: str) -> bool:
 def _conduit(findings: Findings, building: str, route_m: float, cfg: CompanionConfig) -> ItemFinding:
     """CO-C1 (conf M): conduit = R + D."""
     pts = _wall_points(findings, building)
-    drop_socket = cfg.ceiling_m - cfg.socket_mount_m
-    drop_switch = cfg.ceiling_m - cfg.switch_mount_m
+    ceiling_given = building in findings.ceiling_m
+    ceiling_m = findings.ceiling_m.get(building, cfg.ceiling_m)
+    drop_socket = ceiling_m - cfg.socket_mount_m
+    drop_switch = ceiling_m - cfg.switch_mount_m
     drops_m = pts["socket"] * drop_socket + pts["switch"] * drop_switch
     qty = round(route_m + drops_m, 2)
     material = constants.CONTAINMENT_PRICES.get(f"pvc_conduit_{cfg.conduit_size}", 0.0)
     item = ItemFinding(
         description=f"{cfg.conduit_size} PVC conduit with accessories — {building}".rstrip(" —"),
-        section=BQSection.CONTAINMENT, unit="m", qty=qty, material_zar=material, install_zar=0.0,
+        section=BQSection.CONTAINMENT, unit="m", qty=qty, material_zar=material,
+        install_zar=findings.conduit_install_zar,
         building=building, sheet="derived", evidence=Evidence.MEASURED,
         confidence=ItemConfidence.ASSUMED,
+        source_label="Measured" if ceiling_given else "Measured, ceiling assumed",
         assumption=(f"CO-C1: conduit = route {route_m:g} m measured + drops {drops_m:g} m "
                     f"({pts['socket']:g} sockets × {drop_socket:g} m, {pts['switch']:g} switches × "
-                    f"{drop_switch:g} m; ceiling {cfg.ceiling_m:g} m)."),
+                    f"{drop_switch:g} m; ceiling {ceiling_m:g} m)."),
     )
-    item.gaps.append(GapItem(
-        section=BQSection.CONTAINMENT, building_block=building,
-        description=f"Ceiling height for conduit drops in {building or 'this building'} not on the drawing",
-        assumption=f"{cfg.ceiling_m:g} m assumed; drops = ceiling − mounting height.",
-        suggested_action="Confirm the ceiling height; the conduit quantity follows it.",
-        severity="low", drawing_ref="derived",
-    ))
-    item.gaps.append(GapItem(
-        section=BQSection.CONTAINMENT, building_block=building,
-        description=f"Conduit install labour has no rate in the rate model ({building or 'this building'})",
-        assumption="Priced on material only.",
-        suggested_action="Price conduit installation by hand, or add a labour rate.",
-        severity="medium", drawing_ref="derived",
-    ))
+    if not ceiling_given:
+        item.gaps.append(GapItem(
+            section=BQSection.CONTAINMENT, building_block=building,
+            description=f"Ceiling height for conduit drops in {building or 'this building'} not on the drawing",
+            assumption=f"{cfg.ceiling_m:g} m assumed; drops = ceiling − mounting height.",
+            suggested_action="Confirm the ceiling height; the conduit quantity follows it.",
+            severity="low", drawing_ref="derived",
+        ))
+    if not findings.conduit_install_zar:
+        item.gaps.append(GapItem(
+            section=BQSection.CONTAINMENT, building_block=building,
+            description=f"Conduit install labour has no rate in the rate model ({building or 'this building'})",
+            assumption="Priced on material only.",
+            suggested_action="Price conduit installation by hand, or add a labour rate.",
+            severity="medium", drawing_ref="derived",
+        ))
     return item
 
 

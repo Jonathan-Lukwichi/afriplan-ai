@@ -27,7 +27,7 @@ export default function LineItemsTable({ items }) {
               <td style={{ padding: '8px 10px', textAlign: 'right' }}>{num(it.qty)}</td>
               <td style={{ padding: '8px 10px', textAlign: 'right' }}>{num(it.unit_price_zar)}</td>
               <td style={{ padding: '8px 10px', textAlign: 'right' }}>{num(it.total_zar)}</td>
-              <td style={{ padding: '8px 10px' }}><ConfidenceBadge source={it.source} /></td>
+              <td style={{ padding: '8px 10px' }}><ConfidenceBadge source={it.source} label={it.source_label} /></td>
             </tr>
           ))}
         </tbody>

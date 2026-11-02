@@ -22,23 +22,27 @@ function GapList({ gaps }) {
   );
 }
 
-export default function GapReport({ gaps }) {
+export default function GapReport({ gaps, notesOnly = false }) {
   if (!gaps?.length) return null;
   const sorted = [...gaps].sort((a, b) => (ORDER[a.severity] ?? 9) - (ORDER[b.severity] ?? 9));
   const decide = toCheck(sorted);
   const notes = sorted.filter((g) => !decide.includes(g));
   return (
     <>
-      <h3 style={{ fontSize: 16, marginBottom: 4 }}>Things to check — {decide.length}</h3>
-      <p style={{ fontSize: 13, color: 'var(--ink-muted)', margin: '0 0 10px' }}>
-        {decide.length
-          ? 'What the app could not confirm from the drawings. Go through the “Must check” ones before sending the quote.'
-          : 'Nothing needs a decision. The notes below show how the app worked some lines out.'}
-      </p>
-      {decide.length > 0 && (
-        <div className="glass-card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }} data-testid="gaps-to-check">
-          <GapList gaps={decide} />
-        </div>
+      {!notesOnly && (
+        <>
+          <h3 style={{ fontSize: 16, marginBottom: 4 }}>Things to check — {decide.length}</h3>
+          <p style={{ fontSize: 13, color: 'var(--ink-muted)', margin: '0 0 10px' }}>
+            {decide.length
+              ? 'What the app could not confirm from the drawings. Go through the “Must check” ones before sending the quote.'
+              : 'Nothing needs a decision. The notes below show how the app worked some lines out.'}
+          </p>
+          {decide.length > 0 && (
+            <div className="glass-card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }} data-testid="gaps-to-check">
+              <GapList gaps={decide} />
+            </div>
+          )}
+        </>
       )}
       {notes.length > 0 && (
         <details className="glass-card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }} data-testid="gaps-notes">

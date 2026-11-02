@@ -172,6 +172,7 @@ def _feeder_lines(f: FeederFinding, crew, params, cfg: PricingConfig) -> List[BQ
         section=section, description=desc, unit=unit, qty=round(qty, 2),
         unit_price_zar=round(rate, 2), line_kind=kind, building_block=f.building or f.to_board,
         source=ItemConfidence.EXTRACTED if unit == "Ea" else f.confidence,
+        source_label="" if unit == "Ea" else f.source_label,
         assumption="" if unit == "Ea" else f.assumption, drawing_ref=f.sheet, notes=f.notes,
     ) for section, desc, unit, qty, rate, kind in rows]
 
@@ -188,9 +189,9 @@ def _item_line(it: ItemFinding, params) -> BQLineItem:
                            params=params).combined_rate
     return BQLineItem(
         section=it.section, description=it.description, unit=it.unit, qty=it.qty,
-        unit_price_zar=round(price, 2), source=it.confidence, line_kind=LineKind.COMBINED,
-        building_block=it.building, drawing_ref=it.sheet, assumption=it.assumption, notes=it.notes,
-        locations=[it.location] if it.location else [],
+        unit_price_zar=round(price, 2), source=it.confidence, source_label=it.source_label,
+        line_kind=LineKind.COMBINED, building_block=it.building, drawing_ref=it.sheet,
+        assumption=it.assumption, notes=it.notes, locations=[it.location] if it.location else [],
     )
 
 

@@ -24,6 +24,7 @@ from core.boq_pricing import reprice_boq
 from core.run_store import run_store
 from db.contractor_profile import load_contractor_profile, save_contractor_profile
 from exports import export_boq_to_excel, export_boq_to_pdf
+from review.run_review import reviewed_bill
 
 router = APIRouter(prefix="/api", tags=["export"])
 
@@ -36,10 +37,10 @@ def _priced_boq_for(
         raise HTTPException(404, "run not found")
     if record.status != "passed" or record.result is None or record.result.boq is None:
         raise HTTPException(409, "this run has no BoQ to export yet")
-    # sourced_boq (live supplier prices applied via /api/pricing/apply) takes
-    # priority over the raw pipeline output, matching the original app's
-    # session_state.priced_boq override.
-    base = record.sourced_boq if record.sourced_boq is not None else record.result.boq
+    # A person's answers come first (they carry any supplier prices with them); then sourced_boq
+    # (live supplier prices applied via /api/pricing/apply) takes priority over the raw pipeline
+    # output, matching the original app's session_state.priced_boq override.
+    base = reviewed_bill(record) or (record.sourced_boq if record.sourced_boq is not None else record.result.boq)
     # Derived items (boxes, chasing, conduit, wire, terminations) from fitted ratios,
     # tagged INFERRED + gapped. `is True` because direct calls may pass a Query object.
     if complete is True:

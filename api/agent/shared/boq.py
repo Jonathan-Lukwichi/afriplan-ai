@@ -121,6 +121,7 @@ class BQLineItem(BaseModel):
     unit_price_zar: float = 0.0
     total_zar: float = 0.0
     source: ItemConfidence = ItemConfidence.EXTRACTED
+    source_label: str = ""          # plain words for the source, when the flag alone would mislead
     building_block: str = ""
     notes: str = ""
     is_rate_only: bool = False

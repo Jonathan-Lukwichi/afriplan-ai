@@ -17,6 +17,7 @@ from __future__ import annotations
 import io
 import re
 import logging
+import hashlib
 import time
 import uuid
 from collections import Counter
@@ -62,6 +63,7 @@ class DxfFileNote(BaseModel):
     """One drawing of a multi-drawing run: what it was read as."""
     file_name: str
     role: str = ""                   # SLD | layout | site plan | other
+    sha256: str = ""                 # the file's content: an answer is tied to the drawings it was given on
     converted_from_dwg: bool = False
     ok: bool = True
     error: str = ""
@@ -276,8 +278,8 @@ def run_dxf_project(
         if name in superseded:
             continue
         doc, converted, error = _load(data, name)
-        notes.append(DxfFileNote(file_name=name, converted_from_dwg=converted, ok=doc is not None,
-                                 error=error or ""))
+        notes.append(DxfFileNote(file_name=name, sha256=hashlib.sha256(data).hexdigest(),
+                                 converted_from_dwg=converted, ok=doc is not None, error=error or ""))
         if doc is not None:
             docs.append((doc, name))
     if not docs:
