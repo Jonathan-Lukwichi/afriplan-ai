@@ -71,3 +71,36 @@ item keys only.
 - Verdict: confirms (CO-C1 with R as straight runs) · code (route measured as drawn; SLD lines counted)
 - Status: applied in feat/route-takeoff (not yet in main). Remaining excess (~1.6 ×) unexplained — candidates:
   drops over-counted, routes shared by circuits counted per circuit, part of the wiring in trunking.
+
+### 2026-11-02 · Rules audit before bill completion · emission rule, CO-C2, CO-F6, CO-B5
+- Observed: the skill said L rules only flag, yet CO-C2 and CO-F6 emitted lines; H closing items were tagged ASSUMED while the skill called sums PROVISIONAL; CO-B5 was an M rule tagged INFERRED.
+- Expected: one rule for whether a line is emitted, one for its tag.
+- Evidence: RULES.md, `api/agent/shared/companions.py`, confidence table in `improving-boq-skills`.
+- Verdict: unclear (the rules contradicted each other; no project evidence involved)
+- Status: applied v3 — H and M emit, L only flags; the tag follows what the quantity rests on.
+
+### 2026-11-02 · Rules audit before bill completion · CO-C1, CO-C3, CO-C5, CO-C7, CO-C9, CO-C10, CO-C11
+- Observed: H needs 3 or more independent sources; these rows cite fewer.
+- Expected: conf follows the source count.
+- Evidence: each row's own sources. CO-C5 and CO-C15 gain the Wedela bill as a source. CO-C1 gains the manual method study.
+- Verdict: unclear (recount, no rule's quantity disproved)
+- Status: applied v3 — all to M. CO-C1 now emits ASSUMED, test first. Other H rows short of sources (CO-F7, CO-F12, CO-C16, CO-C17, CO-C19) are not used by the next step and stay open.
+
+### 2026-11-02 · Rules audit · CO-C3 and waste
+- Observed: CO-C3's 2.2 carried PTC's 10 % waste in the quantity, against "Never in the quantity"; BOQ_KNOWLEDGE wrote conduit as R + D (+ waste).
+- Expected: quantities are net, waste in the rate (UNP p1, PTC Part 4 §15).
+- Evidence: PTC p9 (2 × 10 %).
+- Verdict: contradicts
+- Status: applied v3 — CO-C3 is 2.0 × conduit in conduit-only installations.
+
+### 2026-11-02 · Rules audit · CO-C10, CO-C11 and SM-8
+- Observed: both rows still gated on `included:boxes`; SM-8 was narrowed so a note covers only the item it names.
+- Verdict: unclear (two skills disagreed)
+- Status: applied v3 — gates are `included:boxes@switches` and `included:boxes@sockets`.
+
+### 2026-11-02 · Wedela drawings vs bill · CO-C1, CO-C3 (containment split)
+- Observed: with the arc fix and one conduit line per building, our conduit is about 1.48 × all the bill's conduit, and about 1.14 × its conduit plus trunking. No text or layer on any sheet mentions trunking.
+- Expected: the route is one figure for all containment.
+- Evidence: bill items `conduit`, `trunking`; a total only. One trunk can carry several circuits, so this suggests a cause without proving it.
+- Verdict: unclear
+- Status: open. Trunking is a question for the person, not a reading.

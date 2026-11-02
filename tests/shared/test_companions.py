@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+from agent.shared.boq import ItemConfidence
 from agent.shared.companions import companion_findings
 from agent.shared.findings import Evidence, Findings, ItemFinding, WireFinding
 
@@ -37,6 +38,12 @@ def test_conduit_is_the_measured_route_plus_one_drop_per_wall_point():
     assert c.qty == pytest.approx(85.1)
     assert c.unit == "m" and c.building == "Hall"
     assert "CO-C1" in c.assumption
+
+
+def test_conduit_is_an_assumed_line_at_medium_confidence():
+    """CO-C1 has two sources: M rules emit ASSUMED lines with a gap, only H rules emit INFERRED."""
+    [c] = _conduit(companion_findings(_hall()))
+    assert c.confidence == ItemConfidence.ASSUMED and c.gaps
 
 
 def test_an_assumed_ceiling_height_is_flagged_for_the_estimator():

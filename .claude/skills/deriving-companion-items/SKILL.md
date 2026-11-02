@@ -24,9 +24,10 @@ Read first: `doe/knowledge/BOQ_KNOWLEDGE.md` §3–6 (convention A, route take-o
 Adding route/drop/ECC fields to `findings.py` or lines to `BillOfQuantities` → **ask first** (public schema).
 
 ## How to emit a derived line (never silent — hard rule 7)
-- Only rules at conf **H** emit INFERRED lines; **M** rules emit ASSUMED lines + GapItem; **L** rules only flag.
-- `source = INFERRED` when computed from measured/counted primaries; `ASSUMED` when it rests on an
-  allowance (CO-C2, CO-F6, CO-B*); sums are `PROVISIONAL`.
+- **Whether a rule emits** follows its conf: **H** and **M** emit a line; **L** only flags, and adds no value.
+- **The tag** follows what the quantity rests on: `INFERRED` = an H rule computed from measured or counted
+  primaries; `ASSUMED` + GapItem = an M rule, or any rule resting on an allowance (CO-B1–B3); `PROVISIONAL`
+  = only a sum the bill itself calls provisional or PC (CO-B4).
 - `assumption` names the rule ID, the formula and the inputs:
   `"CO-C7: draw wire = total conduit (20mm PVC + 20mm galv)"`.
 - One `GapItem` per building per rule family; `building_block` and `drawing_ref` = the primary's.
@@ -67,3 +68,5 @@ Adding route/drop/ECC fields to `findings.py` or lines to `BillOfQuantities` →
 v1 · 2026-10-29 · rules from the transformer + ANN + CNN studies (they agreed independently on CO-C4, CO-C7, CO-C9, CO-F2, CO-F4).
 
 v2 · 2026-10-29 · first feedback loop: planted-error test (with skills 11/11, baseline 9/11); fixes logged in FEEDBACK.md.
+
+v3 · 2026-11-02 · emission and tag rules made one; conf of the rows the bill completion uses recounted by source; waste out of CO-C3.

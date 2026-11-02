@@ -116,15 +116,15 @@ def test_a_dxf_saved_with_windows_line_endings_is_read_not_emptied():
 # ─── Provenance: measured, not assumed ───────────────────────────────
 
 def test_all_dxf_lines_are_extracted_not_assumed():
-    """Read off the drawing → EXTRACTED; derived by a companion rule (RULES.md) → INFERRED with its
-    rule ID; nothing ASSUMED."""
+    """Read off the drawing → EXTRACTED. Derived by a companion rule (RULES.md) → tagged by the
+    rule's confidence, with its rule ID: CO-C1 is M, so ASSUMED. Nothing else is assumed."""
     boq = _bill()
     assert boq.line_items
     read = [l for l in boq.line_items if l.drawing_ref != "derived"]
     derived = [l for l in boq.line_items if l.drawing_ref == "derived"]
     assert read and all(l.source == ItemConfidence.EXTRACTED for l in read)
-    assert all(l.source == ItemConfidence.INFERRED and "CO-" in l.assumption for l in derived)
-    assert boq.items_assumed == 0
+    assert derived and all(l.source == ItemConfidence.ASSUMED and "CO-" in l.assumption for l in derived)
+    assert boq.items_assumed == len(derived)
 
 
 def test_reticulation_cable_is_measured():

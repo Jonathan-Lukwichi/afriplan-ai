@@ -4,8 +4,8 @@ Convention-A wiring lines derived from the route — the companion rules in
 
 A South African bill prices final-circuit wiring material by material (doe/knowledge/BOQ_KNOWLEDGE.md
 §3–5): conduit = R (horizontal route) + D (drops), then the materials that follow from the conduit.
-Pure and deterministic: findings in, more findings out, priced by the one pricer (ADR-0008). Only
-high-confidence rules emit lines; a companion a reader already counted wins (no double count).
+Pure and deterministic: findings in, more findings out, priced by the one pricer (ADR-0008). H and M
+rules emit lines, L rules only flag; a companion a reader already counted wins (no double count).
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def _counted(findings: Findings, building: str, word: str) -> bool:
 
 
 def _conduit(findings: Findings, building: str, route_m: float, cfg: CompanionConfig) -> ItemFinding:
-    """CO-C1 (conf H): conduit = R + D."""
+    """CO-C1 (conf M): conduit = R + D."""
     pts = _wall_points(findings, building)
     drop_socket = cfg.ceiling_m - cfg.socket_mount_m
     drop_switch = cfg.ceiling_m - cfg.switch_mount_m
@@ -59,7 +59,7 @@ def _conduit(findings: Findings, building: str, route_m: float, cfg: CompanionCo
         description=f"{cfg.conduit_size} PVC conduit with accessories — {building}".rstrip(" —"),
         section=BQSection.CONTAINMENT, unit="m", qty=qty, material_zar=material, install_zar=0.0,
         building=building, sheet="derived", evidence=Evidence.MEASURED,
-        confidence=ItemConfidence.INFERRED,
+        confidence=ItemConfidence.ASSUMED,
         assumption=(f"CO-C1: conduit = route {route_m:g} m measured + drops {drops_m:g} m "
                     f"({pts['socket']:g} sockets × {drop_socket:g} m, {pts['switch']:g} switches × "
                     f"{drop_switch:g} m; ceiling {cfg.ceiling_m:g} m)."),

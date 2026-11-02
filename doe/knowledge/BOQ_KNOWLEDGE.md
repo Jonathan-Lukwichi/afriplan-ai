@@ -82,7 +82,7 @@ Let *R* = horizontal route metres, *D* = sum of drop heights, *n* = number of po
 
 | Convention A line (South Africa) | Quantity |
 |---|---|
-| PVC conduit (by diameter) | R + D (+ waste) |
+| PVC conduit (by diameter) | R + D (waste stays in the rate, §7) |
 | GP wire, each size and colour | metres of route that carry that conductor (R + D on those parts) + tails at each box and the board |
 | BCEW earth (final circuits) | route that needs a separate earth (as the specification says) |
 | Wall boxes 100×50 / 100×100 | count of switches / sockets |
