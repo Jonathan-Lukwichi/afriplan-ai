@@ -16,7 +16,8 @@ never their sizes or prices.
 1. **Find the legend** — this sheet, another sheet, or partly missing. A glyph not in this legend: check
    the other sheets' legends before giving up.
 2. **Legend QTY column?** Use the printed counts for the sheet, set `counts_from_legend_schedule: true`
-   (LESSONS: legend QTY columns are gold).
+   (LESSONS: legend QTY columns are gold). *Check (1 project against it, see FEEDBACK):* where the plan
+   can be counted too, compare them and flag a difference rather than trusting the printed figure.
 3. **Fitting schedule**: each luminaire **Type tag** (Type A, B1, S2B, LF-03) links the symbol to its full
    description (W, form, IP, emergency). The tag is the variant.
 4. **Keynotes and general notes** first: they change the item (weatherproof, mounting height), make it
@@ -72,4 +73,5 @@ receptacle → switched socket outlet (SANS 164, 16 A; dedicated = red) · GFCI 
 → DB · home run → circuit to the DB · AWG → mm² · OFCI → free issue.
 
 ## Version
+v2 · 2026-11-02 · check note on legend QTY columns (step 2).
 v1 · 2026-10-29 · from the CNN (drawing motifs) study + LESSONS.md.

@@ -27,10 +27,14 @@ in `context/priorities.md`.
   `accuracy_report.md/.json` — every reader's metrics and the missing points split by item, cause
   and kind of fix (`evaluation/gaps.py`); dated copies in `reports/accuracy/` (gitignored). Wedela's
   biggest gaps: feeder cable sizes, boards counted twice, derived material not produced, trench length.
-- **Current aim = READING accuracy** (`evaluation/reading.py`, pricing judged later): only items counted or
-  measured on the uploaded drawings, weighted by the real bill, our rates never enter. Wedela DOE combined
-  **67.5 %** (CAD 53.2 %, PDF 59.7 %). Recheck each loss against the drawing — the reference is a priced
-  bill: part of the loss is the bill differing from the drawing, not misreading. Next: a drawing ground truth.
+- **Aim = a complete bill** (owner's decision, 2026-11-02; order in `context/priorities.md`). **Reading
+  accuracy** stays as a guard (`evaluation/reading.py`): only items counted or measured on the uploaded
+  drawings, weighted by the real bill, our rates never enter. Wedela CAD on the 18 electrical sheets
+  **75.1 %** (`feat/route-takeoff`). DOE re-run on the same code: CAD alone **73.0 %**, PDF 59.7 %, combined
+  **70.3 %**, so **combined no longer beats CAD alone**: it adds where both readers count the same item, and
+  `finish` reads the architectural sheets as layouts (both open). Recheck each loss against the drawing —
+  the reference is a priced bill: part of the loss is the bill differing from the drawing, not misreading.
+  Next: a drawing ground truth.
   A person checked 20 items of Claude's own drawing reading (6 Oct): **19 correct, 0 wrong, 1 blank**. Verdict and
   data plan (5 projects from 3+ consulting firms) in `docs/accuracy-metrics.md` §2c.
 - **Wiring** (2026-10-29): final-circuit wiring is billed four ways; South African bills use
