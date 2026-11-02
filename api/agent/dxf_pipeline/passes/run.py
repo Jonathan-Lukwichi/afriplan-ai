@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 from agent.dxf_pipeline.dwg import ensure_dxf_bytes
 from agent.dxf_pipeline.passes.assemble import building_code, findings_from_recognition
-from agent.dxf_pipeline.passes.labels import count_labelled_fittings
+from agent.dxf_pipeline.passes.labels import count_labelled_fittings, is_labelled_shape
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import DxfRecognition, _plain_text, recognise
 from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
@@ -423,7 +423,7 @@ def _name_shapes(docs, name_shapes: Optional[ShapeNamer], legend_lines: List[str
         return [], [], [], 0.0
     per_sheet: List[ShapeGroup] = []
     for doc, name in docs:
-        per_sheet += find_shape_groups(doc, Path(name).stem)
+        per_sheet += [g for g in find_shape_groups(doc, Path(name).stem) if not is_labelled_shape(g.positions, doc)]
     if not per_sheet:
         return [], [], [], 0.0
     unique: Dict[str, ShapeGroup] = {}

@@ -92,6 +92,39 @@ def test_the_row_of_a_key_is_the_nearest_description_a_table_width_away():
     assert _row_description(key, [_Text("Next column", 12000, 4900, 146)]) == ""
 
 
+def _glyph(msp, x, y):
+    msp.add_circle((x, y), 150, dxfattribs={"layer": "E-LIGHTING"})
+    msp.add_line((x - 150, y), (x + 150, y), dxfattribs={"layer": "E-LIGHTING"})
+    msp.add_line((x, y - 150), (x, y + 150), dxfattribs={"layer": "E-LIGHTING"})
+
+
+def _namer(item):
+    def namer(groups, legend_lines):
+        return {g.signature: (item, "ai") for g in groups}, 0.0
+    return namer
+
+
+def test_a_shape_drawn_at_every_label_is_that_fitting_not_another_one():
+    """The glyph beside each PS and FL label is the same solar post or mast, not a second item."""
+    doc = _sheet(solar=3, mast=2)
+    for i in range(3):
+        _glyph(doc.modelspace(), 30000 + i * 5000 + 275, 20000)
+    for i in range(2):
+        _glyph(doc.modelspace(), 30000 + i * 5000 + 275, 40000)
+    run = run_dxf_project([(_bytes(doc), "WD-PB-01-LIGHTING.dxf")], name_shapes=_namer("LED Downlight"))
+    assert not any(l.description.startswith("LED Downlight") for l in run.boq.line_items)
+    assert sum(l.qty for l in run.boq.line_items if "Solar" in l.description) == 3
+
+
+def test_a_shape_found_away_from_the_labels_still_counts():
+    doc = _sheet(solar=3, mast=0)
+    _glyph(doc.modelspace(), 30275, 20000)                         # one beside a label...
+    for i in range(4):
+        _glyph(doc.modelspace(), 50000 + i * 5000, 60000)          # ...the others in rooms
+    run = run_dxf_project([(_bytes(doc), "WD-PB-01-LIGHTING.dxf")], name_shapes=_namer("LED Downlight"))
+    assert sum(l.qty for l in run.boq.line_items if l.description.startswith("LED Downlight")) == 5
+
+
 def test_a_two_way_switch_is_not_a_plain_switch():
     from agent.shared.legend import classify_description
     assert classify_description("1lever ,2 Way Switch @ 1200mm above FFL.")[0] == "1-Lever 2-Way Switch"

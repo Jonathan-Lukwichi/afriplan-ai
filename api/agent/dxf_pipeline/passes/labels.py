@@ -10,9 +10,10 @@ SLD already.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Sequence, Tuple
 
 from ezdxf.document import Drawing
 
@@ -23,6 +24,7 @@ _LABEL = re.compile(r"[A-Z]{1,3}(?:/[A-Z]{1,3})?")
 _FITTING = re.compile(r"light|lantern|lamp|luminaire|\bmasts?\b|day\W?night", re.I)
 _MIN_DESCRIPTION = 12            # characters: shorter text is a tag or a room name, not a legend row
 _ROW_REACH = 12.0                # a description within this many text heights to the right is its row
+_BESIDE_LABEL = 3.0              # a glyph within this many text heights of a label is what it labels
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,8 @@ def _row_description(label: _Text, descriptions: List[_Text]) -> str:
     return min(on_row, key=lambda d: d.x).text if on_row else ""
 
 
-def count_labelled_fittings(doc: Drawing) -> List[LabelledFitting]:
+def _plan_labels(doc: Drawing) -> Tuple[List[_Text], Dict[str, str]]:
+    """(each label on the plan that a legend row explains, {label: its description})."""
     texts = _texts(doc)
     labels = [t for t in texts if _LABEL.fullmatch(t.text)]
     descriptions = [t for t in texts if len(t.text) >= _MIN_DESCRIPTION and _FITTING.search(t.text)]
@@ -71,8 +74,20 @@ def count_labelled_fittings(doc: Drawing) -> List[LabelledFitting]:
         if row:
             meaning.setdefault(t.text, row)
             keys.add(t)
+    return [t for t in labels if t.text in meaning and t not in keys], meaning
+
+
+def count_labelled_fittings(doc: Drawing) -> List[LabelledFitting]:
+    plan, meaning = _plan_labels(doc)
     counts: Dict[str, int] = {}
-    for t in labels:
-        if t.text in meaning and t not in keys:
-            counts[t.text] = counts.get(t.text, 0) + 1
+    for t in plan:
+        counts[t.text] = counts.get(t.text, 0) + 1
     return [LabelledFitting(label, meaning[label], n) for label, n in sorted(counts.items())]
+
+
+def is_labelled_shape(positions: Sequence[Tuple[float, float]], doc: Drawing) -> bool:
+    """True when every copy of a shape sits beside a counted label: it is that fitting's glyph, so
+    counting it too would bill the fitting twice. One copy elsewhere and it is a fitting of its own."""
+    plan, _ = _plan_labels(doc)
+    return bool(positions) and bool(plan) and all(
+        any(math.hypot(x - t.x, y - t.y) <= _BESIDE_LABEL * t.height for t in plan) for x, y in positions)

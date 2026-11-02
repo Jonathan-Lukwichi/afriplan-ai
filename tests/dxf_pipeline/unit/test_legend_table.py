@@ -93,6 +93,14 @@ def test_columns_a_little_over_four_gaps_apart_are_one_table():
     assert len(_whole_table(column, [beside], 100.0)) == 6
 
 
+def test_a_small_sheets_legend_is_as_wide_as_its_own_rows_say():
+    """A guard house sheet: the drawing is small, so its gap is too, but the table keeps its shape."""
+    from agent.dxf_pipeline.passes.legend import _whole_table
+    column = [(0.0, 0.0), (0.0, 150.0), (0.0, 300.0)]
+    beside = [(1300.0, y) for _, y in column]
+    assert len(_whole_table(column, [beside], 200.0)) == 6
+
+
 def test_a_cluster_of_labels_far_from_the_table_stays_out_of_it():
     doc = _sheet()
     for i, s in enumerate(("Isolator Switch", "Geyser 150L", "LED downlight")):

@@ -73,6 +73,13 @@ def test_the_summary_says_how_much_was_read_with_no_money_in_it(scored):
     assert "zar" not in json.dumps(out).lower() and "ref_value" not in json.dumps(out)
 
 
+def test_a_miss_is_named_for_the_whole_item_not_one_line_of_the_bill():
+    from evaluation.live import _miss_name
+    long_label = "DB Large Guard House: 1 phase+N+E, 6 kA ,400 VAC ,1.6 mm thick , mild steel"
+    assert _miss_name("db", long_label) == "Distribution boards"
+    assert _miss_name("swa_cable|95mm2|4c", "95mm2 x 4C PVC SWA Cable — Install") == "95mm2 x 4C PVC SWA Cable"
+
+
 def test_no_bill_queries_means_no_second_number(scored):
     boq = BillOfQuantities(project_name="demo", pipeline="dxf", line_items=[])
     assert scored.reading_summary(boq, "demo", pipeline="dxf")["if_queries_confirmed"] is None

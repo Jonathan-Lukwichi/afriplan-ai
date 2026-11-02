@@ -137,19 +137,22 @@ def legend_region(doc: Drawing, *, gap_frac: float = 0.02, min_texts: int = 3) -
 
 
 def _whole_table(table: List[Tuple[float, float]], others: List[List[Tuple[float, float]]],
-                 gap: float, column_reach: float = 6.0) -> List[Tuple[float, float]]:
+                 gap: float, column_reach: float = 6.0, column_heights: float = 4.5
+                 ) -> List[Tuple[float, float]]:
     """A table set in columns clusters column by column: take in each cluster at the same height
-    as the table and within a few gaps of its side, working outwards one column at a time."""
+    as the table, and beside it: within a few gaps, or a few of the table's own heights (a legend
+    is about the same size on any sheet, so on a small drawing the gap says too little)."""
     table, others = list(table), list(others)
     grew = True
     while grew:
         grew = False
         x0, x1 = min(p[0] for p in table), max(p[0] for p in table)
         y0, y1 = min(p[1] for p in table), max(p[1] for p in table)
+        reach = max(column_reach * gap, column_heights * (y1 - y0))
         for g in others:
             gy0, gy1 = min(p[1] for p in g), max(p[1] for p in g)
             beside = max(min(p[0] for p in g) - x1, x0 - max(p[0] for p in g))
-            if min(y1, gy1) >= max(y0, gy0) and beside <= column_reach * gap:
+            if min(y1, gy1) >= max(y0, gy0) and beside <= reach:
                 table += g
                 others.remove(g)
                 grew = True

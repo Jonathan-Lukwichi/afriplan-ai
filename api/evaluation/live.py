@@ -23,6 +23,7 @@ PROJECT = "Project (all buildings)"
 _MIN_MATCH = 0.8                 # share of the upload that is the project's, and of the set uploaded
 _NOT_DRAWINGS = ("reference_boq", "architectural")
 _BIGGEST_MISSES = 5
+_FAMILY_NAMES = {"db": "Distribution boards"}
 
 
 def _name(file_name: str) -> str:
@@ -66,6 +67,12 @@ def _bill_queries(project: str) -> List[dict]:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
 
 
+def _miss_name(key: str, label: str) -> str:
+    """The whole item's name. A label is one bill line, so a family like `db` needs its own word:
+    'DB Large Guard House' would read as if that one board were the difference."""
+    return _FAMILY_NAMES.get(key) or label.split(" — ")[0][:70]
+
+
 def reading_summary(boq: BillOfQuantities, project: str, *, pipeline: str) -> dict:
     """What the page shows: how much of what is drawn was read, and the biggest misses. No money."""
     ref = load_reference(project)
@@ -75,7 +82,8 @@ def reading_summary(boq: BillOfQuantities, project: str, *, pipeline: str) -> di
     lines = pred_lines_from_boq(boq, building=PROJECT)
     card = score(lines, project_reference(ref), uploaded={PROJECT: uploaded}, pipeline=pipeline, buildings=[PROJECT])
     r = reading_accuracy(card)
-    misses: List[dict] = [{"item": i["label"], "verdict": i["verdict"], "points_lost": i["points_lost"]}
+    misses: List[dict] = [{"item": _miss_name(i["key"], i["label"]), "verdict": i["verdict"],
+                           "points_lost": i["points_lost"]}
                           for i in r["items"][:_BIGGEST_MISSES] if i["points_lost"] > 0]
     queries = _bill_queries(project)
     queried = {q["key"] for q in queries}
