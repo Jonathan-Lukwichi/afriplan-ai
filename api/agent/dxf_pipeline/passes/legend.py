@@ -87,10 +87,11 @@ Region = Tuple[float, float, float, float]   # (x0, y0, x1, y1)
 def legend_region(doc: Drawing, *, gap_frac: float = 0.02, min_texts: int = 3) -> Optional[Region]:
     """
     Locate the legend TABLE: the largest tight cluster of legend-style descriptions
-    (text that classifies as an electrical item), expanded to the left to take in
-    the glyphs drawn beside each description. A lone classifiable label on the plan
-    ("DB-AB1") is its own tiny cluster and never stretches the region. Returns None
-    when no cluster of at least `min_texts` descriptions exists.
+    (text that classifies as an electrical item) with the other columns of the same
+    table, expanded to the left to take in the glyphs drawn beside each description.
+    A lone classifiable label on the plan ("DB-AB1") is its own tiny cluster and never
+    stretches the region. Returns None when no cluster of at least `min_texts`
+    descriptions exists.
     """
     from agent.shared.legend import classify_description
 
@@ -128,10 +129,32 @@ def legend_region(doc: Drawing, *, gap_frac: float = 0.02, min_texts: int = 3) -
     best = max(groups.values(), key=len)
     if len(best) < min_texts:
         return None
+    best = _whole_table(best, [g for g in groups.values() if g is not best and len(g) >= min_texts], gap)
     x0, x1 = min(p[0] for p in best), max(p[0] for p in best)
     y0, y1 = min(p[1] for p in best), max(p[1] for p in best)
     # glyphs sit to the LEFT of their description; allow a row of margin around
     return (x0 - gap, y0 - gap * 0.5, x1 + gap * 0.25, y1 + gap * 0.5)
+
+
+def _whole_table(table: List[Tuple[float, float]], others: List[List[Tuple[float, float]]],
+                 gap: float, column_reach: float = 6.0) -> List[Tuple[float, float]]:
+    """A table set in columns clusters column by column: take in each cluster at the same height
+    as the table and within a few gaps of its side, working outwards one column at a time."""
+    table, others = list(table), list(others)
+    grew = True
+    while grew:
+        grew = False
+        x0, x1 = min(p[0] for p in table), max(p[0] for p in table)
+        y0, y1 = min(p[1] for p in table), max(p[1] for p in table)
+        for g in others:
+            gy0, gy1 = min(p[1] for p in g), max(p[1] for p in g)
+            beside = max(min(p[0] for p in g) - x1, x0 - max(p[0] for p in g))
+            if min(y1, gy1) >= max(y0, gy0) and beside <= column_reach * gap:
+                table += g
+                others.remove(g)
+                grew = True
+                break
+    return table
 
 
 def in_region(x: float, y: float, region: Optional[Region]) -> bool:

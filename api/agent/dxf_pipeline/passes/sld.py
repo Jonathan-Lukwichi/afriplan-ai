@@ -28,7 +28,7 @@ from ezdxf.document import Drawing
 from agent.dxf_pipeline.passes.recognize import _plain_text
 
 _HEADER = re.compile(
-    r"^\s*(?P<name>DB[-\s]?[A-Z0-9]+)\s+(?P<v>\d{3})\s*V\s*,\s*(?P<a>\d{2,4})\s*A\s*,"
+    r"^\s*(?P<name>DB[-\s]?[A-Z0-9]+(?:\s\d{1,2})?)\s+(?P<v>\d{3})\s*V\s*,\s*(?P<a>\d{2,4})\s*A\s*,"
     r"\s*(?P<ka>\d+(?:\.\d+)?)\s*kA.*?(?P<ph>[13])\s*PH", re.I | re.S)
 _FEEDER = re.compile(
     r"(?P<to>DB[-\s]?[A-Z0-9]+)\s+FED\s+FROM\s+(?P<frm>[A-Z0-9][A-Z0-9-]*)"
@@ -50,7 +50,9 @@ _SUPPLY_CABLE = re.compile(r"(?P<size>\d+(?:\.\d+)?)\s*mm.*?(?P<cores>\d)\s*CORE
 
 
 def _norm_db(name: str) -> str:
-    return re.sub(r"\s+", "-", name.strip().upper()).replace("--", "-")
+    """'DB AB1' → 'DB-AB1'; 'DB-HPS 1' → 'DB-HPS1', as the board's feeder line writes it."""
+    name = re.sub(r"\s+(\d{1,2})$", r"\1", name.strip().upper())
+    return re.sub(r"\s+", "-", name).replace("--", "-")
 
 
 @dataclass

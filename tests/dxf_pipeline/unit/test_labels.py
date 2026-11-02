@@ -66,6 +66,75 @@ def test_lights_repeated_on_two_sheets_of_a_set_count_once_at_the_higher_count()
     assert sum(l.qty for l in run.boq.line_items if "Solar" in l.description) == pytest.approx(3)
 
 
+def _building(dn: int):
+    """A legend row keyed 'D/N', and that label on the plan."""
+    doc = ezdxf.new(setup=True)
+    doc.header["$INSUNITS"] = 4
+    msp = doc.modelspace()
+
+    def text(s, x, y, h=231):
+        msp.add_text(s, height=h, dxfattribs={"layer": "PDF_Text"}).set_placement((x, y))
+
+    text("D/N", 1000, 5000)
+    text("Day/night switch @ 2000mm Abone FFL.", 2300, 4900)
+    for i in range(dn):
+        text("D/N", 30000 + i * 5000, 20000)
+    return doc
+
+
+def test_the_row_of_a_key_is_the_nearest_description_a_table_width_away():
+    """Real legends leave about ten text heights between a key and its row."""
+    from agent.dxf_pipeline.passes.labels import _row_description, _Text
+    key = _Text("D/N", 1000, 5000, 146)
+    near = _Text("Day/night switch", 2512, 4900, 146)
+    far = _Text("30W LED flood light", 2700, 4900, 146)
+    assert _row_description(key, [far, near]) == near.text
+    assert _row_description(key, [_Text("Next column", 12000, 4900, 146)]) == ""
+
+
+def test_a_two_way_switch_is_not_a_plain_switch():
+    from agent.shared.legend import classify_description
+    assert classify_description("1lever ,2 Way Switch @ 1200mm above FFL.")[0] == "1-Lever 2-Way Switch"
+    assert classify_description("1lever ,1 Way Switch @ 1200mm above FFL.")[0] == "1-Lever Switch"
+
+
+def test_a_label_with_a_slash_counts_too():
+    assert [(f.label, f.qty) for f in count_labelled_fittings(_building(2))] == [("D/N", 2)]
+
+
+def test_a_day_night_switch_is_priced_as_a_switch():
+    from agent.shared.symbol_catalogue import catalogue_item
+    from core import constants
+    run = run_dxf_estimator(_bytes(_building(2)), "WD-AB-01-LIGHTING.dxf")
+    [line] = [l for l in run.boq.line_items if "Day/night" in l.description]
+    assert catalogue_item("Day/Night Switch").price_map == "switch"
+    assert line.qty == 2 and line.unit_price_zar > 0
+    assert constants.SWITCH_PRICES.get(catalogue_item("Day/Night Switch").price_key, 0) > 0
+
+
+def test_the_same_label_in_different_buildings_adds_up():
+    """One building's lighting and plug sheets repeat a fitting; two buildings do not."""
+    run = run_dxf_project([(_bytes(_building(2)), "WD-AB-01-LIGHTING 250325.dxf"),
+                           (_bytes(_building(2)), "WD-AB-01-PLUG 250325.dxf"),
+                           (_bytes(_building(1)), "WD-LGH-01-LIGHTING 280225.dxf")])
+    assert sum(l.qty for l in run.boq.line_items if "Day/night" in l.description) == pytest.approx(3)
+
+
+def test_a_labelled_fitting_is_not_counted_again_as_a_named_shape():
+    doc = _building(2)
+    msp = doc.modelspace()
+    for i in range(3):
+        x = 30000 + i * 5000
+        msp.add_circle((x, 40000), 300, dxfattribs={"layer": "E-LIGHTING"})
+        msp.add_line((x - 300, 40000), (x + 300, 40000), dxfattribs={"layer": "E-LIGHTING"})
+
+    def namer(groups, legend_lines):
+        return {g.signature: ("Day/Night Switch", "ai") for g in groups}, 0.0
+
+    run = run_dxf_project([(_bytes(doc), "WD-AB-01-LIGHTING.dxf")], name_shapes=namer)
+    assert sum(l.qty for l in run.boq.line_items if "day/night" in l.description.lower()) == pytest.approx(2)
+
+
 def test_solar_post_lights_and_high_masts_have_their_own_names_in_the_legend():
     from agent.shared.legend import classify_description
     assert classify_description(SOLAR)[0] == "Solar Post Light"

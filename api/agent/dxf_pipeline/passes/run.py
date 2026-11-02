@@ -19,6 +19,7 @@ import re
 import logging
 import time
 import uuid
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,12 +29,12 @@ import ezdxf
 from pydantic import BaseModel, Field
 
 from agent.dxf_pipeline.dwg import ensure_dxf_bytes
-from agent.dxf_pipeline.passes.assemble import findings_from_recognition
+from agent.dxf_pipeline.passes.assemble import building_code, findings_from_recognition
 from agent.dxf_pipeline.passes.labels import count_labelled_fittings
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import DxfRecognition, _plain_text, recognise
 from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
-from agent.dxf_pipeline.passes.shapes import ShapeGroup, find_shape_groups
+from agent.dxf_pipeline.passes.shapes import ShapeGroup, find_shape_groups, legend_shape_names, shape_kind
 from agent.dxf_pipeline.passes.site_routes import read_site_routes
 from agent.dxf_pipeline.passes.sld import SldFacts, read_sld
 from agent.dxf_pipeline.passes.spatial import assign_spatial
@@ -70,7 +71,7 @@ class DxfAiSymbol(BaseModel):
     """One repeated unnamed symbol shape and what it was named as (ADR-0007)."""
     signature: str
     item: str
-    named_by: str = "ai"             # ai | person
+    named_by: str = "ai"             # legend | ai | person
     count: int = 0
     sheets: List[str] = Field(default_factory=list)
     image_png_b64: str = ""
@@ -137,8 +138,10 @@ def run_dxf_estimator(
                                          schematic=is_schematic_sheet(file_name, sld_found=a.sld.found))
     # Mode 3 — count exploded-line-work legend symbols by template matching.
     labelled = _labelled_items([(doc, file_name, a)])
-    findings.items += labelled
-    findings.items += _template_findings(doc, a.legend, skip={i.item for i in labelled if i.item})
+    labelled_names = {i.item for i in labelled if i.item}
+    named, _, symbols, _ = _name_shapes([] if a.sld.found else [(doc, file_name)], None, [])
+    findings.items += labelled + [f for f in named if f.item not in labelled_names]
+    findings.items += _template_findings(doc, a.legend, skip=labelled_names | {s.item for s in symbols})
     findings.gaps += _legend_coverage_gaps(findings, a.legend)
     findings.sheet_words[Path(file_name).stem] = _words(doc)
     boq = price_findings(findings, pipeline="dxf", project_name=project_name, run_id=run_id)
@@ -151,7 +154,7 @@ def run_dxf_estimator(
         symbol_count=len(rec.symbols),
         room_count=len(spatial.rooms),
         circuit_ids=rec.circuit_ids(), db_refs=rec.db_refs(),
-        legend=legend,
+        legend=legend, ai_symbols=symbols,
         findings=findings, boq=boq,
         duration_s=round(time.perf_counter() - started, 3),
         success=bool(boq.line_items),
@@ -300,27 +303,26 @@ def run_dxf_project(
                          "SLD" if a.sld.found else "layout" if a.rec.symbols or a.rec.circuit_tags else "other")
     sld = _merge_sld([a.sld for _, _, a in analyses])
 
-    # ADR-0007: repeated unnamed symbols — geometry counts them, the injected namer names them.
-    ai_found, ai_gaps, ai_symbols, ai_cost = ([], [], [], 0.0)
-    if name_shapes is not None:
-        ai_found, ai_gaps, ai_symbols, ai_cost = _name_shapes(
-            [(doc, name) for doc, name, a in analyses if not a.sld.found], name_shapes,
-            _item_texts(analyses))
+    # ADR-0007: repeated unnamed symbols — geometry counts them; the legend names them, then the
+    # injected namer names what is left.
+    ai_found, ai_gaps, ai_symbols, ai_cost = _name_shapes(
+        [(doc, name) for doc, name, a in analyses if not a.sld.found], name_shapes,
+        _item_texts(analyses))
     ai_items = {s.item for s in ai_symbols if catalogue_item(s.item)}
     labelled = _labelled_items(analyses)
-    counted_items = ai_items | {i.item for i in labelled if i.item}
+    labelled_names = {i.item for i in labelled if i.item}      # a label counts these exactly
+    counted_items = ai_items | labelled_names
 
     findings = findings_from_recognition(DxfRecognition(), sld=sld, routes=routes)
     board_names = [b.name for b in sld.boards]
     billed_boards = list(board_names)          # grows: a board tagged on two layouts is billed once
     for doc, name, a in analyses:
-        part = findings_from_recognition(a.rec, known_boards=billed_boards,
+        part = findings_from_recognition(a.rec, known_boards=billed_boards, sheet_code=building_code(name),
                                          schematic=is_schematic_sheet(name, sld_found=a.sld.found))
         billed_boards += a.rec.db_refs()
         part.items += _template_findings(doc, a.legend, skip=counted_items)
         stem = Path(name).stem
-        part.items += [f for f in ai_found if f.sheet == stem]
-        part.gaps += _legend_coverage_gaps(part, a.legend)
+        part.items += [f for f in ai_found if f.sheet == stem and f.item not in labelled_names]
         for f in (*part.boards, *part.items, *part.wires):
             f.sheet = stem
         part.sheet_words[stem] = _words(doc)
@@ -329,6 +331,7 @@ def run_dxf_project(
         findings.extend(part)
     findings.items += labelled
     findings.gaps += ai_gaps
+    findings.gaps += _legend_coverage_gaps(findings, *(a.legend for _, _, a in analyses))
     for old, newer in superseded.items():
         findings.gaps.append(GapItem(
             section=BQSection.DISTRIBUTION,
@@ -372,6 +375,8 @@ def run_dxf_project(
 
 ShapeNamer = Callable[[List[ShapeGroup], List[str]], Tuple[Dict[str, Tuple[str, str]], float]]
 _PRICE_MAPS = {"light": "LIGHT_PRICES", "socket": "SOCKET_PRICES", "switch": "SWITCH_PRICES", "db": "DB_PRICES"}
+_NOT_ON_ROUTE = "Tagged but not on a drawn route: "
+_SHEET_DISCIPLINE = re.compile(r"[\s_-]*\b(LIGHTING|LIGHTS?|PLUGS?|POWER|SOCKETS?)\b.*$", re.I)
 
 
 def _words(doc) -> List[str]:
@@ -396,11 +401,26 @@ def _item_texts(analyses) -> List[str]:
     return sorted(found)
 
 
-def _name_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
+def _legend_names(docs) -> Dict[str, str]:
+    """{shape_kind: item} from every sheet's legend: a name at least two sheets give, when the set
+    has two. Sheets that disagree name nothing: a legend row can sit one row off on a real sheet."""
+    seen: Dict[str, Counter] = {}
+    for doc, _name in docs:
+        for kind, item in legend_shape_names(doc).items():
+            seen.setdefault(kind, Counter())[item] += 1
+    return {k: next(iter(v)) for k, v in seen.items()
+            if len(v) == 1 and sum(v.values()) >= min(2, len(docs))}
+
+
+def _name_shapes(docs, name_shapes: Optional[ShapeNamer], legend_lines: List[str]):
     """Group every layout's loose symbols into shapes, have them named once, and turn the
-    named ones into item findings per drawing: the COUNT is exact geometry, the NAME came
-    from the namer — INFERRED, with a gap asking a person to confirm it."""
+    named ones into item findings per drawing: the COUNT is exact geometry. The NAME comes
+    from the legend row beside the shape; failing that from the namer — INFERRED, with a gap
+    asking a person to confirm it. A person's own name beats both."""
     from core import constants
+    legend = _legend_names(docs)
+    if name_shapes is None and not legend:
+        return [], [], [], 0.0
     per_sheet: List[ShapeGroup] = []
     for doc, name in docs:
         per_sheet += find_shape_groups(doc, Path(name).stem)
@@ -414,9 +434,13 @@ def _name_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
         totals[g.signature] = totals.get(g.signature, 0) + g.count
         sheets.setdefault(g.signature, []).append(g.sheet)
     reps = [ShapeGroup(signature=s, count=totals[s], sheet=", ".join(sheets[s]), size=g.size,
-                       image_png_b64=g.image_png_b64) for s, g in unique.items()]
-    names, cost = name_shapes(reps, legend_lines)
+                       image_png_b64=g.image_png_b64, legend_item=legend.get(shape_kind(s), ""))
+            for s, g in unique.items()]
+    names, cost = name_shapes(reps, legend_lines) if name_shapes is not None else ({}, 0.0)
     names = {s: (canonical_name(item), by) for s, (item, by) in names.items()}   # older spellings
+    for r in reps:
+        if r.legend_item and names.get(r.signature, ("", ""))[1] != "person":
+            names[r.signature] = (r.legend_item, "legend")
 
     symbols = [DxfAiSymbol(signature=s, item=names[s][0], named_by=names[s][1], count=totals[s],
                            sheets=sheets[s], image_png_b64=unique[s].image_png_b64)
@@ -429,19 +453,22 @@ def _name_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
     found: List[ItemFinding] = []
     for (sheet, item), n in sorted(qty.items()):
         cat = catalogue_item(item)
+        from_legend = {names[s][1] for s in names if names[s][0] == item} == {"legend"}
         found.append(ItemFinding(
             description=f"{item} — {sheet}", section=cat.section, item=item, qty=float(n),
             material_zar=getattr(constants, _PRICE_MAPS[cat.price_map]).get(cat.price_key, 0.0),
             install_zar=85.0, sheet=sheet, evidence=Evidence.COUNTED,
-            confidence=ItemConfidence.INFERRED,
-            assumption="Symbol named from the drawing's legend by AI; every copy counted exactly by geometry.",
-            notes="Confirm the symbol name on the Take-off page.",
+            confidence=ItemConfidence.EXTRACTED if from_legend else ItemConfidence.INFERRED,
+            assumption=("" if from_legend else
+                        "Symbol named from the drawing's legend by AI; every copy counted exactly by geometry."),
+            notes=("Named by the legend row beside the symbol; every copy counted exactly by geometry."
+                   if from_legend else "Confirm the symbol name on the Take-off page."),
         ))
     gaps: List[GapItem] = []
     for item in sorted({i for _, i in qty}):
         n = sum(v for (s, i), v in qty.items() if i == item)
         by = {names[s][1] for s in names if names[s][0] == item}
-        if by == {"person"}:
+        if by <= {"person", "legend"}:
             continue
         gaps.append(GapItem(
             section=catalogue_item(item).section, description=f"{n} symbols recognised as '{item}' by AI",
@@ -455,11 +482,13 @@ def _name_shapes(docs, name_shapes: ShapeNamer, legend_lines: List[str]):
 def _route_gaps(routes: RouteNetwork, sld: SldFacts, sheet: str) -> List[GapItem]:
     """What the site plan says that the SLDs don't — never silent."""
     gaps: List[GapItem] = []
+    sld_source = {equipment_key(fd.to_db): equipment_key(fd.from_source) for fd in sld.feeders}
     for w in routes.warnings:
+        if w.startswith(_NOT_ON_ROUTE) and set(w[len(_NOT_ON_ROUTE):].split(", ")) <= set(sld_source):
+            continue                          # the feeder's own "no drawn route" gap says this already
         gaps.append(GapItem(section=BQSection.SUBMAIN_CABLES, description=w,
                                 assumption="Route attribution as read.", severity="medium",
                                 suggested_action="Check the site plan.", drawing_ref=sheet))
-    sld_source = {equipment_key(fd.to_db): equipment_key(fd.from_source) for fd in sld.feeders}
     for to, frm in sorted(routes.fed_from.items()):
         if to in sld_source and sld_source[to] != frm:
             gaps.append(GapItem(
@@ -494,20 +523,25 @@ _SECTION_MATERIAL = {
 
 
 def _labelled_items(analyses) -> List[ItemFinding]:
-    """Fittings counted from their labels (`labels.py`). The same fitting on two sheets of a set
-    (a lighting and a plug sheet share their background) counts once, at the higher count."""
+    """Fittings counted from their labels (`labels.py`). The same fitting on two sheets of one
+    building (a lighting and a plug sheet share their background) counts once, at the higher
+    count; two buildings each keep their own."""
     best: dict = {}
     for doc, name, a in analyses:
+        building_sheets = _SHEET_DISCIPLINE.sub("", Path(name).stem)
         for f in count_labelled_fittings(doc):
-            if f.description not in best or f.qty > best[f.description][0].qty:
-                best[f.description] = (f, name, a.spatial.building)
+            key = (building_sheets, f.description)
+            if key not in best or f.qty > best[key][0].qty:
+                best[key] = (f, name, a.spatial.building)
     out: List[ItemFinding] = []
     for f, name, building in best.values():
         canonical = (classify_description(f.description) or ("", BQSection.LIGHTING))[0]
         known = catalogue_item(canonical)
+        rates = getattr(constants, _PRICE_MAPS[known.price_map]) if known else {}
         out.append(ItemFinding(
-            description=f.description, section=BQSection.LIGHTING, item=canonical if known else "",
-            qty=float(f.qty), material_zar=constants.LIGHT_PRICES.get(known.price_key, 0.0) if known else 0.0,
+            description=f.description, section=known.section if known else BQSection.LIGHTING,
+            item=canonical if known else "",
+            qty=float(f.qty), material_zar=rates.get(known.price_key, 0.0) if known else 0.0,
             install_zar=85.0, building=building, sheet=Path(name).stem, evidence=Evidence.COUNTED,
             notes=f"Counted from the '{f.label}' label on the plan; the legend row names it.",
         ))
@@ -528,7 +562,7 @@ def _template_findings(doc, legend: Legend, skip=frozenset()) -> List[ItemFindin
     the COUNT is deterministic geometry, the rate is a ballpark for the contractor to
     confirm. Once billed, these items drop out of the legend coverage gaps automatically.
     """
-    counts = {k: v for k, v in count_by_template(doc, legend).items() if k not in skip}
+    counts = count_by_template(doc, legend, skip=skip)
     section_of = {e.canonical_item: e.section for e in legend.entries}
     out: List[ItemFinding] = []
     for item, n in sorted(counts.items()):
@@ -542,12 +576,20 @@ def _template_findings(doc, legend: Legend, skip=frozenset()) -> List[ItemFindin
     return out
 
 
-def _legend_coverage_gaps(findings: Findings, legend: Legend) -> List[GapItem]:
+def _legend_coverage_gaps(findings: Findings, *legends: Legend) -> List[GapItem]:
     """
     A gap for every legend item not present in a priced line — turning a silent miss
     (e.g. exploded-line-work downlights) into a visible 'declared but not counted'.
-    Uses the shared LDSE coverage helper on the lines these findings price to.
+    Uses the shared LDSE coverage helper on the lines these findings price to. A set repeats
+    one legend on every sheet, so `findings` must be the whole project's, not one sheet's.
     """
     lines = price_findings(Findings(boards=findings.boards, feeders=findings.feeders,
                                     items=findings.items, wires=findings.wires), pipeline="dxf").line_items
-    return coverage_gaps(legend, billed_canonical_items(l.description for l in lines))
+    billed = billed_canonical_items(l.description for l in lines)
+    billed |= {i.item for i in findings.items if i.item}
+    if findings.boards:
+        billed.add("Distribution Board")
+    if any(i.description.startswith("Switch — ") for i in findings.items):
+        billed.add("1-Lever Switch")         # the 'switch 1' block: named by room, not by its levers
+    entries = {e.canonical_item: e for legend in legends for e in legend.entries}
+    return coverage_gaps(Legend(entries=list(entries.values()), source="dxf"), billed)

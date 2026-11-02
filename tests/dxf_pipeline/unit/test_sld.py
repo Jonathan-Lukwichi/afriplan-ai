@@ -7,6 +7,25 @@ import ezdxf
 from agent.dxf_pipeline.passes.sld import read_sld
 
 
+def test_a_board_number_set_apart_in_its_header_still_names_the_board():
+    """Real wording: the header says 'DB-HPS 1', the feeder line 'DB-HPS1'. Same board, its own breakers."""
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+    t = lambda s, x, y: msp.add_text(s, dxfattribs={"layer": "0"}).set_placement((x, y))   # noqa: E731
+    t("DB-PFA 400V, 300A, 15kA, 50Hz, 3PH+N+E", 0, 1000)
+    t("20A", 0, 800)
+    t("DB-HPS 1 400V, 150A, 15kA, 50Hz, 3PH+N+E", 5000, 1000)
+    for i in range(3):
+        t("32A", 5000 + 50 * i, 800)
+    t("DB-HPS1 FED FROM DB-PFA Incoming main cable 50mm²", 5000, 1200)
+    sld = read_sld(doc)
+    boards = {b.name: b for b in sld.boards}
+    assert set(boards) == {"DB-PFA", "DB-HPS1"}
+    assert boards["DB-HPS1"].main_breaker_a == 150 and len(boards["DB-HPS1"].circuits) == 3
+    assert len(boards["DB-PFA"].circuits) == 1
+    assert [f.to_db for f in sld.feeders] == ["DB-HPS1"]
+
+
 def _sld_doc():
     doc = ezdxf.new()
     msp = doc.modelspace()

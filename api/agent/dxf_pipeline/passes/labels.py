@@ -1,10 +1,11 @@
 """
 Fittings identified by a short label. Some drawings mark a fitting with a letter label beside its
-glyph (`PS`, `FL`), and the legend row explains it: the label, then the description on the same row.
-Each other copy of the label on the plan is one fitting, even when the glyph itself is loose line
-work no block name can identify. The legend's own copy is never an instance.
+glyph (`PS`, `FL`, `D/N`), and the legend row explains it: the label, then the description on the
+same row. Each other copy of the label on the plan is one fitting, even when the glyph itself is
+loose line work no block name can identify. The legend's own copy is never an instance.
 
-Light fittings only: a labelled master switch or board is billed from the SLD already.
+Light fittings and day/night switches only: a labelled master switch or board is billed from the
+SLD already.
 """
 
 from __future__ import annotations
@@ -18,10 +19,10 @@ from ezdxf.document import Drawing
 from agent.dxf_pipeline.passes.legend import _text_pos
 from agent.dxf_pipeline.passes.recognize import _plain_text
 
-_LABEL = re.compile(r"[A-Z]{1,3}")
-_FITTING = re.compile(r"light|lantern|lamp|luminaire|\bmasts?\b", re.I)
+_LABEL = re.compile(r"[A-Z]{1,3}(?:/[A-Z]{1,3})?")
+_FITTING = re.compile(r"light|lantern|lamp|luminaire|\bmasts?\b|day\W?night", re.I)
 _MIN_DESCRIPTION = 12            # characters: shorter text is a tag or a room name, not a legend row
-_ROW_REACH = 6.0                 # a description within this many text heights to the right is its row
+_ROW_REACH = 12.0                # a description within this many text heights to the right is its row
 
 
 @dataclass(frozen=True)
@@ -53,11 +54,10 @@ def _texts(doc: Drawing) -> List[_Text]:
 
 def _row_description(label: _Text, descriptions: List[_Text]) -> str:
     """The legend description this label is the key of, or "" when the label is on the plan."""
-    for d in descriptions:
-        h = max(d.height, label.height)
-        if 0 < d.x - label.x <= _ROW_REACH * h and abs(d.y - label.y) <= h:
-            return d.text
-    return ""
+    on_row = [d for d in descriptions
+              if 0 < d.x - label.x <= _ROW_REACH * max(d.height, label.height)
+              and abs(d.y - label.y) <= max(d.height, label.height)]
+    return min(on_row, key=lambda d: d.x).text if on_row else ""
 
 
 def count_labelled_fittings(doc: Drawing) -> List[LabelledFitting]:

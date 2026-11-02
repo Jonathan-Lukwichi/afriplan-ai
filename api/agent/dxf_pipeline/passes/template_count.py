@@ -273,13 +273,15 @@ def count_by_template(
     target_glyph_px: float = 44.0,
     glyph_reach_frac: float = 0.04,
     min_glyph_entities: int = MIN_GLYPH_ENTITIES,
+    skip=frozenset(),
 ) -> Dict[str, int]:
     """
     Count line-work legend symbols across the plan by template matching.
     Returns {canonical_item: count}. Only DISTINCTIVE glyphs (≥ min entities)
     are matched — simple glyphs over-match, so they are left for the coverage
     report instead of producing a wrong number. Empty if OpenCV is missing or
-    no distinctive glyph could be isolated.
+    no distinctive glyph could be isolated. `skip`: items already counted another
+    way, not worth the rendering.
     """
     if not _HAVE_CV2 or not legend or not legend.entries:
         return {}
@@ -288,7 +290,7 @@ def count_by_template(
     reach = span * glyph_reach_frac
     y_band = reach * 0.4
     glyphs = [g for g in _collect_glyphs(doc, legend, reach, y_band)
-              if len(g.entities) >= min_glyph_entities]
+              if len(g.entities) >= min_glyph_entities and g.canonical_item not in skip]
     if not glyphs:
         return {}
 

@@ -13,8 +13,9 @@ the same item identically. This module must NOT import agent.pdf_pipeline.*
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from typing import Dict, Iterable, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 from agent.dxf_pipeline.passes.recognize import _UNCLASSIFIED_ELEC, DxfRecognition
 from agent.dxf_pipeline.passes.sld import SldFacts
@@ -118,15 +119,17 @@ def findings_from_recognition(
     routes: Optional[RouteNetwork] = None,
     known_boards: Iterable[str] = (),
     schematic: bool = False,
+    sheet_code: str = "",
 ) -> Findings:
     """What this drawing shows, unpriced. `known_boards`: boards already found on an SLD
     elsewhere in the project — a layout's circuit tags must not add them a second time.
-    `schematic`: the sheet is an SLD — its lines are not a physical route (route_m 0)."""
+    `schematic`: the sheet is an SLD — its lines are not a physical route (route_m 0).
+    `sheet_code`: the building code in the sheet's name, to catch a board spelled differently."""
     out = Findings()
     if sld is not None and sld.boards:
         out.boards += [_sld_board(b) for b in sld.boards]      # the SLD is the authority on boards
     else:
-        _tagged_boards(out, rec, skip={equipment_key(b) for b in known_boards})
+        _tagged_boards(out, rec, list(known_boards), sheet_code)
     if sld is not None and sld.feeders:
         _sld_feeders(out, sld, config, routes=routes)
     _fittings(out, rec, config)
@@ -136,9 +139,40 @@ def findings_from_recognition(
 
 # ─── boards ──────────────────────────────────────────────────────────
 
-def _tagged_boards(out: Findings, rec: DxfRecognition, skip: Set[str] = frozenset()) -> None:
+def building_code(file_name: str) -> str:
+    """'WD-SGH-01-LIGHTING 280225.dwg' → 'SGH'; '' when the name has no such code."""
+    m = re.match(r"[A-Za-z]+-([A-Za-z]+)-\d", file_name)
+    return m.group(1).upper() if m else ""
+
+
+def same_board(tag: str, known: Iterable[str], *, sheet_code: str) -> Optional[str]:
+    """The known board this layout tag misspells, or None. A proof needs both: a known board that
+    carries this sheet's building code, and one letter's difference. DB-AB1 and DB-AB2 differ by a
+    digit: they are two boards."""
+    t = equipment_key(tag)
+    for name in known:
+        k = equipment_key(name)
+        diff = [(a, b) for a, b in zip(k, t) if a != b]
+        if (sheet_code and sheet_code in k and len(k) == len(t) and len(diff) == 1
+                and diff[0][0].isalpha() and diff[0][1].isalpha()):
+            return name
+    return None
+
+
+def _tagged_boards(out: Findings, rec: DxfRecognition, known: List[str], sheet_code: str = "") -> None:
+    skip = {equipment_key(b) for b in known}
     for db in rec.db_refs():
         if equipment_key(db) in skip:
+            continue
+        twin = same_board(db, known, sheet_code=sheet_code)
+        if twin is not None:
+            out.gaps.append(GapItem(
+                section=BQSection.DISTRIBUTION, building_block=twin,
+                description=f"{db} on the layouts is taken to be {twin} on the SLD",
+                assumption="Billed once, from the SLD.",
+                suggested_action="Confirm they are one board.",
+                severity="low", drawing_ref="DXF",
+            ))
             continue
         out.boards.append(BoardFinding(
             name=db, contents_known=False, sheet="DXF", evidence=Evidence.WRITTEN,

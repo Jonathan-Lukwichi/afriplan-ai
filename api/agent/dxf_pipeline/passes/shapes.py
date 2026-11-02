@@ -11,14 +11,16 @@ just cannot say what the shape IS. This pass:
      (entity kinds + size + proportions after turning its long side horizontal),
   4. groups identical signatures, counts them and draws ONE picture per group.
 
-The picture + the legend text are what a person (or the optional AI step, which lives
-outside this pipeline in api/assist/) needs to name the shape once.
+The legend names a shape first: the row beside its glyph says what it is, whatever size the
+plan draws it at. Otherwise the picture + the legend text are what a person (or the optional
+AI step, which lives outside this pipeline in api/assist/) needs to name the shape once.
 """
 
 from __future__ import annotations
 
 import base64
 import math
+import re
 import statistics
 from collections import Counter
 from dataclasses import dataclass, field
@@ -27,8 +29,11 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from ezdxf.document import Drawing
 
+from agent.dxf_pipeline.passes.labels import _row_description, _Text, _texts
 from agent.dxf_pipeline.passes.legend import in_region, legend_region
 from agent.dxf_pipeline.passes.template_count import _entity_bbox, _render
+from agent.shared.legend import classify_description
+from agent.shared.symbol_catalogue import catalogue_item
 from core.layer_aliases import is_architectural_layer, is_wiring_layer
 
 try:
@@ -38,6 +43,8 @@ except Exception:  # noqa: BLE001
     _HAVE_CV2 = False
 
 _KINDS = ("LINE", "CIRCLE", "ARC", "LWPOLYLINE")
+_MIN_DISTINCTIVE_PARTS = 3
+_MAX_GLYPH_PART = 4.0            # × the median piece: longer pieces in a legend are the table's lines
 BBox = Tuple[float, float, float, float]
 
 
@@ -50,6 +57,7 @@ class ShapeGroup:
     size: float = 0.0                   # largest side, drawing units
     image_png_b64: str = ""             # one sample, black on white
     positions: List[Tuple[float, float]] = field(default_factory=list)
+    legend_item: str = ""               # what the legend row beside this shape says it is
 
 
 def _points(e) -> List[Tuple[float, float]]:
@@ -132,10 +140,8 @@ def _png_b64(entities, bbox: BBox, px: int = 96) -> str:
     return base64.b64encode(buf.tobytes()).decode("ascii") if ok else ""
 
 
-def find_shape_groups(doc: Drawing, sheet: str = "", *, max_parts: int = 60,
-                      size_spread: float = 6.0) -> List[ShapeGroup]:
-    """Repeated symbol shapes on one drawing, most frequent first."""
-    region = legend_region(doc)
+def _symbol_items(doc: Drawing, region, *, inside: bool) -> List[Tuple[object, BBox]]:
+    """Symbol line-work outside the legend region, or inside it."""
     items: List[Tuple[object, BBox]] = []
     for e in doc.modelspace():
         if e.dxftype() not in _KINDS:
@@ -146,9 +152,58 @@ def find_shape_groups(doc: Drawing, sheet: str = "", *, max_parts: int = 60,
         bb = _entity_bbox(e)
         if bb is None:
             continue
-        if region is not None and in_region((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, region):
+        if in_region((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, region) == inside:
+            items.append((e, bb))
+    return items
+
+
+def shape_kind(signature: str) -> str:
+    """A signature without its size class: a legend glyph is not always drawn at the plan's size."""
+    kinds, _, aspect = signature.split("|")
+    return f"{kinds}|{aspect}"
+
+
+def is_distinctive(signature: str) -> bool:
+    """Enough pieces to recognise: a lone box or a pair of lines matches every door and window."""
+    return sum(int(re.sub(r"\D", "", k)) for k in signature.split("|")[0].split(",")) >= _MIN_DISTINCTIVE_PARTS
+
+
+def legend_shape_names(doc: Drawing) -> Dict[str, str]:
+    """{shape_kind: legend item} for each distinctive glyph with one legend row beside it. A glyph
+    on two rows names nothing, and boards are left out: they are billed from the SLD."""
+    region = legend_region(doc)
+    if region is None:
+        return {}
+    rows = [t for t in _texts(doc) if in_region(t.x, t.y, region) and classify_description(t.text)]
+    items = _symbol_items(doc, region, inside=True)
+    if not items:
+        return {}
+    # the table's grid lines touch its glyphs: without them each glyph stands alone
+    side = statistics.median(max(b[2] - b[0], b[3] - b[1]) for _, b in items)
+    glyph_parts = [(e, b) for e, b in items if max(b[2] - b[0], b[3] - b[1]) <= _MAX_GLYPH_PART * side]
+    seen: Dict[str, set] = {}
+    for parts in _split_symbols(glyph_parts):
+        sig, _ = signature_of([e for e, _ in parts])
+        if not sig or not is_distinctive(sig):
             continue
-        items.append((e, bb))
+        x = (min(b[0] for _, b in parts) + max(b[2] for _, b in parts)) / 2
+        y = (min(b[1] for _, b in parts) + max(b[3] for _, b in parts)) / 2
+        row = _row_description(_Text("", x, y, 0.0), rows)
+        if row:
+            seen.setdefault(shape_kind(sig), set()).add(classify_description(row)[0])
+    out: Dict[str, str] = {}
+    for kind, items in seen.items():
+        item = next(iter(items))
+        known = catalogue_item(item)
+        if len(items) == 1 and known and known.price_map != "db":
+            out[kind] = item
+    return out
+
+
+def find_shape_groups(doc: Drawing, sheet: str = "", *, max_parts: int = 60,
+                      size_spread: float = 6.0) -> List[ShapeGroup]:
+    """Repeated symbol shapes on one drawing, most frequent first."""
+    items = _symbol_items(doc, legend_region(doc), inside=False)
 
     symbols = [s for s in _split_symbols(items) if 1 <= len(s) <= max_parts]
     if not symbols:

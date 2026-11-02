@@ -81,6 +81,8 @@ _DESC_RULES: List[Tuple[re.Pattern[str], str, BQSection]] = [
         "Isolator Switch", BQSection.POWER_OUTLETS),
     (re.compile(r"dimmer", re.I),
         "Dimmer Switch", BQSection.LIGHTING),
+    (re.compile(r"(1|one)\s*lever\W*(2|two)\s*way", re.I),
+        "1-Lever 2-Way Switch", BQSection.LIGHTING),
     (re.compile(r"(1|one)\s*lever|1\s*gang.*switch|single\s*switch", re.I),
         "1-Lever Switch", BQSection.LIGHTING),
     (re.compile(r"(2|two)\s*lever|2\s*gang.*switch", re.I),
@@ -99,9 +101,12 @@ _DESC_RULES: List[Tuple[re.Pattern[str], str, BQSection]] = [
     (re.compile(r"extinguisher", re.I),
         "Fire Extinguisher", BQSection.FIRE_SAFETY),
     # Lighting
-    # first: "2x600W LED ... Masts" would pass for a panel size, and a mast is a flood on a 10 m post
+    # first: "2x600W LED ... Masts" and "2x24W vapor proof LED" would pass for a panel size, and a
+    # mast is a flood on a 10 m post
     (re.compile(r"high?t?[\s-]*mast", re.I), "High-Mast Light", BQSection.LIGHTING),
     (re.compile(r"solar.*(light|lantern)", re.I), "Solar Post Light", BQSection.LIGHTING),
+    (re.compile(r"vapou?r\s*proof|weatherproof.*(light|fluor)|batten", re.I),
+        "Vapour Proof Light", BQSection.LIGHTING),
     (re.compile(r"recessed.*(led|fluor)|led.*panel|\d+\s*x\s*\d+.*(led|fluor)|panel\s*light", re.I),
         "Recessed LED Panel", BQSection.LIGHTING),
     (re.compile(r"down\s*light|down\s*lighter|\bdl\b", re.I),
@@ -110,8 +115,6 @@ _DESC_RULES: List[Tuple[re.Pattern[str], str, BQSection]] = [
         "LED Floodlight", BQSection.LIGHTING),
     (re.compile(r"bulkhead", re.I),
         "Bulkhead Light", BQSection.LIGHTING),
-    (re.compile(r"vapou?r\s*proof|weatherproof.*(light|fluor)|batten", re.I),
-        "Vapour Proof Light", BQSection.LIGHTING),
     (re.compile(r"surface\s*mount.*(light|led)|ceiling\s*light|\bcl\b", re.I),
         "Surface LED Light", BQSection.LIGHTING),
     (re.compile(r"pendant", re.I),
