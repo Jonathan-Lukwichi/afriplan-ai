@@ -325,6 +325,8 @@ def run_dxf_project(
         part.items += [f for f in ai_found if f.sheet == stem and f.item not in labelled_names]
         for f in (*part.boards, *part.items, *part.wires):
             f.sheet = stem
+        for f in (*part.items, *part.wires):
+            f.building = building_of_sheet(name)
         part.sheet_words[stem] = _words(doc)
         for g in part.gaps:
             g.drawing_ref = g.drawing_ref or stem
@@ -523,17 +525,22 @@ _SECTION_MATERIAL = {
 }
 
 
+def building_of_sheet(file_name: str) -> str:
+    """A building's lighting and plug sheets are one building: 'WD-AB-01-PLUG 250325.dwg' → 'WD-AB-01'."""
+    return _SHEET_DISCIPLINE.sub("", Path(file_name).stem)
+
+
 def _labelled_items(analyses) -> List[ItemFinding]:
     """Fittings counted from their labels (`labels.py`). The same fitting on two sheets of one
     building (a lighting and a plug sheet share their background) counts once, at the higher
     count; two buildings each keep their own."""
     best: dict = {}
     for doc, name, a in analyses:
-        building_sheets = _SHEET_DISCIPLINE.sub("", Path(name).stem)
+        building = building_of_sheet(name)
         for f in count_labelled_fittings(doc):
-            key = (building_sheets, f.description)
+            key = (building, f.description)
             if key not in best or f.qty > best[key][0].qty:
-                best[key] = (f, name, a.spatial.building)
+                best[key] = (f, name, building)
     out: List[ItemFinding] = []
     for f, name, building in best.values():
         canonical = (classify_description(f.description) or ("", BQSection.LIGHTING))[0]
