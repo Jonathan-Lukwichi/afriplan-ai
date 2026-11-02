@@ -99,6 +99,9 @@ _DESC_RULES: List[Tuple[re.Pattern[str], str, BQSection]] = [
     (re.compile(r"extinguisher", re.I),
         "Fire Extinguisher", BQSection.FIRE_SAFETY),
     # Lighting
+    # first: "2x600W LED ... Masts" would pass for a panel size, and a mast is a flood on a 10 m post
+    (re.compile(r"high?t?[\s-]*mast", re.I), "High-Mast Light", BQSection.LIGHTING),
+    (re.compile(r"solar.*(light|lantern)", re.I), "Solar Post Light", BQSection.LIGHTING),
     (re.compile(r"recessed.*(led|fluor)|led.*panel|\d+\s*x\s*\d+.*(led|fluor)|panel\s*light", re.I),
         "Recessed LED Panel", BQSection.LIGHTING),
     (re.compile(r"down\s*light|down\s*lighter|\bdl\b", re.I),

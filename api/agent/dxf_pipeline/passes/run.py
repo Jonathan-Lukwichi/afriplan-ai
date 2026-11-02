@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 
 from agent.dxf_pipeline.dwg import ensure_dxf_bytes
 from agent.dxf_pipeline.passes.assemble import findings_from_recognition
+from agent.dxf_pipeline.passes.labels import count_labelled_fittings
 from agent.dxf_pipeline.passes.legend import extract_legend, in_region, legend_region
 from agent.dxf_pipeline.passes.recognize import DxfRecognition, _plain_text, recognise
 from agent.dxf_pipeline.passes.revisions import pick_latest_revisions
@@ -46,11 +47,12 @@ from agent.shared import (
     ProjectMetadata,
 )
 from agent.shared.findings import Evidence, Findings, ItemFinding
-from agent.shared.legend import Legend, billed_canonical_items, coverage_gaps
+from agent.shared.legend import Legend, billed_canonical_items, classify_description, coverage_gaps
 from agent.shared.persistence import persist_run
 from agent.shared.pricing import price_findings
 from agent.shared.routes import RouteNetwork, equipment_key
 from agent.shared.symbol_catalogue import canonical_name, catalogue_item
+from core import constants
 
 log = logging.getLogger(__name__)
 
@@ -134,7 +136,9 @@ def run_dxf_estimator(
     findings = findings_from_recognition(a.rec, sld=a.sld, routes=routes,
                                          schematic=is_schematic_sheet(file_name, sld_found=a.sld.found))
     # Mode 3 — count exploded-line-work legend symbols by template matching.
-    findings.items += _template_findings(doc, a.legend)
+    labelled = _labelled_items([(doc, file_name, a)])
+    findings.items += labelled
+    findings.items += _template_findings(doc, a.legend, skip={i.item for i in labelled if i.item})
     findings.gaps += _legend_coverage_gaps(findings, a.legend)
     findings.sheet_words[Path(file_name).stem] = _words(doc)
     boq = price_findings(findings, pipeline="dxf", project_name=project_name, run_id=run_id)
@@ -303,6 +307,8 @@ def run_dxf_project(
             [(doc, name) for doc, name, a in analyses if not a.sld.found], name_shapes,
             _item_texts(analyses))
     ai_items = {s.item for s in ai_symbols if catalogue_item(s.item)}
+    labelled = _labelled_items(analyses)
+    counted_items = ai_items | {i.item for i in labelled if i.item}
 
     findings = findings_from_recognition(DxfRecognition(), sld=sld, routes=routes)
     board_names = [b.name for b in sld.boards]
@@ -311,7 +317,7 @@ def run_dxf_project(
         part = findings_from_recognition(a.rec, known_boards=billed_boards,
                                          schematic=is_schematic_sheet(name, sld_found=a.sld.found))
         billed_boards += a.rec.db_refs()
-        part.items += _template_findings(doc, a.legend, skip=ai_items)
+        part.items += _template_findings(doc, a.legend, skip=counted_items)
         stem = Path(name).stem
         part.items += [f for f in ai_found if f.sheet == stem]
         part.gaps += _legend_coverage_gaps(part, a.legend)
@@ -321,6 +327,7 @@ def run_dxf_project(
         for g in part.gaps:
             g.drawing_ref = g.drawing_ref or stem
         findings.extend(part)
+    findings.items += labelled
     findings.gaps += ai_gaps
     for old, newer in superseded.items():
         findings.gaps.append(GapItem(
@@ -380,7 +387,6 @@ def _item_texts(analyses) -> List[str]:
     """Every line of text on the drawings that names an electrical item: the legend reader's
     entries plus any text the legend vocabulary recognises (on Wedela the legend reader
     missed '2x24W double vapor proof LED fluorescent light' — the most-drawn fitting)."""
-    from agent.shared.legend import classify_description
     found = {e.description.strip() for _, _, a in analyses for e in a.legend.entries if e.description.strip()}
     for doc, _name, _a in analyses:
         for e in doc.modelspace().query("TEXT MTEXT"):
@@ -485,6 +491,35 @@ _SECTION_MATERIAL = {
     BQSection.DISTRIBUTION: 4500.0, BQSection.SOLAR_PV: 2800.0,
     BQSection.FINAL_CABLES: 200.0,
 }
+
+
+def _labelled_items(analyses) -> List[ItemFinding]:
+    """Fittings counted from their labels (`labels.py`). The same fitting on two sheets of a set
+    (a lighting and a plug sheet share their background) counts once, at the higher count."""
+    best: dict = {}
+    for doc, name, a in analyses:
+        for f in count_labelled_fittings(doc):
+            if f.description not in best or f.qty > best[f.description][0].qty:
+                best[f.description] = (f, name, a.spatial.building)
+    out: List[ItemFinding] = []
+    for f, name, building in best.values():
+        canonical = (classify_description(f.description) or ("", BQSection.LIGHTING))[0]
+        known = catalogue_item(canonical)
+        out.append(ItemFinding(
+            description=f.description, section=BQSection.LIGHTING, item=canonical if known else "",
+            qty=float(f.qty), material_zar=constants.LIGHT_PRICES.get(known.price_key, 0.0) if known else 0.0,
+            install_zar=85.0, building=building, sheet=Path(name).stem, evidence=Evidence.COUNTED,
+            notes=f"Counted from the '{f.label}' label on the plan; the legend row names it.",
+        ))
+        if not known:
+            out[-1].gaps.append(GapItem(
+                section=BQSection.LIGHTING, building_block=building,
+                description=f"No rate for '{f.description}' ({f.qty} counted)",
+                assumption="Priced on install labour only.",
+                suggested_action="Add a rate for this fitting.",
+                severity="medium", drawing_ref=Path(name).stem,
+            ))
+    return out
 
 
 def _template_findings(doc, legend: Legend, skip=frozenset()) -> List[ItemFinding]:
