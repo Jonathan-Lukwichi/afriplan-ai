@@ -113,7 +113,7 @@ item keys only.
 - Status: open. Not a third source until a person checks it.
 
 ### 2026-11-02 · Wedela Small Guard House · CO-C1 (conduit against the bill)
-- Observed: the bill's conduit is about 2.4 × the hand figure at a 3 m ceiling, 1.9 × at 4 m, in a building about 4.7 × 2.5 m. The bill's wire is 2.0 × its conduit and its earth equals its conduit: internally exact, so it looks like an allowance taken through these ratios, not a measurement.
+- Observed: the bill's conduit is about 2.4 × the hand figure at a 3 m ceiling, 1.9 × at 4 m, in a very small building. The bill's wire is 2.0 × its conduit and its earth equals its conduit: internally exact, so it looks like an allowance taken through these ratios, not a measurement.
 - Expected: the guard houses at under half the bill looked like a shortfall of ours.
 - Evidence: hand sheet, bill lines for that building. Only this building was measured.
 - Verdict: bill-vs-drawing
