@@ -20,6 +20,7 @@ from agent.shared.boq import (
 )
 from agent.shared.companions import companion_findings
 from agent.shared.findings import BoardFinding, FeederFinding, Findings, ItemFinding, WireFinding
+from agent.shared.gaps import group_gaps
 from core import constants
 from core.rate_model import (
     DEFAULT_CREW,
@@ -75,7 +76,7 @@ def price_findings(
     number_lines(lines)
     boq = BillOfQuantities(
         project_name=project_name, pipeline=pipeline, run_id=run_id,
-        line_items=lines, gaps=[*findings.all_gaps(), *(g for it in derived for g in it.gaps)],
+        line_items=lines, gaps=group_gaps([*findings.all_gaps(), *(g for it in derived for g in it.gaps)]),
         contingency_pct=params.contingency_pct * 100, vat_pct=params.vat_pct * 100,
     )
     finalise_totals(boq, params)

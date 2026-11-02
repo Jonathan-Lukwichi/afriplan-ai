@@ -4,6 +4,7 @@ Audit endpoints — the commercial audit features over any Bill of Quantities.
     POST /api/audit/boq                 upload a priced BOQ workbook (.xlsx) → findings
     GET  /api/audit/run/{run_id}        audit the run's (priced, optionally completed) bill
     GET  /api/audit/coverage/{run_id}   which drawing types the run had, what to request
+    GET  /api/audit/reading/{run_id}    extraction accuracy, when the run is a reference project
     GET  /api/audit/ratio-model         is derived-item completion available here?
 
 Thin: logic lives in the read-only `audit` / `evaluation` packages. Nothing here
@@ -26,6 +27,7 @@ from audit.sufficiency import (
     sufficiency,
 )
 from core.run_store import run_store
+from evaluation.live import find_reference_project, reading_summary
 from evaluation.network import DrawingType
 from evaluation.reference import parse_reference_xlsx
 from routers.export import _priced_boq_for
@@ -117,6 +119,19 @@ def run_coverage(run_id: str):
         "request_names": {d: _DRAWING_NAMES.get(d, d) for d in rep.requests},
         "complete": rep.complete,
     }
+
+
+@router.get("/reading/{run_id}")
+def run_reading(run_id: str):
+    record = run_store.get(run_id)
+    if record is None:
+        raise HTTPException(404, "run not found")
+    boq = getattr(record.result, "boq", None)
+    names = [getattr(n, "file_name", "") for n in getattr(record.result, "files", []) or []] or [record.input_file]
+    project = find_reference_project(names) if boq is not None else None
+    if project is None:
+        return {"available": False}
+    return {"available": True, **reading_summary(boq, project, pipeline=record.pipeline)}
 
 
 @router.get("/ratio-model")

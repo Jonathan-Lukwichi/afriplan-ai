@@ -32,13 +32,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 from agent.shared import BillOfQuantities, ProjectMetadata  # noqa: E402
 from audit.completer import complete_boq  # noqa: E402
 from evaluation.dataset import load_manifest, project_dir, uploaded_from_manifest, verify_manifest  # noqa: E402
+from evaluation.live import PROJECT, project_reference  # noqa: E402
 from evaluation.metrics import PredLine, Scorecard, pred_lines_from_boq, score  # noqa: E402
 from evaluation.network import DrawingType  # noqa: E402
 from evaluation.ratios import load_ratio_model  # noqa: E402
-from evaluation.reference import RefBuilding, ReferenceBoq, load_reference  # noqa: E402
-
-PROJECT = "Project (all buildings)"
-
+from evaluation.reference import ReferenceBoq, load_reference  # noqa: E402
 
 # ─── running the pipelines ───────────────────────────────────────────
 
@@ -232,11 +230,6 @@ def _attribute_combined(boq: BillOfQuantities, manifest, ref: ReferenceBoq) -> D
 
 # ─── scoring ─────────────────────────────────────────────────────────
 
-def _project_ref(ref: ReferenceBoq) -> ReferenceBoq:
-    lines = [l.model_copy(update={"building": PROJECT}) for b in ref.billed_buildings() for l in b.lines]
-    return ReferenceBoq(project=ref.project, buildings=[RefBuilding(name=PROJECT, sheet="*", lines=lines, in_summary=True)])
-
-
 def score_runs(per_building: Dict[str, BillOfQuantities], ref: ReferenceBoq, manifest, source: str,
                pipeline: str, *, completed: bool, model) -> Tuple[Scorecard, Scorecard]:
     billed = [b.name for b in ref.billed_buildings()]
@@ -254,7 +247,7 @@ def score_runs(per_building: Dict[str, BillOfQuantities], ref: ReferenceBoq, man
         all_lines += [p.model_copy(update={"building": PROJECT}) for p in lines]
     per_b = score(pred, ref, uploaded=uploaded, pipeline=pipeline, buildings=billed)
     union = set().union(*uploaded.values()) if uploaded else set()
-    proj = score(all_lines, _project_ref(ref), uploaded={PROJECT: union}, pipeline=pipeline, buildings=[PROJECT])
+    proj = score(all_lines, project_reference(ref), uploaded={PROJECT: union}, pipeline=pipeline, buildings=[PROJECT])
     return per_b, proj
 
 

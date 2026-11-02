@@ -15,14 +15,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
-# repo-root data/ (evaluation/ lives in api/)
-DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "projects"
+# repo-root data/ (evaluation/ lives in api/); a git worktree holds no client data, so its app
+# can point at the main checkout's folder
+DATA_ROOT = Path(os.environ.get("AFRIPLAN_PROJECTS_DIR") or Path(__file__).resolve().parents[2] / "data" / "projects")
 
 
 class DatasetFile(BaseModel):

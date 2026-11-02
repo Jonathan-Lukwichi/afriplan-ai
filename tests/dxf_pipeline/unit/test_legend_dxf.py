@@ -74,6 +74,27 @@ def test_legend_coverage_gaps_flag_uncounted_items():
     assert any("1-Lever Switch" in g for g in gap_items)
 
 
+def test_legend_coverage_looks_at_the_whole_project_not_one_sheet():
+    from agent.shared.findings import BoardFinding
+    leg = extract_legend(_doc_with_legend())
+    found = Findings(
+        boards=[BoardFinding(name="DB-1", contents_known=False)],
+        items=[ItemFinding(section=BQSection.POWER_OUTLETS, description="16A Double Switched Socket — Office", qty=3),
+               ItemFinding(section=BQSection.LIGHTING, description="30W flood — Yard", item="LED Floodlight", qty=2),
+               ItemFinding(section=BQSection.POWER_OUTLETS, description="Switch — Office", qty=4)])
+    other = extract_legend(_doc_with_legend())
+    assert _legend_coverage_gaps(found, leg, other) == []
+
+
+def test_a_board_on_the_bill_answers_the_legends_distribution_board_row():
+    from agent.shared.findings import BoardFinding
+    doc = ezdxf.new(setup=True)
+    doc.modelspace().add_text("Distribution Board").set_placement((0, 0))
+    leg = extract_legend(doc)
+    assert any("Distribution Board" in g.description for g in _legend_coverage_gaps(Findings(), leg))
+    assert _legend_coverage_gaps(Findings(boards=[BoardFinding(name="DB-1", contents_known=False)]), leg) == []
+
+
 # ─── legend region: glyphs in the legend table are not plan symbols (issue 006) ──
 
 def _doc_legend_and_plan():

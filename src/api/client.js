@@ -92,6 +92,7 @@ export const api = {
     },
     run: (runId, params = {}, signal) => request(`/api/audit/run/${runId}?${new URLSearchParams(params)}`, { signal }),
     coverage: (runId, signal) => request(`/api/audit/coverage/${runId}`, { signal }),
+    reading: (runId, signal) => request(`/api/audit/reading/${runId}`, { signal }),
     ratioModel: (signal) => request('/api/audit/ratio-model', { signal }),
   },
 

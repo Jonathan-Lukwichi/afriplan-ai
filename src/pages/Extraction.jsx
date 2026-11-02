@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
+import { toCheck } from '../lib/plainWords';
 import PipelineStatusCard from '../components/ui/PipelineStatusCard';
 import LegendPanel from '../components/ui/LegendPanel';
 import CoveragePanel from '../components/ui/CoveragePanel';
+import ExtractionAccuracyPanel from '../components/ui/ExtractionAccuracyPanel';
 import DrawingSetPanel from '../components/ui/DrawingSetPanel';
 import AiSymbolsPanel from '../components/ui/AiSymbolsPanel';
 import PageHeader from '../components/ui/PageHeader';
@@ -49,7 +51,7 @@ export default function Extraction({ runId, onNavigate }) {
   const boq = run?.result?.boq;
   const summary = boq ? [
     { label: 'Line items', value: boq.total_items },
-    { label: 'Gaps flagged', value: boq.gaps?.length ?? 0 },
+    { label: 'Things to check', value: toCheck(boq.gaps).length },
     { label: 'Total incl. VAT', value: `R ${boq.total_incl_vat_zar.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}` },
   ] : null;
 
@@ -69,6 +71,8 @@ export default function Extraction({ runId, onNavigate }) {
           progress={run.progress}
         />
       )}
+
+      {run?.status === 'passed' && <ExtractionAccuracyPanel runId={runId} />}
 
       {run?.status === 'passed' && run.pipeline === 'dxf' && <DrawingSetPanel result={run.result} />}
 

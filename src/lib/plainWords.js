@@ -38,6 +38,9 @@ export const SEVERITY = {
   low: { label: 'For information', meaning: 'Small or already handled — just so you know.' },
 };
 
+// The gaps that ask a person to decide something; the rest are notes.
+export const toCheck = (gaps) => (gaps || []).filter((g) => g.severity !== 'low');
+
 // Units on the bill.
 export const UNITS = {
   Sum: { label: 'lump sum', meaning: 'One complete item priced as a whole (e.g. a full distribution board).' },

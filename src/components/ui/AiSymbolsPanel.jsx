@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 
-/* Symbols recognised by AI (ADR-0007): one picture per repeated shape, how many copies
-   the drawings contain (counted exactly by geometry) and what the shape was named as.
-   A person can correct a name; it is remembered and used — free — on every later run. */
+/* Symbols recognised (ADR-0007): one picture per repeated shape, how many copies the drawings
+   contain (counted exactly by geometry) and what the shape was named as: by the drawing's own
+   legend, else by AI. A person can correct a name; it is remembered and used — free — on every
+   later run. */
+const NAMED_BY = { person: '(named by you)', legend: '(named by the legend)', ai: '(named by AI)' };
+
 export default function AiSymbolsPanel({ result }) {
   const symbols = result?.ai_symbols || [];
   const [choices, setChoices] = useState([]);
@@ -29,10 +32,10 @@ export default function AiSymbolsPanel({ result }) {
 
   return (
     <div className="glass-card" style={{ padding: 'var(--space-md)', marginTop: 'var(--space-lg)' }} data-testid="ai-symbols-panel">
-      <h3 style={{ fontSize: 16, margin: '0 0 6px' }}>Symbols recognised by AI ({symbols.length} shapes)</h3>
+      <h3 style={{ fontSize: 16, margin: '0 0 6px' }}>Symbols recognised ({symbols.length} shapes)</h3>
       <p style={{ fontSize: 13, color: 'var(--ink-muted)', margin: '0 0 12px' }}>
-        Every copy of a shape was counted exactly by the app; the AI only named each shape from the legend
-        {result.ai_cost_zar ? ` (cost R ${result.ai_cost_zar.toFixed(2)})` : ''}. If a name is wrong, pick the right
+        Every copy of a shape was counted exactly by the app. Its name comes from the row beside it in the drawing's
+        legend, or from the AI when no row matches{result.ai_cost_zar ? ` (cost R ${result.ai_cost_zar.toFixed(2)})` : ''}. If a name is wrong, pick the right
         one and save — it is remembered. Run the drawings again to update the bill (remembered names cost nothing).
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
@@ -42,7 +45,7 @@ export default function AiSymbolsPanel({ result }) {
                  style={{ width: 96, height: 96, objectFit: 'contain', background: '#fff', borderRadius: 4, display: 'block' }} />
             <div style={{ fontSize: 13, margin: '6px 0' }}>
               <strong>× {s.count}</strong>{' '}
-              <span style={{ color: 'var(--ink-muted)' }}>{s.named_by === 'person' ? '(named by you)' : '(named by AI)'}</span>
+              <span style={{ color: 'var(--ink-muted)' }}>{NAMED_BY[s.named_by] || NAMED_BY.ai}</span>
             </div>
             <select value={names[s.signature] ?? s.item}
                     onChange={(e) => { setNames((v) => ({ ...v, [s.signature]: e.target.value })); setSaved((v) => ({ ...v, [s.signature]: false })); }}

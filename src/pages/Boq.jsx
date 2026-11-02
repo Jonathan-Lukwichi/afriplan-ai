@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { toCheck } from '../lib/plainWords';
 import PageHeader from '../components/ui/PageHeader';
 import MetricTile from '../components/ui/MetricTile';
 import LineItemsTable from '../components/ui/LineItemsTable';
 import GapReport from '../components/ui/GapReport';
+import ExtractionAccuracyPanel from '../components/ui/ExtractionAccuracyPanel';
 import SectionSubtotalsChart from '../components/ui/SectionSubtotalsChart';
 import EmptyState from '../components/ui/EmptyState';
 import Tabs from '../components/ui/Tabs';
@@ -135,7 +137,7 @@ export default function Boq({ runId, onNavigate }) {
             tabs={[
               { id: 'overview', label: 'Overview' },
               { id: 'items', label: 'Line items', count: priced.total_items },
-              { id: 'gaps', label: 'Things to check', count: priced.gaps?.length ?? 0 },
+              { id: 'gaps', label: 'Things to check', count: toCheck(priced.gaps).length },
               { id: 'audit', label: 'Audit', count: audit?.summary?.count },
               { id: 'export', label: 'Export & email' },
             ]}
@@ -154,6 +156,7 @@ export default function Boq({ runId, onNavigate }) {
 
               <h3 style={{ fontSize: 16, marginBottom: 10 }}>Section subtotals</h3>
               <SectionSubtotalsChart subtotals={priced.section_subtotals_short} />
+              <ExtractionAccuracyPanel runId={runId} />
             </div>
           )}
 
