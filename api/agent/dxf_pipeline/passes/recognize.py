@@ -173,15 +173,19 @@ def _poly_len(pts) -> float:
     return sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(pts, pts[1:]))
 
 
+def _arc_sweep(e) -> float:
+    """An arc's sweep in radians: DXF arcs run counter-clockwise from start to end, so one from
+    350° to 10° sweeps 20°, not 340°."""
+    return math.radians((e.dxf.end_angle - e.dxf.start_angle) % 360.0)
+
+
 def _arc_len(e) -> float:
-    ang = abs(e.dxf.end_angle - e.dxf.start_angle) % 360.0
-    return math.radians(ang) * float(e.dxf.radius)
+    return _arc_sweep(e) * float(e.dxf.radius)
 
 
 def _arc_chord(e) -> float:
-    """Straight distance between an arc's ends (DXF arcs run counter-clockwise start → end)."""
-    sweep = math.radians((e.dxf.end_angle - e.dxf.start_angle) % 360.0)
-    return 2.0 * float(e.dxf.radius) * math.sin(sweep / 2.0)
+    """Straight distance between an arc's ends."""
+    return 2.0 * float(e.dxf.radius) * math.sin(_arc_sweep(e) / 2.0)
 
 
 def _entity_midpoint(e) -> Optional[Tuple[float, float]]:

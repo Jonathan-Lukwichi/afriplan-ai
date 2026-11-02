@@ -175,6 +175,23 @@ def test_ensure_dxf_dwg_without_converter_returns_clear_error(monkeypatch):
     assert "converter" in res.error.lower()
 
 
+@pytest.mark.parametrize("start, end, degrees", [
+    (350, 10, 20),          # crosses 0°: the short way round, never 340°
+    (270, 45, 135),
+    (10, 350, 340),         # a long arc that really is long
+    (0, 180, 180),
+])
+def test_a_wiring_arc_is_measured_counter_clockwise_from_start_to_end(start, end, degrees):
+    """DXF arcs run counter-clockwise (issue 016)."""
+    doc = ezdxf.new(setup=True)
+    doc.header["$INSUNITS"] = 4  # mm
+    msp = doc.modelspace()
+    msp.add_arc((0, 0), 2000, start, end, dxfattribs={"layer": "E-CABLE-WIRE"})
+    msp.add_text("L1", dxfattribs={"layer": "E-CABLE-WIRE"}).set_placement((1000, 1000))
+    rec = recognise(doc)
+    assert rec.cable_length_m_by_circuit["L1"] == pytest.approx(2 * math.radians(degrees), abs=1e-3)
+
+
 def test_a_drawn_wiring_arc_counts_its_straight_chord_as_route():
     """BOQ_KNOWLEDGE §4: the route is straight runs, ignoring drawn curves. Wiring drawn as a
     half circle of radius 2 m between two points: 2π m as drawn, 4 m of route."""
